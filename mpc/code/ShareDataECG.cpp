@@ -30,20 +30,43 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
   string line;
   int i = 0;
   while(getline(fin, line)) {
-    if (i % 1000 == 0) {
-      tcout() << "Reading line " << i << endl;
-    }
-    for (int j = 0; j < n_cols; j++) {
-      double val = ((double) line[j]) - 48;
+//    if (i  < 10) {
+//
+//      stringstream ss(line);
+//      tcout() << "Reading line " << line << endl;
+//      for(float k; ss >> k;)
+//      {
+//        if (ss.peek() == ',')
+//          ss.ignore();
+//        tcout() << "k : " << k << endl;
+//      }
+//    }
+
+    stringstream ss(line);
+    int j = 0;
+    for(double k; ss >> k;) {
+      if (ss.peek() == ',')
+        ss.ignore();
+
+//      Normalize
+//      k -= 1.66;
+//      k /= (155.51 + 1e-7);
+
+      if (j % 500 == 0)
+        tcout() << "Read Column k " << k << endl;
+
       ZZ_p val_fp;
-      DoubleToFP(val_fp, val, Param::NBIT_K, Param::NBIT_F);
+      DoubleToFP(val_fp, k, Param::NBIT_K, Param::NBIT_F);
       matrix[i][j] = val_fp;
+
+
+      j++;
     }
     i++;
   }
-  
+//  tcout() << "NAMEEEE:: " << fname << i << n_rows << endl;
   if (i != n_rows) {
-    tcout() << "Error: Invalid number of rows: " << i << endl;
+    tcout() << "Error: Invalid number of rows ecg: " << i << endl;
     return false;
   }
   fin.close();
@@ -75,6 +98,7 @@ bool mask_data(string data_dir, MPCEnv& mpc) {
   for (int i = 0; i < suffixes.size(); i++) {
     /* Save seed state to file for each batch. */
     fname = cache(1, "seed" + suffixes[i]);
+
     tcout() << "open Seed name:" << fname  << endl;
     fs.open(fname.c_str(), ios::out | ios::binary);
     if (!fs.is_open()) {
@@ -83,6 +107,7 @@ bool mask_data(string data_dir, MPCEnv& mpc) {
     }
     mpc.ExportSeed(fs);
     fs.close();
+    tcout() << "SUFFIX " << suffixes[i] << endl;
 
     /* Write batch to file. */
     if (!mask_matrix(data_dir, mpc, "X" + suffixes[i],

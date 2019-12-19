@@ -1,6 +1,6 @@
 #!/bin/bash
 
-zcat "$1"data/stitch/9606.protein_chemical.links.v5.0.tsv.gz | \
+zcat < "$1"data/stitch/9606.protein_chemical.links.v5.0.tsv.gz | \
     tail -n+2 | \
     awk '$3 >= 400' | \
     sed 's/CID[sm]/CIDs/' | \

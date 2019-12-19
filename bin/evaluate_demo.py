@@ -6,7 +6,7 @@ from sklearn import metrics
 from string import ascii_lowercase
 import sys
 
-N_HIDDEN = 1
+N_HIDDEN = 2
 LOSS = 'hinge'
 
 def report_scores(X, y, W, b, act):
@@ -39,6 +39,9 @@ def report_scores(X, y, W, b, act):
               y, predicted_class
           ))
     )
+
+    print(y.shape, scores.shape, act)
+    print(y[0:5], scores[0:5])
     
     y_true.extend(list(y))
     y_pred.extend(list(predicted_class))

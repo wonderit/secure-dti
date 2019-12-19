@@ -170,3 +170,11 @@ output the model parameters at the end of model training.
 
 Brian Hie, brianhie@mit.edu  
 Hoon Cho, hhcho@mit.edu
+
+
+###
+brew install boost
+brew install cmake
+pip install conan
+conan remote add ess-dmsc https://api.bintray.com/conan/ess-dmsc/conan
+conan remote add bincrafters https://api.bintray.com/conan/bincrafters/public-conan

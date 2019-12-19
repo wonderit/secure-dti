@@ -11,3 +11,8 @@ demo_data/batch_pw/
 demo_data/stitch/
 demo_data/stitch/large_interactions*
 demo_data/*.txt
+demo_data/text_demo/
+
+.idea/**
+mpc/code/cmake-*/**
+ntl-10.3.0/

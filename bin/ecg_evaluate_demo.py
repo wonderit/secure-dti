@@ -1,0 +1,213 @@
+import datetime
+import matplotlib.pyplot as plt
+import numpy as np
+import random
+from sklearn import metrics
+from string import ascii_lowercase
+import sys
+from sklearn.metrics import r2_score, mean_squared_error
+import math
+import os
+import argparse
+import time
+import pandas as pd
+import matplotlib.pyplot as plt
+
+N_HIDDEN = 3
+LOSS = 'mse'
+MEAN = 59.3
+STD = 10.6
+result_path = 'result'
+
+# 11000 criteria
+mean_x = 1.66
+std_x = 155.51
+
+# 11000 criteria
+# mean_x = 1.91397
+# std_x = 156.413
+def scale(arr, std, mean):
+    arr -= mean
+    arr /= (std + 1e-7)
+    return arr
+# LOSS = 'hinge'
+def rescale(arr, std, mean):
+    arr = arr * std
+    arr = arr + mean
+
+    return arr
+
+def report_scores(X, y, W, b, act):
+    y_true = []
+    y_pred = []
+    y_score = []
+
+    X = scale(X, mean_x, std_x)
+
+
+    for l in range(N_HIDDEN):
+        if l == 0:
+            act[l] = np.maximum(0, np.dot(X, W[l]) + b[l])
+        else:
+            act[l] = np.maximum(0, np.dot(act[l-1], W[l]) + b[l])
+
+    if N_HIDDEN == 0:
+        scores = np.dot(X, W[-1]) + b[-1]
+    else:
+        scores = np.dot(act[-1], W[-1]) + b[-1]
+
+    y = rescale(y, MEAN, STD)
+    scores = rescale(scores, MEAN, STD)
+
+    print(y.shape, scores.shape)
+    print(y[0:5], scores[0:5])
+    mse_loss = metrics.mean_squared_error(y, scores)
+
+    # predicted_class = np.zeros(scores.shape)
+    # if LOSS == 'hinge':
+    #     predicted_class[scores > 0] = 1
+    #     predicted_class[scores <= 0] = -1
+    #     y = 2 * y - 1
+    # elif LOSS == 'mse':
+    #
+    # else:
+    #     predicted_class[scores >= 0.5] = 1
+
+    sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+    print('Batch mse: {0:.2f}'
+          .format(mse_loss)
+    )
+    
+    y_true.extend(list(y))
+    # y_pred.extend(list(predicted_class))
+    y_pred.extend(scores)
+    # y_score.extend(list(mse_loss))
+    y_score.append(mse_loss)
+    
+    # Output aggregated scores.
+    # try:
+    #     sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+    #     print('Accuracy: {0:.2f}'.format(
+    #         metrics.accuracy_score(y_true, y_pred))
+    #     )
+    #     sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+    #     print('F1: {0:.2f}'.format(
+    #         metrics.f1_score(y_true, y_pred))
+    #     )
+    #     sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+    #     print('Precision: {0:.2f}'.format(
+    #         metrics.precision_score(y_true, y_pred))
+    #     )
+    #     sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+    #     print('Recall: {0:.2f}'.format(
+    #         metrics.recall_score(y_true, y_pred))
+    #     )
+    #     sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+    #     print('ROC AUC: {0:.2f}'.format(
+    #         metrics.roc_auc_score(y_true, y_score))
+    #     )
+    #     sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+    #     print('Avg. precision: {0:.2f}'.format(
+    #         metrics.average_precision_score(y_true, y_score))
+    #     )
+    # except Exception as e:
+    #     sys.stderr.write(str(e))
+    #     sys.stderr.write('\n')
+
+        
+    return y_true, y_pred, y_score
+
+
+def load_model():
+    W = [ [] for _ in range(N_HIDDEN + 1) ]
+    for l in range(N_HIDDEN+1):
+        W[l] = np.loadtxt('mpc/cache/ecg_P1_W{}_final.bin'.format(l))
+
+     # Initialize bias vector with zeros.
+    b = [ []  for _ in range(N_HIDDEN + 1) ]
+    for l in range(N_HIDDEN+1):
+        b[l] = np.loadtxt('mpc/cache/ecg_P1_b{}_final.bin'.format(l))
+
+    # Initialize activations.
+    act = [ [] for _ in range(N_HIDDEN) ]
+
+    print(np.array(W[0]).shape, np.array(b[0]).shape, act)
+    print(np.array(W[1]).shape, np.array(b[1]).shape, act)
+
+    return W, b, act
+
+
+def r_squared_mse(y_true, y_pred, sample_weight=None, multioutput=None):
+
+    r2 = r2_score(y_true, y_pred, multioutput='uniform_average')
+    mse = mean_squared_error(y_true, y_pred,
+                             sample_weight=sample_weight,
+                             multioutput=multioutput)
+    # bounds_check = np.min(y_pred) > MIN_MOISTURE_BOUND
+    # bounds_check = bounds_check&(np.max(y_pred) < MAX_MOISTURE_BOUND)
+
+    print('Scoring - std', np.std(y_true), np.std(y_pred))
+    print('Scoring - median', np.median(y_true), np.median(y_pred))
+    print('Scoring - min', np.min(y_true), np.min(y_pred))
+    print('Scoring - max', np.max(y_true), np.max(y_pred))
+    print('Scoring - mean', np.mean(y_true), np.mean(y_pred))
+    print('Scoring - MSE: ', mse, 'RMSE: ', math.sqrt(mse))
+    print('Scoring - R2: ', r2)
+    # print(y_pred)
+    # exit()
+
+    result_message = 'r2:{:.3f}, mse:{:.3f}, std:{:.3f},{:.3f}'.format(r2, mse, np.std(y_true), np.std(y_pred))
+    return result_message
+
+
+def scatter_plot(y_true, y_pred, message):
+    result = np.column_stack((y_true,y_pred))
+
+    if not os.path.exists('{}/{}'.format(result_path, 'csv')):
+        os.makedirs('{}/{}'.format(result_path, 'csv'))
+
+    if not os.path.exists('{}/{}'.format(result_path, 'scatter')):
+        os.makedirs('{}/{}'.format(result_path, 'scatter'))
+
+    pd.DataFrame(result).to_csv("{}/csv/{}.csv".format(result_path, 1), index=False)
+
+    plt.scatter(y_pred, y_true, s=3)
+    plt.suptitle(message)
+    plt.xlabel('Predictions')
+    plt.ylabel('Actual')
+    plt.savefig("{}/scatter/{}.png".format(result_path, 1))
+    plt.clf()
+    # plt.show()
+    
+if __name__ == '__main__':
+    W, b, act = load_model()
+
+    # X_train = np.genfromtxt('demo_data/text_demo/Xtrain',
+    #                         delimiter=',', dtype='float')
+    # y_train = np.genfromtxt('demo_data/text_demo/ytrain',
+    #                         delimiter=',', dtype='float')
+    X_train = np.genfromtxt('../data/ecg/text_demo_1100/Xtrain',
+                            delimiter=',', dtype='float')
+    y_train = np.genfromtxt('../data/ecg/text_demo_1100/ytrain',
+                            delimiter=',', dtype='float')
+
+    
+    print('Training accuracy:')
+    report_scores(X_train, y_train, W, b, act)
+
+    # X_test = np.genfromtxt('demo_data/text_demo/Xtest',
+    #                         delimiter=',', dtype='float')
+    # y_test = np.genfromtxt('demo_data/text_demo/ytest',
+    #                         delimiter=',', dtype='float')
+    X_test = np.genfromtxt('../data/ecg/text_demo_1100/Xtest',
+                            delimiter=',', dtype='float')
+    y_test = np.genfromtxt('../data/ecg/text_demo_1100/ytest',
+                            delimiter=',', dtype='float')
+    
+    print('Testing accuracy:')
+    y_true, y_pred, _ = report_scores(X_test, y_test, W, b, act)
+
+
+    rm = r_squared_mse(y_true, y_pred)
+
+    scatter_plot(y_true, y_pred, rm)

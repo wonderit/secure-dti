@@ -154,9 +154,9 @@ string Param::BASE_P = "1461501637330902918203684832716283019655932542929";
 uint64_t Param::MPC_BUF_SIZE = 1000000;
 
 int Param::ITER_PER_EVAL= 5;
-string Param::OUTPUT_FILE_PREFIX = "../out/test";
-string Param::CACHE_FILE_PREFIX = "../cache/test";
-string Param::LOG_FILE = "../log/log.txt";
+string Param::OUTPUT_FILE_PREFIX = "../out/ecg";
+string Param::CACHE_FILE_PREFIX = "../cache/ecg";
+string Param::LOG_FILE = "../log/ecg.txt";
 
 long Param::FEATURE_RANK = 100;
 double Param::MOMENTUM = 0.9;
@@ -167,7 +167,8 @@ bool Param::ANNEAL = false;
 int Param::ANNEAL_FREQ = 400;
 double Param::REG = 0.001;
 double Param::DROPOUT = 0;
-string Param::LOSS = "hinge";
+//string Param::LOSS = "hinge";
+string Param::LOSS = "mse";
 int Param::N_FILE_BATCH = 20000;
 int Param::N_NEURONS = 250;
 int Param::BATCH_SIZE = 50;

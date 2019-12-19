@@ -342,4 +342,39 @@ static inline vector<string> load_suffixes(string fname) {
   return suffixes;
 }
 
+
+static inline void PrintMat(Mat<long>& b) {
+  for (int i = 0; i < b.NumRows(); i++) {
+    for (int j = 0; j < b.NumCols(); j++) {
+      cout << " " << b[i][j] << " ";
+    }
+    cout<<"\n";
+  }
+}
+
+static inline void PrintMat(Mat<double>& b) {
+  for (int i = 0; i < b.NumRows(); i++) {
+    for (int j = 0; j < b.NumCols(); j++) {
+      cout << " " << b[i][j] << " ";
+    }
+    cout<<"\n";
+  }
+}
+
+static inline void PrintMat(Mat<ZZ_p>& b) {
+  for (int i = 0; i < b.NumRows(); i++) {
+    for (int j = 0; j < b.NumCols(); j++) {
+      cout << " " << b[i][j] << " ";
+    }
+    cout<<"\n";
+  }
+}
+static inline void PrintMat(Mat<ZZ>& b) {
+  for (int i = 0; i < b.NumRows(); i++) {
+    for (int j = 0; j < b.NumCols(); j++) {
+      cout << " " << b[i][j] << " ";
+    }
+    cout<<"\n";
+  }
+}
 #endif

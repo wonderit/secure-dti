@@ -107,7 +107,7 @@ public:
 
     sockAddr.sin_port = htons(nPort);
 
-    return bind(m_hSock, (sockaddr *) &sockAddr, sizeof(sockaddr_in)) >= 0;
+    return ::bind(m_hSock, (sockaddr *) &sockAddr, sizeof(sockaddr_in)) >= 0;
   }
 
   bool Listen(int nQLen = 5) {

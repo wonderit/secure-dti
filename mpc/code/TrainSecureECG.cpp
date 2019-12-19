@@ -177,8 +177,6 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
       activation[i] += b[l];
     }
 
-    if (pid == 2)
-      tcout() << "Forward prop, ReLU." << endl;
     /* Apply ReLU non-linearity. */
     Mat<ZZ_p> relu;
     mpc.IsPositive(relu, activation);
@@ -188,12 +186,47 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     mpc.MultElem(after_relu, activation, relu);
     /* Note: Do not call Trunc() here because IsPositive()
        returns a secret shared integer, not a fixed point.*/
-    
+
     // TODO: Implement dropout.
 
     /* Save activation for backpropagation. */
     act.push_back(after_relu);
     relus.push_back(relu);
+
+    if (l == Param::N_HIDDEN) {
+      /* Apply ReLU non-linearity. */
+//      Mat<ZZ_p> relu;
+//      mpc.IsPositive(relu, activation);
+//      Mat<ZZ_p> after_relu;
+//      after_relu = activation;
+//    assert(activation.NumRows() == relu.NumRows());
+//    assert(activation.NumCols() == relu.NumCols());
+//      mpc.MultElem(after_relu, activation, activation);
+//    mpc.MultElem(after_relu, activation, relu);
+      /* Note: Do not call Trunc() here because IsPositive()
+         returns a secret shared integer, not a fixed point.*/
+
+      // TODO: Implement dropout.
+
+      /* Save activation for backpropagation. */
+//      act.push_back(after_relu);
+//      relus.push_back(activation);
+//    act.push_back(after_relu);
+//    relus.push_back(relu);
+    } else {
+//
+//      if (pid == 2)
+//        tcout() << "Forward prop, ReLU." << endl;
+//      Mat<ZZ_p> relu;
+//      mpc.IsPositive(relu, activation);
+//      Mat<ZZ_p> after_relu;
+//      assert(activation.NumRows() == relu.NumRows());
+//      assert(activation.NumCols() == relu.NumCols());
+//      mpc.MultElem(after_relu, activation, relu);
+//      act.push_back(after_relu);
+//      relus.push_back(relu);
+    }
+
   }
 
   
@@ -257,9 +290,10 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   dscores *= norm_examples;
   mpc.Trunc(dscores);
 
-  if (pid > 0 && epoch % 500 == 0) {
-    reveal(scores, cache(pid, "scores_epoch" + to_string(epoch)), mpc);
-  }
+//  if (pid > 0 && epoch % 500 == 0) {
+//    reveal(scores, cache(pid, "scores_epoch" + to_string(epoch)), mpc);
+//  }
+  reveal(scores, cache(pid, "scores_epoch" + to_string(epoch)), mpc);
 //  tcout() << "Forward Score::" << scores << "epoch::" << epoch << endl;
 
   /*********************
@@ -311,7 +345,6 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
       relus.pop_back();
     }
   }
-
   assert(act.size() == 0);
   assert(relus.size() == 0);
 
@@ -355,7 +388,7 @@ void load_X_y(string suffix, Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   
   /* Load seed for CP1. */
   if (pid == 1) {
-    string fname = "../cache/test_seed" + suffix + ".bin";
+    string fname = "../cache/ecg_seed" + suffix + ".bin";
     tcout() << "open Seed name:" << fname  << endl;
     ifs.open(fname.c_str(), ios::binary);
     if (!ifs.is_open()) {
@@ -369,7 +402,6 @@ void load_X_y(string suffix, Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   if (pid == 2) {
     /* In CP2, read in blinded matrix. */
     tcout() << "reading in " << Param::FEATURES_FILE << suffix << endl;
-
     if (!read_matrix(X, ifs, Param::FEATURES_FILE + suffix + "_masked.bin",
                      X.NumRows(), X.NumCols(), mpc))
       return;
@@ -388,6 +420,14 @@ void load_X_y(string suffix, Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     mpc.RandMat(y, y.NumRows(), y.NumCols());
     mpc.RestoreSeed();
   }
+
+//  Check Matrix y
+//  if (pid > 0) {
+//    tcout() << "print FP" << endl;
+//    mpc.PrintFP(X);
+//    return;
+//  }
+
 }
 
 void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
@@ -471,7 +511,8 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
   Mat<ZZ_p> X, y;
   X.SetDims(Param::N_FILE_BATCH, Param::FEATURE_RANK);
   y.SetDims(Param::N_FILE_BATCH, Param::N_CLASSES - 1);
-  string suffix = suffixes[rand() % suffixes.size()];  
+
+  string suffix = suffixes[rand() % suffixes.size()];
   load_X_y(suffix, X, y, pid, mpc);
 
   //  Check Matrix x, y
@@ -480,7 +521,7 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
     mpc.PrintFP(X[0]);
     mpc.PrintFP(y[0]);
   }
-
+  
   /* Do gradient descent over multiple training epochs. */
   for (int epoch = 0; epoch < Param::MAX_EPOCHS;
        /* model_update() updates epoch. */) {
@@ -506,13 +547,12 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
       reveal(b_out, cache(pid, "b" + to_string(l) + "_final"), mpc);
     }
   }
-
   return true;
 }
 
 int main(int argc, char** argv) {
   if (argc < 3) {
-    tcout() << "Usage: TrainSecureDTI party_id param_file" << endl;
+    tcout() << "Usage: TrainSecureECG party_id param_file" << endl;
     return 1;
   }
 
