@@ -1431,8 +1431,10 @@ private:
 
   template<class T>
   void MultAux(Mat<T>& c, Mat<T>& a, Mat<T>& b, bool elem_wise, int fid = 0) {
+//    if (debug) cout << "MultAux: (" << a.NumRows() << ", " << a.NumCols() << "), (" << b.NumRows() << ", " << b.NumCols() << ")" << endl;
     if (debug) cout << "MultAux: (" << a.NumRows() << ", " << a.NumCols() << "), (" << b.NumRows() << ", " << b.NumCols() << ")" << endl;
     if (elem_wise) {
+//      cout << "elem wise" << endl;
       assert(a.NumRows() == b.NumRows() && a.NumCols() == b.NumCols());
     } else {
       assert(a.NumCols() == b.NumRows());

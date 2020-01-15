@@ -1276,7 +1276,7 @@ void MPCEnv::IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a) {
 // Failure probability of 1 / BASE_P
 // Base field index 2
 void MPCEnv::IsPositive(Vec<ZZ_p>& b, Vec<ZZ_p>& a) {
-  if (debug) tcout() << "IsPositive: " << a.length() << endl; 
+  if (false) tcout() << "IsPositive: " << a.length() << endl;
 
   int n = a.length();
   int nbits = ZZ_bits[0];
@@ -1511,7 +1511,7 @@ void MPCEnv::FPSqrt(Vec<ZZ_p>& b, Vec<ZZ_p>& b_inv, Vec<ZZ_p>& a) {
 }
 
 void MPCEnv::FPDiv(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b) {
-  if (debug) tcout() << "FPDiv: " << a.length() << endl; 
+  if (true) tcout() << "FPDiv: " << a.length() << endl;
 
   assert(a.length() == b.length());
 
@@ -1628,67 +1628,21 @@ void MPCEnv::FPDiv(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b) {
 }
 
 void MPCEnv::Trunc(Mat<ZZ_p>& a, int k, int m) {
-  if (debug) tcout() << "Trunc: " << a.NumRows() << ", " << a.NumCols() << endl; 
+//  tcout() << "Trunc: " << a.NumRows() << ", " << a.NumCols() << ", k:" << k << ",m:"<< m << endl;
 
-  Mat<ZZ_p> r;
-  Mat<ZZ_p> r_low;
-  if (pid == 0) {
-    RandMatBits(r, a.NumRows(), a.NumCols(), k + Param::NBIT_V);
+  if (pid > 0) {
 
-    r_low.SetDims(a.NumRows(), a.NumCols());
+    // get rid of k lower bits : 12014 -> 12000
     for (int i = 0; i < a.NumRows(); i++) {
       for (int j = 0; j < a.NumCols(); j++) {
-        r_low[i][j] = conv<ZZ_p>(trunc_ZZ(rep(r[i][j]), m));
+        if (pid == 1)
+          a[i][j] -= conv<ZZ_p>(trunc_ZZ(rep(a[i][j]), m));
+        else
+          a[i][j] -= - conv<ZZ_p>(trunc_ZZ(rep(-a[i][j]), m));
       }
     }
 
-    Mat<ZZ_p> r_mask;
-    Mat<ZZ_p> r_low_mask;
-    SwitchSeed(1);
-    RandMat(r_mask, a.NumRows(), a.NumCols());
-    RandMat(r_low_mask, a.NumRows(), a.NumCols());
-    RestoreSeed();
-
-    r -= r_mask;
-    r_low -= r_low_mask;
-
-    SendMat(r, 2);
-    SendMat(r_low, 2);
-  } else if (pid == 2) {
-    ReceiveMat(r, 0, a.NumRows(), a.NumCols());
-    ReceiveMat(r_low, 0, a.NumRows(), a.NumCols());
-  } else {
-    SwitchSeed(0);
-    RandMat(r, a.NumRows(), a.NumCols());
-    RandMat(r_low, a.NumRows(), a.NumCols());
-    RestoreSeed();
-  }
-
-  Mat<ZZ_p> c;
-  if (pid > 0) {
-    c = a + r;
-  } else {
-    c.SetDims(a.NumRows(), a.NumCols());
-  }
-
-  RevealSym(c);
-  
-  Mat<ZZ_p> c_low;
-  c_low.SetDims(a.NumRows(), a.NumCols());
-  if (pid > 0) {
-    for (int i = 0; i < a.NumRows(); i++) {
-      for (int j = 0; j < a.NumCols(); j++) {
-        c_low[i][j] = conv<ZZ_p>(trunc_ZZ(rep(c[i][j]), m));
-      }
-    }
-  }
-
-  if (pid > 0) {
-    a += r_low;
-    if (pid == 1) {
-      a -= c_low;
-    }
-
+    // shift: 12000 -> 12
     ZZ_p twoinvm;
     map<int, ZZ_p>::iterator it = invpow_cache.find(m);
     if (it == invpow_cache.end()) {
@@ -1697,13 +1651,95 @@ void MPCEnv::Trunc(Mat<ZZ_p>& a, int k, int m) {
       inv(twoinv, two);
       power(twoinvm, twoinv, m);
       invpow_cache[m] = twoinvm;
+
     } else {
       twoinvm = it->second;
     }
 
     a *= twoinvm;
   }
+
 }
+//
+//void MPCEnv::Trunc(Mat<ZZ_p>& a, int k, int m) {
+//  if (debug) tcout() << "Trunc: " << a.NumRows() << ", " << a.NumCols() << endl;
+//
+//  Mat<ZZ_p> r;
+//  Mat<ZZ_p> r_low;
+//  if (pid == 0) {
+//    RandMatBits(r, a.NumRows(), a.NumCols(), k + Param::NBIT_V);
+//
+//    r_low.SetDims(a.NumRows(), a.NumCols());
+//    for (int i = 0; i < a.NumRows(); i++) {
+//      for (int j = 0; j < a.NumCols(); j++) {
+//        r_low[i][j] = conv<ZZ_p>(trunc_ZZ(rep(r[i][j]), m));
+//      }
+//    }
+//
+//    Mat<ZZ_p> r_mask;
+//    Mat<ZZ_p> r_low_mask;
+//    SwitchSeed(1);
+//    RandMat(r_mask, a.NumRows(), a.NumCols());
+//    RandMat(r_low_mask, a.NumRows(), a.NumCols());
+//    RestoreSeed();
+//
+//    r -= r_mask;
+//    r_low -= r_low_mask;
+//
+//    SendMat(r, 2);
+//    SendMat(r_low, 2);
+//  } else if (pid == 2) {
+//    ReceiveMat(r, 0, a.NumRows(), a.NumCols());
+//    ReceiveMat(r_low, 0, a.NumRows(), a.NumCols());
+//  } else {
+//    SwitchSeed(0);
+//    RandMat(r, a.NumRows(), a.NumCols());
+//    RandMat(r_low, a.NumRows(), a.NumCols());
+//    RestoreSeed();
+//  }
+//
+//  Mat<ZZ_p> c;
+//  if (pid > 0) {
+//    c = a + r;
+//  } else {
+//    c.SetDims(a.NumRows(), a.NumCols());
+//  }
+//
+//  RevealSym(c);
+//
+//  Mat<ZZ_p> c_low;
+//  c_low.SetDims(a.NumRows(), a.NumCols());
+//  if (pid > 0) {
+//    for (int i = 0; i < a.NumRows(); i++) {
+//      for (int j = 0; j < a.NumCols(); j++) {
+//        c_low[i][j] = conv<ZZ_p>(trunc_ZZ(rep(c[i][j]), m));
+//      }
+//    }
+//  }
+//
+//  if (pid > 0) {
+//    a += r_low;
+//    if (pid == 1) {
+//      a -= c_low;
+//    }
+//
+//    ZZ_p twoinvm;
+//    map<int, ZZ_p>::iterator it = invpow_cache.find(m);
+//    if (it == invpow_cache.end()) {
+//      ZZ_p two(2);
+//      ZZ_p twoinv;
+//      inv(twoinv, two);
+//      power(twoinvm, twoinv, m);
+//      invpow_cache[m] = twoinvm;
+//
+//    } else {
+//      twoinvm = it->second;
+//    }
+//    tcout() << "twoinvm: " << twoinvm << endl;
+//
+//    a *= twoinvm;
+//  }
+//}
 
 void MPCEnv::PrefixOr(Mat<ZZ>& b, Mat<ZZ>& a, int fid) {
   if (debug) tcout() << "PrefixOr: " << a.NumRows() << ", " << a.NumCols() << endl;

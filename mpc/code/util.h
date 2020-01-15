@@ -377,4 +377,15 @@ static inline void PrintMat(Mat<ZZ>& b) {
     cout<<"\n";
   }
 }
+#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+#define PBWIDTH 60
+
+static inline void printProgress (double percentage)
+{
+  int val = (int) (percentage * 100);
+  int lpad = (int) (percentage * PBWIDTH);
+  int rpad = PBWIDTH - lpad;
+  printf ("BATCH LEARNING : \r%3d%% [%.*s%*s]\n", val, lpad, PBSTR, rpad, "");
+  fflush (stdout);
+}
 #endif

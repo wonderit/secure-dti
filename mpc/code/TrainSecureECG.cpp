@@ -86,8 +86,10 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
     
     /* Set dimensions of the input layer. */
     } else if (l == 0) {
-      W_layer.SetDims(Param::FEATURE_RANK, Param::N_NEURONS);
-      b_layer.SetLength(Param::N_NEURONS);
+//      W_layer.SetDims(Param::FEATURE_RANK, Param::N_NEURONS);
+//      b_layer.SetLength(Param::N_NEURONS);
+        W_layer.SetDims(21, 3);
+        b_layer.SetLength(3);
 
     /* Set dimensions of the output layer. */
     } else if (l == Param::N_HIDDEN) {
@@ -96,8 +98,15 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
       
     /* Set dimensions of the hidden layers. */
     } else {
-      W_layer.SetDims(Param::N_NEURONS, Param::N_NEURONS);
-      b_layer.SetLength(Param::N_NEURONS);
+//      W_layer.SetDims(Param::N_NEURONS, Param::N_NEURONS);
+//      b_layer.SetLength(Param::N_NEURONS);
+      if (l == 1) {
+        W_layer.SetDims(21, 3);
+        b_layer.SetLength(3);
+      } else if (l == 2) {
+        W_layer.SetDims(1464, Param::N_NEURONS);
+        b_layer.SetLength(Param::N_NEURONS);
+      }
     }
     
     dW_layer.SetDims(W_layer.NumRows(), W_layer.NumCols());
@@ -155,19 +164,61 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
                       int epoch, int pid, MPCEnv& mpc) {
   if (pid == 2)
     tcout() << "Epoch: " << epoch << endl;
-      
   /************************
    * Forward propagation. *
    ************************/
   for (int l = 0; l < Param::N_HIDDEN; l++) {
 
     if (pid == 2)
-      tcout() << "Forward prop, multiplication." << endl;
+      tcout() << "Forward prop, multiplication. layer #" << l << endl;
     /* Multiply weight matrix. */
     Mat<ZZ_p> activation;
     if (l == 0) {
+      tcout() << "reshape x for cnn 1d ended" << endl;
+//      mpc.MultMat(activation, X, W[l]);
       mpc.MultMat(activation, X, W[l]);
+      tcout() << "Forward prop, multiplication. first layer ended" << endl;
+      tcout() << "First CNN Layer (" << activation.NumRows() << "," << activation.NumCols() << ")" << endl;
     } else {
+
+      tcout() << "l = " << l << ", activation size " << act[l-1].NumRows() << ", " << act[l-1].NumCols() << endl;
+
+//    CNN LAYER START
+      if (l == 1) {
+
+        Mat<ZZ_p> conv1d;
+        int channels = act[l-1].NumCols();
+        int prev_row = act[l-1].NumRows() / Param::BATCH_SIZE;
+        int row = prev_row - 7 + 1;
+        conv1d.SetDims(Param::BATCH_SIZE * row, 7 * channels);
+        for (int batch = 0; batch < Param::BATCH_SIZE; batch++) {
+          for (int index = 0; index < row; index++) {
+            for (int filter = 0; filter < 7; filter++) {
+              for (int channel = 0; channel < channels; channel++) {
+                conv1d[batch * row + index][7 * channel + filter] = act[l-1][batch * prev_row + index + filter][channel];
+              }
+            }
+          }
+        }
+        tcout() << "l = " << l << ",mult conv1d: (" << conv1d.NumRows() << ", " << conv1d.NumCols() << "), (" << W[l].NumRows() << ", " << W[l].NumCols() << ")"  << pid << endl;
+        act[l-1] = conv1d;
+
+//        ANN
+      } else if (l == 2) {
+        Mat<ZZ_p> ann;
+        int channels = act[l-1].NumCols();
+        int row = act[l-1].NumRows() / Param::BATCH_SIZE;
+        ann.SetDims(Param::BATCH_SIZE, row * channels);
+
+        for (int b = 0; b < Param::BATCH_SIZE; b++) {
+          for (int c = 0; c < channels; c++) {
+            for (int r = 0; r < row; r++) {
+              ann[b][c * row + r] = act[l-1][b * row + r][c];
+            }
+          }
+        }
+        act[l-1] = ann;
+      }
       mpc.MultMat(activation, act[l-1], W[l]);
     }
     mpc.Trunc(activation);
@@ -177,54 +228,26 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
       activation[i] += b[l];
     }
 
-    /* Apply ReLU non-linearity. */
-    Mat<ZZ_p> relu;
-    mpc.IsPositive(relu, activation);
-    Mat<ZZ_p> after_relu;
-    assert(activation.NumRows() == relu.NumRows());
-    assert(activation.NumCols() == relu.NumCols());
-    mpc.MultElem(after_relu, activation, relu);
-    /* Note: Do not call Trunc() here because IsPositive()
-       returns a secret shared integer, not a fixed point.*/
+    if (l != Param::N_HIDDEN) {
+      tcout() << "ReLU non-linearity start pid:" << pid << endl;
+      tcout() << "ReLU col, rows (" << activation.NumRows() << ", " << activation.NumCols() << ")" << pid << endl;
 
-    // TODO: Implement dropout.
-
-    /* Save activation for backpropagation. */
-    act.push_back(after_relu);
-    relus.push_back(relu);
-
-    if (l == Param::N_HIDDEN) {
       /* Apply ReLU non-linearity. */
-//      Mat<ZZ_p> relu;
-//      mpc.IsPositive(relu, activation);
-//      Mat<ZZ_p> after_relu;
-//      after_relu = activation;
-//    assert(activation.NumRows() == relu.NumRows());
-//    assert(activation.NumCols() == relu.NumCols());
-//      mpc.MultElem(after_relu, activation, activation);
-//    mpc.MultElem(after_relu, activation, relu);
+      Mat<ZZ_p> relu;
+      mpc.IsPositive(relu, activation);
+      Mat<ZZ_p> after_relu;
+      assert(activation.NumRows() == relu.NumRows());
+      assert(activation.NumCols() == relu.NumCols());
+      mpc.MultElem(after_relu, activation, relu);
       /* Note: Do not call Trunc() here because IsPositive()
          returns a secret shared integer, not a fixed point.*/
-
       // TODO: Implement dropout.
-
       /* Save activation for backpropagation. */
-//      act.push_back(after_relu);
-//      relus.push_back(activation);
-//    act.push_back(after_relu);
-//    relus.push_back(relu);
-    } else {
-//
-//      if (pid == 2)
-//        tcout() << "Forward prop, ReLU." << endl;
-//      Mat<ZZ_p> relu;
-//      mpc.IsPositive(relu, activation);
-//      Mat<ZZ_p> after_relu;
-//      assert(activation.NumRows() == relu.NumRows());
-//      assert(activation.NumCols() == relu.NumCols());
-//      mpc.MultElem(after_relu, activation, relu);
-//      act.push_back(after_relu);
-//      relus.push_back(relu);
+      tcout() << "ReLU -> col, rows (" << relu.NumRows() << ", " << relu.NumCols() << ")" << pid << endl;
+      tcout() << "after ReLU -> col, rows (" << after_relu.NumRows() << ", " << after_relu.NumCols() << ")" << pid << endl;
+      act.push_back(after_relu);
+      relus.push_back(relu);
+      tcout() << "ReLU non-linearity end pid:" << pid << endl;
     }
 
   }
@@ -290,11 +313,13 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   dscores *= norm_examples;
   mpc.Trunc(dscores);
 
-//  if (pid > 0 && epoch % 500 == 0) {
+//  if (pid > 0 && epoch % 100 == 0) {
 //    reveal(scores, cache(pid, "scores_epoch" + to_string(epoch)), mpc);
+//    tcout() << "Forward Score::" << scores << "epoch::" << epoch << endl;
 //  }
   reveal(scores, cache(pid, "scores_epoch" + to_string(epoch)), mpc);
-//  tcout() << "Forward Score::" << scores << "epoch::" << epoch << endl;
+//  reveal(scores, cache(pid, "scores_epoch" + to_string(epoch)), mpc);
+
 
   /*********************
    * Back propagation. *
@@ -313,6 +338,24 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
       X_T = transpose(act.back());
       act.pop_back();
     }
+    tcout() << "X_T : (" << X_T.NumRows() << ", " << X_T.NumCols() << ")" << endl;
+    tcout() << "dhidden : (" << dhidden.NumRows() << ", " << dhidden.NumCols() << ")" << endl;
+
+//    if (X_T.NumCols() != dhidden.NumRows()) {
+//      Mat<ZZ_p> resize_x_t;
+//      int row = X_T.NumCols() / Param::BATCH_SIZE;
+//      int channel = X_T.NumRows();
+//      resize_x_t.SetDims(row * channel, Param::BATCH_SIZE);
+//      for (int b = 0; b < Param::BATCH_SIZE; b++) {
+//        for (int c = 0; c < channel; c++) {
+//          for (int r = 0; r < row; r++) {
+//            resize_x_t[c * row + r][b] = X_T[c][b * row + r];
+//          }
+//        }
+//      }
+//      X_T = resize_x_t;
+//      tcout() << "X_T -> converted : (" << X_T.NumRows() << ", " << X_T.NumCols() << ")" << endl;
+//    }
     mpc.MultMat(dW[l], X_T, dhidden);
     mpc.Trunc(dW[l]);
   
@@ -321,7 +364,11 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     DoubleToFP(REG, Param::REG, Param::NBIT_K, Param::NBIT_F);
     Mat<ZZ_p> reg = W[l] * REG;
     mpc.Trunc(reg);
+    tcout() << "W[l] : " << W[l].NumRows() << "/" << W[l].NumCols() << endl;
+    tcout() << "reg : " << reg.NumRows() << "/" << reg.NumCols() << endl;
     dW[l] += reg;
+
+    tcout() << "pass1" << endl;
 
     /* Compute derivative of biases. */
     Init(db[l], b[l].length());
@@ -340,6 +387,24 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
         tcout() << "Back prop, ReLU." << endl;
       /* Apply derivative of ReLU. */
       Init(dhidden, dhidden_new.NumRows(), dhidden_new.NumCols());
+
+      Mat<ZZ_p> relu = relus.back();
+
+      if (dhidden_new.NumCols() != relu.NumRows()) {
+        Mat<ZZ_p> temp;
+        temp.SetDims(relu.NumRows(), relu.NumCols());
+        int row = dhidden_new.NumCols() / relu.NumCols();
+        for (int b = 0; b < Param::BATCH_SIZE; b++) {
+          for (int c = 0; c < relu.NumCols(); c++) {
+            for (int r = 0; r < row; r++) {
+              temp[b * row  + r][c] = dhidden_new[b][c*row + r];
+            }
+          }
+        }
+        dhidden_new = temp;
+      }
+
+//      mpc.MultElem(dhidden, dhidden_new, relu);
       mpc.MultElem(dhidden, dhidden_new, relus.back());
       /* Note: No need to not call Trunc().*/
       relus.pop_back();
@@ -375,6 +440,7 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     Vec<ZZ_p> b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
     mpc.Trunc(b_update);
     b[l] += b_update;
+
   }
 }
 
@@ -448,7 +514,12 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   iota(random_idx.begin(), random_idx.end(), 0);
   random_shuffle(random_idx.begin(), random_idx.end());
 
+
   for (int i = 0; i < batches_in_file; i++) {
+
+    if (pid == 2)
+      tcout() << "batch: " << i << "/" << batches_in_file << endl;
+    printProgress(i / batches_in_file);
 
     /* Scan matrix (pre-shuffled) to get batch. */
     int base_j = i * Param::BATCH_SIZE;
@@ -458,11 +529,31 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
       X_batch[j - base_j] = X[random_idx[j]];
       y_batch[j - base_j] = y[random_idx[j]];
     }
+
+    Mat<ZZ_p> X_batch_for_cnn;
+    X_batch_for_cnn.SetDims(Param::BATCH_SIZE * 494, 21);
+    // reuse b.t. and mult
+    tcout() << "reshape x for cnn 1d start" << endl;
+    for (int batch = 0; batch < Param::BATCH_SIZE; batch++) {
+      tcout() << "reshape in progress Batch #" << batch << endl;
+      for (int index = 0; index < 500 - 7 + 1; index++) {
+        for (int filter = 0; filter < 7; filter++) {
+          for (int channel = 0; channel < 3; channel++) {
+            X_batch_for_cnn[batch * 494 + index][7 * channel + filter] = X_batch[batch][500 * channel + index + filter];
+          }
+        }
+      }
+    }
+//    X = X_batch_for_cnn;
+
     
     /* Do one round of mini-batch gradient descent. */
-    gradient_descent(X_batch, y_batch,
+    gradient_descent(X_batch_for_cnn, y_batch,
                      W, b, dW, db, vW, vb, act, relus,
                      epoch, pid, mpc);
+//    gradient_descent(X_batch_for_cnn, y_batch,
+//                     W, b, dW, db, vW, vb, act, relus,
+//                     epoch, pid, mpc);
 
     /* Save state every 500 epochs. */
     if (epoch % 500 == 0) {
@@ -521,7 +612,7 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
     mpc.PrintFP(X[0]);
     mpc.PrintFP(y[0]);
   }
-  
+
   /* Do gradient descent over multiple training epochs. */
   for (int epoch = 0; epoch < Param::MAX_EPOCHS;
        /* model_update() updates epoch. */) {

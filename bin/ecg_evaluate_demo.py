@@ -12,6 +12,7 @@ import argparse
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
+import torch
 
 N_HIDDEN = 3
 LOSS = 'mse'
@@ -20,12 +21,17 @@ STD = 10.6
 result_path = 'result'
 
 # 11000 criteria
-mean_x = 1.66
-std_x = 155.51
+# mean_x = 1.66
+# std_x = 155.51
 
 # 11000 criteria
 # mean_x = 1.91397
 # std_x = 156.413
+
+# 5500 criteria
+mean_x = 1.547
+std_x = 156.820
+
 def scale(arr, std, mean):
     arr -= mean
     arr /= (std + 1e-7)
@@ -42,17 +48,40 @@ def report_scores(X, y, W, b, act):
     y_pred = []
     y_score = []
 
-    X = scale(X, mean_x, std_x)
+    # X = scale(X, mean_x, std_x)
+    print(X[0], y[0])
 
-
+    torchX = torch.from_numpy(np.array(X))
+    reshape_img = conv1d(torchX)
+    print('reshape img' , reshape_img.shape)
     for l in range(N_HIDDEN):
+        print('l ==== ', l)
         if l == 0:
-            act[l] = np.maximum(0, np.dot(X, W[l]) + b[l])
+            act[l] = np.maximum(0, np.dot(reshape_img, W[l]) + b[l])
         else:
-            act[l] = np.maximum(0, np.dot(act[l-1], W[l]) + b[l])
+            # if l == 1:
+            #     reshape_img
+            if l == 1:
+                print('before', act[l-1].shape)
+                reshape_img2 = conv1d(torch.from_numpy(act[l-1]))
+                act[l-1] = reshape_img2
+                print('after', act[l-1].shape)
+            else:
+                act_col = act[l-1].shape[-1]
+                w_row = W[l].shape[0]
+                print('act_col, w_row', act_col, w_row)
+                if act_col != w_row:
+                    act[l-1] = act[l-1].reshape(act[l-1].shape[0], -1)
+
+            if l == N_HIDDEN - 1:
+                act[l] = np.dot(act[l-1], W[l]) + b[l]
+            else:
+                act[l] = np.maximum(0, np.dot(act[l-1], W[l]) + b[l])
+
+    print('act', act)
 
     if N_HIDDEN == 0:
-        scores = np.dot(X, W[-1]) + b[-1]
+        scores = np.dot(reshape_img, W[-1]) + b[-1]
     else:
         scores = np.dot(act[-1], W[-1]) + b[-1]
 
@@ -133,6 +162,7 @@ def load_model():
 
     print(np.array(W[0]).shape, np.array(b[0]).shape, act)
     print(np.array(W[1]).shape, np.array(b[1]).shape, act)
+    print(np.array(W[2]).shape, np.array(b[2]).shape, act)
 
     return W, b, act
 
@@ -178,7 +208,129 @@ def scatter_plot(y_true, y_pred, message):
     plt.savefig("{}/scatter/{}.png".format(result_path, 1))
     plt.clf()
     # plt.show()
-    
+
+##TODO WONDERIT conv1d
+def conv1d(
+        input,
+):
+    """
+    Overloads torch.conv1d to be able to use MPC on convolutional networks.
+    The idea is to build new tensors from input and weight to compute a
+    matrix multiplication equivalent to the convolution.
+
+    Args:
+        input: input image
+        weight: convolution kernels
+        bias: optional additive bias
+        stride: stride of the convolution kernels
+        padding:
+        dilation: spacing between kernel elements
+        groups:
+        padding_mode: type of padding, should be either 'zeros' or 'circular' but 'reflect' and 'replicate' accepted
+    Returns:
+        the result of the convolution as an AdditiveSharingTensor
+    """
+    # Currently, kwargs are not unwrapped by hook_args
+    # So this needs to be done manually
+    # if bias.is_wrapper:
+    #     bias = bias.child
+    input = input.view(input.shape[0], 3, -1)
+    print(input.shape)
+
+    assert len(input.shape) == 3
+
+    # Change to tuple if not one
+    stride = 1
+    padding = 0
+    dilation = 1
+
+    # Extract a few useful values
+    batch_size, nb_channels_in, nb_cols_in = input.shape
+    nb_channels_out, nb_channels_kernel, nb_cols_kernel = (3, 3, 7)
+
+    print('kkkkk')
+    print(batch_size, nb_channels_in, nb_cols_in)
+    print(nb_channels_out, nb_channels_kernel, nb_cols_kernel)
+
+    # Check if inputs are coherent
+    # assert nb_channels_in == nb_channels_kernel * groups
+
+    # nb_cols_out = int(
+    #     ((nb_cols_in + 2 * padding[0] - dilation[0] * (nb_cols_kernel - 1) - 1) / stride[0])
+    #     + 1
+    # )
+    nb_cols_out = int(
+            ((nb_cols_in - dilation * (nb_cols_kernel - 1) - 1) / stride)
+            + 1
+        )
+
+    print('nb_cols_out', nb_cols_out)
+
+    # Apply padding to the input
+    # if padding != (0, 0):
+    #     padding_mode = "constant" if padding_mode == "zeros" else padding_mode
+    #     input = torch.nn.functional.pad(
+    #         input, (padding[0], padding[0]), padding_mode
+    #     )
+    #     # Update shape after padding
+    #     # nb_rows_in += 2 * padding[0]
+    #     nb_cols_in += 2 * padding[0]
+
+    # We want to get relative positions of values in the input tensor that are used by one filter convolution.
+    # It basically is the position of the values used for the top left convolution.
+    pattern_ind = []
+    for ch in range(nb_channels_in):
+        for c in range(nb_cols_kernel):
+            pixel = c * dilation
+            pattern_ind.append(pixel + ch * nb_cols_in)
+
+    # The image tensor is reshaped for the matrix multiplication:
+    # on each row of the new tensor will be the input values used for each filter convolution
+    # We will get a matrix [[in values to compute out value 0],
+    #                       [in values to compute out value 1],
+    #                       ...
+    #                       [in values to compute out value nb_rows_out*nb_cols_out]]
+    im_flat = input.view(batch_size, -1)
+    im_reshaped = []
+    # for cur_row_out in range(nb_rows_out):
+    for cur_col_out in range(nb_cols_out):
+        # For each new output value, we just need to shift the receptive field
+        offset = cur_col_out * stride
+        tmp = [ind + offset for ind in pattern_ind]
+        im_reshaped.append(im_flat[:, tmp])
+
+    im_reshaped = torch.stack(im_reshaped).permute(1, 0, 2)
+    # The convolution kernels are also reshaped for the matrix multiplication
+    # We will get a matrix [[weights for out channel 0],
+    #                       [weights for out channel 1],
+    #                       ...
+    #                       [weights for out channel nb_channels_out]].TRANSPOSE()
+    # weight_reshaped = weight.view(nb_channels_out // groups, -1).t()
+
+    # Now that everything is set up, we can compute the result
+    # if groups > 1:
+    #     res = []
+    #     chunks_im = torch.chunk(im_reshaped, groups, dim=1)
+    #     chunks_weights = torch.chunk(weight_reshaped, groups, dim=0)
+    #     for g in range(groups):
+    #         tmp = chunks_im[g].matmul(chunks_weights[g])
+    #         res.append(tmp)
+    #     res = torch.cat(res, dim=1)
+    # else:
+    #     res = im_reshaped.matmul(weight_reshaped)
+
+    # Add a bias if needed
+    # if bias is not None:
+    #     res += bias
+    #
+    # # ... And reshape it back to an image
+    # res = (
+    #     res.permute(0, 2, 1)
+    #         .view(batch_size, nb_channels_out, nb_cols_out)
+    #         .contiguous()
+    # )
+    return im_reshaped
+
 if __name__ == '__main__':
     W, b, act = load_model()
 
@@ -186,9 +338,9 @@ if __name__ == '__main__':
     #                         delimiter=',', dtype='float')
     # y_train = np.genfromtxt('demo_data/text_demo/ytrain',
     #                         delimiter=',', dtype='float')
-    X_train = np.genfromtxt('../data/ecg/text_demo_1100/Xtrain',
+    X_train = np.genfromtxt('../data/ecg/text_demo_5500/Xtrain',
                             delimiter=',', dtype='float')
-    y_train = np.genfromtxt('../data/ecg/text_demo_1100/ytrain',
+    y_train = np.genfromtxt('../data/ecg/text_demo_5500/ytrain',
                             delimiter=',', dtype='float')
 
     
@@ -199,9 +351,9 @@ if __name__ == '__main__':
     #                         delimiter=',', dtype='float')
     # y_test = np.genfromtxt('demo_data/text_demo/ytest',
     #                         delimiter=',', dtype='float')
-    X_test = np.genfromtxt('../data/ecg/text_demo_1100/Xtest',
+    X_test = np.genfromtxt('../data/ecg/text_demo_5500/Xtest',
                             delimiter=',', dtype='float')
-    y_test = np.genfromtxt('../data/ecg/text_demo_1100/ytest',
+    y_test = np.genfromtxt('../data/ecg/text_demo_5500/ytest',
                             delimiter=',', dtype='float')
     
     print('Testing accuracy:')

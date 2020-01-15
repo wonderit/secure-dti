@@ -9,7 +9,7 @@ PROGS = bin
 
 SRC = crypto.cpp connect.cpp aesstream.cpp mpc.cpp param.cpp
 #PROGNAMES = ShareData TrainSecureDTI GenerateKey AnalyzeFeature test
-PROGNAMES = read_compressed_data TrainSecureECG ShareDataECG TrainSecureDTI ShareData
+PROGNAMES = TrainSecureECG ShareDataECG TrainSecureDTI ShareData UnitTestClient
 
 OBJPATHS = $(patsubst %.cpp,$(BUILD)/%.o, $(SRC))
 TESTPATHS = $(addprefix $(PROGS)/, $(PROGNAMES))
