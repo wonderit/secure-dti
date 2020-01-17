@@ -104,6 +104,8 @@ bool Param::ParseFile(const char *param_file) {
       ret = Convert(v, Param::N_HIDDEN, k);
     } else if (k == "N_NEURONS") {
       ret = Convert(v, Param::N_NEURONS, k);
+    } else if (k == "N_NEURONS_2") {
+      ret = Convert(v, Param::N_NEURONS_2, k);
     } else if (k == "LEARN_RATE") {
       ret = Convert(v, Param::LEARN_RATE, k);
     } else if (k == "ANNEAL") {
@@ -170,7 +172,8 @@ double Param::DROPOUT = 0;
 //string Param::LOSS = "hinge";
 string Param::LOSS = "mse";
 int Param::N_FILE_BATCH = 20000;
-int Param::N_NEURONS = 250;
+int Param::N_NEURONS = 16;
+int Param::N_NEURONS_2 = 64;
 int Param::BATCH_SIZE = 50;
 int Param::MAX_EPOCHS = 20000;
 

@@ -1,24 +1,20 @@
 import datetime
-import matplotlib.pyplot as plt
 import numpy as np
-import random
 from sklearn import metrics
-from string import ascii_lowercase
 import sys
 from sklearn.metrics import r2_score, mean_squared_error
 import math
 import os
-import argparse
-import time
 import pandas as pd
 import matplotlib.pyplot as plt
 import torch
 
-N_HIDDEN = 3
+N_HIDDEN = 4
 LOSS = 'mse'
 MEAN = 59.3
 STD = 10.6
 result_path = 'result'
+isTest = True
 
 # 11000 criteria
 # mean_x = 1.66
@@ -49,27 +45,27 @@ def report_scores(X, y, W, b, act):
     y_score = []
 
     # X = scale(X, mean_x, std_x)
-    print(X[0], y[0])
+    print(X[0, 0:3], y[0])
 
     torchX = torch.from_numpy(np.array(X))
-    reshape_img = conv1d(torchX)
-    print('reshape img' , reshape_img.shape)
+    reshape_img = conv1d(torchX, 3, 6)
+    # print('reshape img' , reshape_img.shape)
     for l in range(N_HIDDEN):
-        print('l ==== ', l)
+        # print('l ==== ', l)
         if l == 0:
             act[l] = np.maximum(0, np.dot(reshape_img, W[l]) + b[l])
         else:
             # if l == 1:
             #     reshape_img
             if l == 1:
-                print('before', act[l-1].shape)
-                reshape_img2 = conv1d(torch.from_numpy(act[l-1]))
+                # print('before', act[l-1].shape)
+                reshape_img2 = conv1d(torch.from_numpy(act[l-1]), 6, 6)
                 act[l-1] = reshape_img2
-                print('after', act[l-1].shape)
+                # print('after', act[l-1].shape)
             else:
                 act_col = act[l-1].shape[-1]
                 w_row = W[l].shape[0]
-                print('act_col, w_row', act_col, w_row)
+                # print('act_col, w_row', act_col, w_row)
                 if act_col != w_row:
                     act[l-1] = act[l-1].reshape(act[l-1].shape[0], -1)
 
@@ -78,7 +74,7 @@ def report_scores(X, y, W, b, act):
             else:
                 act[l] = np.maximum(0, np.dot(act[l-1], W[l]) + b[l])
 
-    print('act', act)
+    # print('act', act)
 
     if N_HIDDEN == 0:
         scores = np.dot(reshape_img, W[-1]) + b[-1]
@@ -88,8 +84,9 @@ def report_scores(X, y, W, b, act):
     y = rescale(y, MEAN, STD)
     scores = rescale(scores, MEAN, STD)
 
-    print(y.shape, scores.shape)
-    print(y[0:5], scores[0:5])
+    # print(y.shape, scores.shape)
+    # print(y[0:5], scores[0:5])
+
     mse_loss = metrics.mean_squared_error(y, scores)
 
     # predicted_class = np.zeros(scores.shape)
@@ -160,9 +157,9 @@ def load_model():
     # Initialize activations.
     act = [ [] for _ in range(N_HIDDEN) ]
 
-    print(np.array(W[0]).shape, np.array(b[0]).shape, act)
-    print(np.array(W[1]).shape, np.array(b[1]).shape, act)
-    print(np.array(W[2]).shape, np.array(b[2]).shape, act)
+    # print(np.array(W[0]).shape, np.array(b[0]).shape, act)
+    # print(np.array(W[1]).shape, np.array(b[1]).shape, act)
+    # print(np.array(W[2]).shape, np.array(b[2]).shape, act)
 
     return W, b, act
 
@@ -212,6 +209,8 @@ def scatter_plot(y_true, y_pred, message):
 ##TODO WONDERIT conv1d
 def conv1d(
         input,
+        in_channels,
+        out_channels,
 ):
     """
     Overloads torch.conv1d to be able to use MPC on convolutional networks.
@@ -234,8 +233,7 @@ def conv1d(
     # So this needs to be done manually
     # if bias.is_wrapper:
     #     bias = bias.child
-    input = input.view(input.shape[0], 3, -1)
-    print(input.shape)
+    input = input.view(input.shape[0], in_channels, -1)
 
     assert len(input.shape) == 3
 
@@ -246,11 +244,14 @@ def conv1d(
 
     # Extract a few useful values
     batch_size, nb_channels_in, nb_cols_in = input.shape
-    nb_channels_out, nb_channels_kernel, nb_cols_kernel = (3, 3, 7)
+    # nb_channels_out, nb_channels_kernel, nb_cols_kernel = (3, 3, 7)
+    nb_channels_out = out_channels
+    nb_channels_kernel = in_channels
+    nb_cols_kernel = 7
 
-    print('kkkkk')
-    print(batch_size, nb_channels_in, nb_cols_in)
-    print(nb_channels_out, nb_channels_kernel, nb_cols_kernel)
+    # print('kkkkk')
+    # print(batch_size, nb_channels_in, nb_cols_in)
+    # print(nb_channels_out, nb_channels_kernel, nb_cols_kernel)
 
     # Check if inputs are coherent
     # assert nb_channels_in == nb_channels_kernel * groups
@@ -263,8 +264,6 @@ def conv1d(
             ((nb_cols_in - dilation * (nb_cols_kernel - 1) - 1) / stride)
             + 1
         )
-
-    print('nb_cols_out', nb_cols_out)
 
     # Apply padding to the input
     # if padding != (0, 0):
@@ -299,7 +298,10 @@ def conv1d(
         tmp = [ind + offset for ind in pattern_ind]
         im_reshaped.append(im_flat[:, tmp])
 
+    # print('img reshaped shape', np.array(im_reshaped).shape)
+
     im_reshaped = torch.stack(im_reshaped).permute(1, 0, 2)
+    # print('after img reshaped shape', im_reshaped.shape)
     # The convolution kernels are also reshaped for the matrix multiplication
     # We will get a matrix [[weights for out channel 0],
     #                       [weights for out channel 1],
@@ -343,7 +345,11 @@ if __name__ == '__main__':
     y_train = np.genfromtxt('../data/ecg/text_demo_5500/ytrain',
                             delimiter=',', dtype='float')
 
-    
+    if isTest:
+        X_train = X_train[:20,:]
+        y_train = y_train[:20]
+        print(X_train.shape, y_train.shape)
+
     print('Training accuracy:')
     report_scores(X_train, y_train, W, b, act)
 
@@ -355,11 +361,14 @@ if __name__ == '__main__':
                             delimiter=',', dtype='float')
     y_test = np.genfromtxt('../data/ecg/text_demo_5500/ytest',
                             delimiter=',', dtype='float')
-    
+
+    if isTest:
+        X_test = X_test[:20,:]
+        y_test = y_test[:20]
+        print(X_test.shape, y_test.shape)
+
     print('Testing accuracy:')
     y_true, y_pred, _ = report_scores(X_test, y_test, W, b, act)
-
-
     rm = r_squared_mse(y_true, y_pred)
 
     scatter_plot(y_true, y_pred, rm)

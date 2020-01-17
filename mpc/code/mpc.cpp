@@ -1264,13 +1264,26 @@ void MPCEnv::LessThanPublic(Vec<ZZ_p>& c, Vec<ZZ_p>& a, ZZ_p bpub) {
   FlipBit(c);
 }
 
+//void MPCEnv::IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a) {
+//  b.SetDims(a.NumRows(), a.NumCols());
+//  for (int i = 0; i < a.NumRows(); i++) {
+//    if ((pid) == 69)
+//      tcout() << "Row " << i << endl;
+//
+//    tcout() << "Row " << i << endl;
+//    IsPositive(b[i], a[i]);
+//  }
+//}
+
 void MPCEnv::IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a) {
+  Vec<ZZ_p> av, bv;
+  int size = a.NumRows() * a.NumCols();
   b.SetDims(a.NumRows(), a.NumCols());
-  for (int i = 0; i < a.NumRows(); i++) {
-    if ((pid) == 69)
-      tcout() << "Row " << i << endl;
-    IsPositive(b[i], a[i]);
-  }
+  Init(av, size); Init(bv, size);
+
+  ReshapeMatToVec(av, a);
+  IsPositive(bv, av);
+  ReshapeMat(b, bv, b.NumRows(), b.NumCols());
 }
 
 // Failure probability of 1 / BASE_P
@@ -1628,7 +1641,6 @@ void MPCEnv::FPDiv(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b) {
 }
 
 void MPCEnv::Trunc(Mat<ZZ_p>& a, int k, int m) {
-//  tcout() << "Trunc: " << a.NumRows() << ", " << a.NumCols() << ", k:" << k << ",m:"<< m << endl;
 
   if (pid > 0) {
 

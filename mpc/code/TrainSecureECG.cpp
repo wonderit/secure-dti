@@ -11,6 +11,7 @@
 #include "protocol.h"
 #include "util.h"
 #include "NTL/ZZ_p.h"
+#include <time.h>
 
 using namespace NTL;
 using namespace std;
@@ -88,12 +89,12 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
     } else if (l == 0) {
 //      W_layer.SetDims(Param::FEATURE_RANK, Param::N_NEURONS);
 //      b_layer.SetLength(Param::N_NEURONS);
-        W_layer.SetDims(21, 3);
-        b_layer.SetLength(3);
+        W_layer.SetDims(21, 6);
+        b_layer.SetLength(6);
 
     /* Set dimensions of the output layer. */
     } else if (l == Param::N_HIDDEN) {
-      W_layer.SetDims(Param::N_NEURONS, Param::N_CLASSES - 1);
+      W_layer.SetDims(Param::N_NEURONS_2, Param::N_CLASSES - 1);
       b_layer.SetLength(Param::N_CLASSES - 1);
       
     /* Set dimensions of the hidden layers. */
@@ -101,11 +102,14 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
 //      W_layer.SetDims(Param::N_NEURONS, Param::N_NEURONS);
 //      b_layer.SetLength(Param::N_NEURONS);
       if (l == 1) {
-        W_layer.SetDims(21, 3);
-        b_layer.SetLength(3);
+        W_layer.SetDims(42, 6);
+        b_layer.SetLength(6);
       } else if (l == 2) {
-        W_layer.SetDims(1464, Param::N_NEURONS);
+        W_layer.SetDims(2928, Param::N_NEURONS);
         b_layer.SetLength(Param::N_NEURONS);
+      } else if (l == 3) {
+        W_layer.SetDims(Param::N_NEURONS, Param::N_NEURONS_2);
+        b_layer.SetLength(Param::N_NEURONS_2);
       }
     }
     
@@ -124,6 +128,7 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
         for (int j = 0; j < W_layer.NumCols(); j++) {
           double noise = distribution(generator);
           DoubleToFP(W_layer[i][j], noise, Param::NBIT_K, Param::NBIT_F);
+//          DoubleToFP(W_layer[i][j], 0.0, Param::NBIT_K, Param::NBIT_F);
         }
       }
       
@@ -171,11 +176,11 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 
     if (pid == 2)
       tcout() << "Forward prop, multiplication. layer #" << l << endl;
+
     /* Multiply weight matrix. */
     Mat<ZZ_p> activation;
     if (l == 0) {
       tcout() << "reshape x for cnn 1d ended" << endl;
-//      mpc.MultMat(activation, X, W[l]);
       mpc.MultMat(activation, X, W[l]);
       tcout() << "Forward prop, multiplication. first layer ended" << endl;
       tcout() << "First CNN Layer (" << activation.NumRows() << "," << activation.NumCols() << ")" << endl;
@@ -188,6 +193,7 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 
         Mat<ZZ_p> conv1d;
         int channels = act[l-1].NumCols();
+        tcout() << "cols : " << channels << endl;
         int prev_row = act[l-1].NumRows() / Param::BATCH_SIZE;
         int row = prev_row - 7 + 1;
         conv1d.SetDims(Param::BATCH_SIZE * row, 7 * channels);
@@ -229,8 +235,8 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     }
 
     if (l != Param::N_HIDDEN) {
-      tcout() << "ReLU non-linearity start pid:" << pid << endl;
-      tcout() << "ReLU col, rows (" << activation.NumRows() << ", " << activation.NumCols() << ")" << pid << endl;
+//      tcout() << "ReLU non-linearity start pid:" << pid << endl;
+//      tcout() << "ReLU col, rows (" << activation.NumRows() << ", " << activation.NumCols() << ")" << pid << endl;
 
       /* Apply ReLU non-linearity. */
       Mat<ZZ_p> relu;
@@ -243,11 +249,11 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
          returns a secret shared integer, not a fixed point.*/
       // TODO: Implement dropout.
       /* Save activation for backpropagation. */
-      tcout() << "ReLU -> col, rows (" << relu.NumRows() << ", " << relu.NumCols() << ")" << pid << endl;
-      tcout() << "after ReLU -> col, rows (" << after_relu.NumRows() << ", " << after_relu.NumCols() << ")" << pid << endl;
+//      tcout() << "ReLU -> col, rows (" << relu.NumRows() << ", " << relu.NumCols() << ")" << pid << endl;
+//      tcout() << "after ReLU -> col, rows (" << after_relu.NumRows() << ", " << after_relu.NumCols() << ")" << pid << endl;
       act.push_back(after_relu);
       relus.push_back(relu);
-      tcout() << "ReLU non-linearity end pid:" << pid << endl;
+//      tcout() << "ReLU non-linearity end pid:" << pid << endl;
     }
 
   }
@@ -338,8 +344,8 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
       X_T = transpose(act.back());
       act.pop_back();
     }
-    tcout() << "X_T : (" << X_T.NumRows() << ", " << X_T.NumCols() << ")" << endl;
-    tcout() << "dhidden : (" << dhidden.NumRows() << ", " << dhidden.NumCols() << ")" << endl;
+//    tcout() << "X_T : (" << X_T.NumRows() << ", " << X_T.NumCols() << ")" << endl;
+//    tcout() << "dhidden : (" << dhidden.NumRows() << ", " << dhidden.NumCols() << ")" << endl;
 
 //    if (X_T.NumCols() != dhidden.NumRows()) {
 //      Mat<ZZ_p> resize_x_t;
@@ -364,11 +370,10 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     DoubleToFP(REG, Param::REG, Param::NBIT_K, Param::NBIT_F);
     Mat<ZZ_p> reg = W[l] * REG;
     mpc.Trunc(reg);
-    tcout() << "W[l] : " << W[l].NumRows() << "/" << W[l].NumCols() << endl;
-    tcout() << "reg : " << reg.NumRows() << "/" << reg.NumCols() << endl;
+//    tcout() << "W[l] : " << W[l].NumRows() << "/" << W[l].NumCols() << endl;
+//    tcout() << "reg : " << reg.NumRows() << "/" << reg.NumCols() << endl;
     dW[l] += reg;
 
-    tcout() << "pass1" << endl;
 
     /* Compute derivative of biases. */
     Init(db[l], b[l].length());
@@ -515,11 +520,15 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   random_shuffle(random_idx.begin(), random_idx.end());
 
 
+//  Time
+  time_t start, check, end;
+  double laptime, total_laptime;
+
+  start = time(NULL);
+  check = time(NULL);
+
   for (int i = 0; i < batches_in_file; i++) {
 
-    if (pid == 2)
-      tcout() << "batch: " << i << "/" << batches_in_file << endl;
-    printProgress(i / batches_in_file);
 
     /* Scan matrix (pre-shuffled) to get batch. */
     int base_j = i * Param::BATCH_SIZE;
@@ -535,7 +544,7 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     // reuse b.t. and mult
     tcout() << "reshape x for cnn 1d start" << endl;
     for (int batch = 0; batch < Param::BATCH_SIZE; batch++) {
-      tcout() << "reshape in progress Batch #" << batch << endl;
+//      tcout() << "reshape in progress Batch #" << batch << endl;
       for (int index = 0; index < 500 - 7 + 1; index++) {
         for (int filter = 0; filter < 7; filter++) {
           for (int channel = 0; channel < 3; channel++) {
@@ -556,20 +565,30 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 //                     epoch, pid, mpc);
 
     /* Save state every 500 epochs. */
-    if (epoch % 500 == 0) {
+    if (i % 500 == 0) {
       for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
         Mat<ZZ_p> W_out;
         Init(W_out, W[l].NumRows(), W[l].NumCols());
         W_out += W[l];
         reveal(W_out, cache(pid, "W" + to_string(l) + "_" +
-                            to_string(epoch)), mpc);
+                            to_string(i)), mpc);
         
         Vec<ZZ_p> b_out;
         Init(b_out, b[l].length());
         b_out += b[l];
         reveal(b_out, cache(pid, "b" + to_string(l) + "_" +
-                            to_string(epoch)), mpc);
+                            to_string(i)), mpc);
       }
+    }
+
+    if (pid == 2) {
+//      tcout() << "batch: " << i << "/" << batches_in_file << endl;
+      end = time(NULL);
+      laptime = (double)end - check;
+      total_laptime = (double)end - start;
+      check = end;
+      tcout() << "batch: " << i+1 << "/" << batches_in_file << " ::: laptime : " << laptime << " total time: " << total_laptime << endl;
+      printProgress((i+1) / batches_in_file);
     }
 
     /* Update reference to training epoch. */
@@ -579,6 +598,7 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
       break;
     }
   }
+
 }
 
 bool dti_protocol(MPCEnv& mpc, int pid) {
@@ -609,13 +629,14 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
   //  Check Matrix x, y
   if (pid > 0) {
     tcout() << "print FP" << endl;
-    mpc.PrintFP(X[0]);
+    mpc.PrintFP(X[0][0]);
     mpc.PrintFP(y[0]);
   }
-
   /* Do gradient descent over multiple training epochs. */
   for (int epoch = 0; epoch < Param::MAX_EPOCHS;
        /* model_update() updates epoch. */) {
+
+
     /* Do model updates and file reads in parallel. */
     model_update(X, y, W, b, dW, db, vW, vb, act, relus,
                  epoch, pid, mpc);

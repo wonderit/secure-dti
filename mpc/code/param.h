@@ -53,6 +53,7 @@ class Param {
     static int N_CLASSES;
     static int N_HIDDEN;
     static int N_NEURONS;
+    static int N_NEURONS_2;
     static bool ANNEAL;
     static int ANNEAL_FREQ;
     static double REG;

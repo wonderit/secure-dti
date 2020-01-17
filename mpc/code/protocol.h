@@ -96,7 +96,7 @@ bool div_test(MPCEnv& mpc, int pid) {
 
 bool unit_test(MPCEnv& mpc, int pid) {
   ZZ_p x, y, z;
-  Vec<ZZ_p> xv, yv, zv, wv;
+  Vec<ZZ_p> xv, yv, zv, wv, pc;
   Vec<double> xdv, ydv, zdv, wdv;
   Mat<ZZ_p> xm, ym, zm;
   ZZ a, b, c;
@@ -136,10 +136,6 @@ bool unit_test(MPCEnv& mpc, int pid) {
 
   FPToDouble(zdv, zv, Param::NBIT_K, Param::NBIT_F);
   if (pid > 0) {
-    tcout() << zv << endl;
-    tcout() << "check" << endl;
-    tcout() << zdv << endl;
-
     tcout() << "1 : " << zdv[0] - (-0.00134) << endl;
     tcout() << "2 : " << zdv[1] - (30390.9) << endl;
     tcout() << "3 : " << zdv[2] - (163.856) << endl;
@@ -149,6 +145,14 @@ bool unit_test(MPCEnv& mpc, int pid) {
     tcout() << "Success";
   }
   tcout() << endl;
+
+  tcout() << "[PrivateCompare]" << endl;
+  Init(pc, 3);
+  mpc.PrintFP(xv);
+  mpc.PrintFP(yv);
+  mpc.LessThan(pc, xv, yv);
+  tcout() << "pc: " << pc << endl;
+  mpc.PrintFP(pc);
 
   tcout() << "[Powers]" << endl;;
   Init(xv, 5);
