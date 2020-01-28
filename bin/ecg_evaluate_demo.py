@@ -44,7 +44,7 @@ def report_scores(X, y, W, b, act):
     y_pred = []
     y_score = []
 
-    # X = scale(X, mean_x, std_x)
+    X = scale(X, mean_x, std_x)
     print(X[0, 0:3], y[0])
 
     torchX = torch.from_numpy(np.array(X))
@@ -84,8 +84,8 @@ def report_scores(X, y, W, b, act):
     y = rescale(y, MEAN, STD)
     scores = rescale(scores, MEAN, STD)
 
-    # print(y.shape, scores.shape)
-    # print(y[0:5], scores[0:5])
+    print(y.shape, scores.shape)
+    print(y[0:5], scores[0:5])
 
     mse_loss = metrics.mean_squared_error(y, scores)
 

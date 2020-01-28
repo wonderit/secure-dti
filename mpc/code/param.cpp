@@ -163,6 +163,7 @@ string Param::LOG_FILE = "../log/ecg.txt";
 long Param::FEATURE_RANK = 100;
 double Param::MOMENTUM = 0.9;
 double Param::LEARN_RATE = 0.01;
+//int Param::N_CLASSES = 11;
 int Param::N_CLASSES = 2;
 int Param::N_HIDDEN = 2;
 bool Param::ANNEAL = false;

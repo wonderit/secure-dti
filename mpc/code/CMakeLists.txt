@@ -15,7 +15,9 @@ set(SOURCE_FILES
         mpc.cpp
         param.cpp
         ShareData.cpp
+        TrainSecureMNIST.cpp
         TrainSecureDTI.cpp
+        TrainSecureECG.cpp
         GenerateKey.cpp
         AnalyzeFeature.cpp
         )

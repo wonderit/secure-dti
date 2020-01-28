@@ -23,9 +23,13 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
     return false;
   }
 
+  tcout() << "NAME : " << fname << endl;
+
   /* Read in matrix. */
   Mat<ZZ_p> matrix;
   Init(matrix, n_rows, n_cols);
+
+  tcout() << "matrix : " << n_rows << "," << n_cols << endl;
   
   string line;
   int i = 0;
@@ -44,18 +48,21 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
 
     stringstream ss(line);
     int j = 0;
+
     for(double k; ss >> k;) {
       if (ss.peek() == ',')
         ss.ignore();
 
-      if(name.rfind("X") == 0) {
-        // Normalize
-        k -= 1.547;
-        k /= (156.820 + 1e-7);
-      }
+//      if(name.rfind("y") == 0) {
+////        tcout() << "Reading line " << line << endl;
+//        // Normalize
+////        k -= 1.547;
+////        k /= (156.820 + 1e-7);
+//        tcout() << "Read Column y k " << k << endl;
+//      }
 
-      if (j % 500 == 0)
-        tcout() << "Read Column k " << k << endl;
+//      if (j % 5000 == 0)
+//        tcout() << "Read Column k " << k << endl;
 
       ZZ_p val_fp;
       DoubleToFP(val_fp, k, Param::NBIT_K, Param::NBIT_F);
@@ -65,9 +72,9 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
     }
     i++;
   }
-//  tcout() << "NAMEEEE:: " << fname << i << n_rows << endl;
+  tcout() << "NAMEEEE:: " << fname << i << n_rows << endl;
   if (i != n_rows) {
-    tcout() << "Error: Invalid number of rows ecg: " << i << " :: " << n_rows << endl;
+    tcout() << "Error: Invalid number of rows ecg: " << i << endl;
     return false;
   }
   fin.close();

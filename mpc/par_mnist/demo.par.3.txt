@@ -17,11 +17,12 @@ BASE_P 2305843009213693951
 MPC_BUF_SIZE 1000000
 
 # DTI
-CACHE_FILE_PREFIX ../cache/ecg
-TRAIN_SUFFIXES ../../demo_data/text_demo/train_suffixes.txt
-TEST_SUFFIXES ../../demo_data/text_demo/test_suffixes.txt
-FEATURE_RANK 1500
-N_FILE_BATCH 400
+# CACHE_FILE_PREFIX ../cache/mnist
+TRAIN_SUFFIXES ../../mnist_data/text_demo/train_suffixes.txt
+TEST_SUFFIXES ../../mnist_data/text_demo/test_suffixes.txt
+FEATURE_RANK 784
+N_FILE_BATCH 640
 
 # FILES
 KEY_PATH ../key/
+# CACHE_FILE_PREFIX ../cache/mnist
