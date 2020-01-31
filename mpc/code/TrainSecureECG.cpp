@@ -273,7 +273,7 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
 void initial_conv(Mat<ZZ_p>& conv1d, Mat<ZZ_p>& x, int input_channel, int kernel_size) {
   int prev_row = x.NumCols() / input_channel;
   int row = prev_row - kernel_size + 1;
-  conv1d.SetDims(Param::BATCH_SIZE * row, kernel_size * input_channel);
+  Init(conv1d, Param::BATCH_SIZE * row, kernel_size * input_channel);
 
   if (Param::DEBUG) tcout() << "Initial Convert conv1d: (" << conv1d.NumRows() << ", " << conv1d.NumCols() << "), X: (" << x.NumRows() << ", " << x.NumCols() << ")"  << endl;
 
@@ -288,61 +288,32 @@ void initial_conv(Mat<ZZ_p>& conv1d, Mat<ZZ_p>& x, int input_channel, int kernel
   }
 }
 
-
-void back_initial_conv(Mat<ZZ_p>& x, Mat<ZZ_p>& conv1d, int kernel_size) {
+void back_reshape_conv(Mat<ZZ_p>& x, Mat<ZZ_p>& conv1d, int kernel_size) {
   int input_channel = conv1d.NumCols() / kernel_size;
-  int row = conv1d.NumRows() / Param::BATCH_SIZE; // 488
-  int prev_row = row + kernel_size - 1;  // 482
+  int row = conv1d.NumRows() / Param::BATCH_SIZE; // 482
+  int prev_row = row + kernel_size - 1;  // 488
   Init(x, Param::BATCH_SIZE * prev_row, input_channel);
 
-  if (Param::DEBUG) tcout() << "recover x from conv1d: (" << conv1d.NumRows() << ", " << conv1d.NumCols() << "), (" << x.NumRows() << ", " << x.NumCols() << ")"  << endl;
+  if (Param::DEBUG) tcout() << "back_reshape_conv: (" << conv1d.NumRows() << ", " << conv1d.NumCols() << "), (" << x.NumRows() << ", " << x.NumCols() << ")"  << endl;
 
   for (int batch = 0; batch < Param::BATCH_SIZE; batch++) {
     for (int index = 0; index < row; index++) {
       for (int channel = 0; channel < input_channel; channel++) {
         for (int filter = 0; filter < kernel_size; filter++) {
-          x[batch * prev_row + index][channel] += conv1d[batch * row + index][kernel_size * channel + filter];
+          x[batch * prev_row + index + filter][channel] += conv1d[batch * row + index][kernel_size * channel + filter];
         }
       }
     }
   }
+
 }
-
-
-//void back_initial_conv(Mat<ZZ_p>& x, Mat<ZZ_p>& conv1d, int kernel_size) {
-//  int input_channel = conv1d.NumCols() / kernel_size;
-//  int row = conv1d.NumRows() / Param::BATCH_SIZE; // 488
-//  int prev_row = row + kernel_size - 1;  // 482
-//  if (Param::DEBUG) tcout() << "row: (" << row << ", " << prev_row << "), (" << input_channel << ", " << input_channel << ")"  << endl;
-//  x.SetDims(Param::BATCH_SIZE * prev_row, input_channel);
-//  if (Param::DEBUG) tcout() << "recover x from conv1d: (" << conv1d.NumRows() << ", " << conv1d.NumCols() << "), (" << x.NumRows() << ", " << x.NumCols() << ")"  << endl;
-//
-//  for (int batch = 0; batch < Param::BATCH_SIZE; batch++) {
-//    for (int index = 0; index < prev_row; index++) {
-////      for (int filter = 0; filter < kernel_size; filter++) {
-//        for (int channel = 0; channel < input_channel; channel++) {
-//          // 481
-//          if (index < row) {
-//            x[batch * prev_row + index][channel] = conv1d[batch * row + index][kernel_size * channel];
-//            // 482 ~
-//          } else {
-//            for (int filter = 0; filter < kernel_size - 1; filter ++) {
-//              x[batch * prev_row + index][channel] = conv1d[batch * row + row - 1][kernel_size * channel + filter];
-//            }
-//          }
-//        }
-////      }
-//    }
-//  }
-//
-//}
 
 void reshape_conv(Mat<ZZ_p>& conv1d, Mat<ZZ_p>& x, int kernel_size) {
   int channels = x.NumCols();
-  if (Param::DEBUG) tcout() << "cols : " << channels << endl;
-  int prev_row = x.NumRows() / Param::BATCH_SIZE;
-  int row = prev_row - kernel_size + 1;
-  conv1d.SetDims(Param::BATCH_SIZE * row, kernel_size * channels);
+  int prev_row = x.NumRows() / Param::BATCH_SIZE;  // 488
+  int row = prev_row - kernel_size + 1;  // 482
+  Init(conv1d, Param::BATCH_SIZE * row, kernel_size * channels);
+
   for (int batch = 0; batch < Param::BATCH_SIZE; batch++) {
     for (int index = 0; index < row; index++) {
       for (int channel = 0; channel < channels; channel++) {
@@ -352,7 +323,7 @@ void reshape_conv(Mat<ZZ_p>& conv1d, Mat<ZZ_p>& x, int kernel_size) {
       }
     }
   }
-  if (Param::DEBUG) tcout() <<  "reshape conv1d: (" << conv1d.NumRows() << ", " << conv1d.NumCols() << "), (" << x.NumRows() << ", " << x.NumCols() << ")"  << endl;
+  if (Param::DEBUG) tcout() <<  "reshape_conv: (" << conv1d.NumRows() << ", " << conv1d.NumCols() << "), (" << x.NumRows() << ", " << x.NumCols() << ")"  << endl;
 }
 
 double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
@@ -647,7 +618,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 
       if (l == 1) {
         Mat<ZZ_p> temp;
-        back_initial_conv(temp, dhidden_new, 7);
+        back_reshape_conv(temp, dhidden_new, 7);
         dhidden = temp;
       } else {
         Mat<ZZ_p> relu = relus.back();
@@ -674,7 +645,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
             dhidden_new = temp;
           } else {
             Mat<ZZ_p> temp;
-            back_initial_conv(temp, dhidden_new, 7);
+            back_reshape_conv(temp, dhidden_new, 7);
             dhidden_new = temp;
           }
           if (pid == 2 && Param::DEBUG) {

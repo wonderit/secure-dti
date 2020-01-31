@@ -16,7 +16,7 @@ STD = 10.6
 result_path = 'result'
 isTest = False
 epoch = 0
-batch = 40
+batch = 110
 
 # 11000 criteria
 # mean_x = 1.66
@@ -345,9 +345,9 @@ if __name__ == '__main__':
     #                         delimiter=',', dtype='float')
     # y_train = np.genfromtxt('demo_data/text_demo/ytrain',
     #                         delimiter=',', dtype='float')
-    X_train = np.genfromtxt('../data/ecg/text_demo_440/Xtrain',
+    X_train = np.genfromtxt('../data/ecg/text_demo_5500/Xtrain',
                             delimiter=',', dtype='float')
-    y_train = np.genfromtxt('../data/ecg/text_demo_440/ytrain',
+    y_train = np.genfromtxt('../data/ecg/text_demo_5500/ytrain',
                             delimiter=',', dtype='float')
 
     if isTest:
@@ -362,9 +362,9 @@ if __name__ == '__main__':
     #                         delimiter=',', dtype='float')
     # y_test = np.genfromtxt('demo_data/text_demo/ytest',
     #                         delimiter=',', dtype='float')
-    X_test = np.genfromtxt('../data/ecg/text_demo_440/Xtest',
+    X_test = np.genfromtxt('../data/ecg/text_demo_5500/Xtest',
                             delimiter=',', dtype='float')
-    y_test = np.genfromtxt('../data/ecg/text_demo_440/ytest',
+    y_test = np.genfromtxt('../data/ecg/text_demo_5500/ytest',
                             delimiter=',', dtype='float')
 
     if isTest:
