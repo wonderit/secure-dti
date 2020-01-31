@@ -1,12 +1,8 @@
 #include <algorithm>
 #include <cstdlib>
-#include <fstream>
 #include <iostream>
-#include <map>
 #include <random>
-#include <sstream>
 
-#include "connect.h"
 #include "mpc.h"
 #include "protocol.h"
 #include "util.h"
@@ -118,17 +114,14 @@ void initialize_parameters(Mat<ZZ_p>& W_layer, Vec<ZZ_p>& b_layer) {
   double w_bound = 0.0;
 
   if (Param::DEBUG) tcout() << "W layer row, cols (" << W_layer.NumRows() << ", " << W_layer.NumCols() << ")" << endl;
-//  tcout() << "Fan IN  : " << fan_in <<  ", gain : " << gain << endl;
   b_bound = 1.0 / std::sqrt(fan_in);
   w_bound = std::sqrt(3.0) * (gain / std::sqrt(fan_in));
-//  tcout() << "w_bound  : " << w_bound <<  ", b_bound : " << b_bound << endl;
   std::uniform_real_distribution<double> b_dist (-b_bound, b_bound);
   std::normal_distribution<double> distribution (0.0, 0.01);
   std::uniform_real_distribution<double> w_dist (-w_bound, w_bound);
   for (int i = 0; i < W_layer.NumRows(); i++) {
     for (int j = 0; j < W_layer.NumCols(); j++) {
       double weight = w_dist(random_generator);
-//      double weight = distribution(random_generator);
       if (i == 0)
         if (Param::DEBUG) tcout() << "weight  : " << weight << endl;
 
@@ -270,62 +263,6 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
   }
 }
 
-void initial_conv(Mat<ZZ_p>& conv1d, Mat<ZZ_p>& x, int input_channel, int kernel_size) {
-  int prev_row = x.NumCols() / input_channel;
-  int row = prev_row - kernel_size + 1;
-  Init(conv1d, Param::BATCH_SIZE * row, kernel_size * input_channel);
-
-  if (Param::DEBUG) tcout() << "Initial Convert conv1d: (" << conv1d.NumRows() << ", " << conv1d.NumCols() << "), X: (" << x.NumRows() << ", " << x.NumCols() << ")"  << endl;
-
-  for (int batch = 0; batch < Param::BATCH_SIZE; batch++) {
-    for (int index = 0; index < row; index++) {
-      for (int channel = 0; channel < input_channel; channel++) {
-        for (int filter = 0; filter < kernel_size; filter++) {
-          conv1d[batch * row + index][kernel_size * channel + filter] = x[batch][prev_row * channel + index + filter];
-        }
-      }
-    }
-  }
-}
-
-void back_reshape_conv(Mat<ZZ_p>& x, Mat<ZZ_p>& conv1d, int kernel_size) {
-  int input_channel = conv1d.NumCols() / kernel_size;
-  int row = conv1d.NumRows() / Param::BATCH_SIZE; // 482
-  int prev_row = row + kernel_size - 1;  // 488
-  Init(x, Param::BATCH_SIZE * prev_row, input_channel);
-
-  if (Param::DEBUG) tcout() << "back_reshape_conv: (" << conv1d.NumRows() << ", " << conv1d.NumCols() << "), (" << x.NumRows() << ", " << x.NumCols() << ")"  << endl;
-
-  for (int batch = 0; batch < Param::BATCH_SIZE; batch++) {
-    for (int index = 0; index < row; index++) {
-      for (int channel = 0; channel < input_channel; channel++) {
-        for (int filter = 0; filter < kernel_size; filter++) {
-          x[batch * prev_row + index + filter][channel] += conv1d[batch * row + index][kernel_size * channel + filter];
-        }
-      }
-    }
-  }
-
-}
-
-void reshape_conv(Mat<ZZ_p>& conv1d, Mat<ZZ_p>& x, int kernel_size) {
-  int channels = x.NumCols();
-  int prev_row = x.NumRows() / Param::BATCH_SIZE;  // 488
-  int row = prev_row - kernel_size + 1;  // 482
-  Init(conv1d, Param::BATCH_SIZE * row, kernel_size * channels);
-
-  for (int batch = 0; batch < Param::BATCH_SIZE; batch++) {
-    for (int index = 0; index < row; index++) {
-      for (int channel = 0; channel < channels; channel++) {
-        for (int filter = 0; filter < kernel_size; filter++) {
-          conv1d[batch * row + index][kernel_size * channel + filter] = x[batch * prev_row + index + filter][channel];
-        }
-      }
-    }
-  }
-  if (Param::DEBUG) tcout() <<  "reshape_conv: (" << conv1d.NumRows() << ", " << conv1d.NumCols() << "), (" << x.NumRows() << ", " << x.NumCols() << ")"  << endl;
-}
-
 double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
                       vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
                       vector<Mat<ZZ_p> >& dW, vector<Vec<ZZ_p> >& db,
@@ -338,7 +275,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
    * Forward propagation. *
    ************************/
 
-  Mat<ZZ_p> X_batch_for_cnn;
+  Mat<ZZ_p> X_reshape;
 
   for (int l = 0; l < Param::N_HIDDEN; l++) {
 
@@ -348,26 +285,31 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     /* Multiply weight matrix. */
     Mat<ZZ_p> activation;
 
-//    mpc.PrintFP(W[l]);
 
+    // Conv1d LAYER START
     if (l == 0) {
 
-      initial_conv(X_batch_for_cnn, X, 3, 7);
+      // Reshape (N, row * channel) -> (N * row, channel)
+      initial_reshape(X_reshape, X, 3, Param::BATCH_SIZE);
+      if (Param::DEBUG) tcout() << "Reshape X to X_reshape : (" << X.NumRows() << "," << X.NumCols()
+                                << "), X_reshape : (" << X_reshape.NumRows() << ", " << X_reshape.NumCols() << ")" << endl;
 
-      mpc.MultMat(activation, X_batch_for_cnn, W[l]);
+      // MultMat by reshaping after beaver partition
+      mpc.MultMatForConv(activation, X_reshape, W[l], 7);
+
       if (Param::DEBUG) tcout() << "First CNN Layer (" << activation.NumRows() << "," << activation.NumCols() << ")" << endl;
+
     } else {
 
       if (Param::DEBUG) tcout() << "l = " << l << ", activation size " << act[l-1].NumRows() << ", " << act[l-1].NumCols() << endl;
 
-//    CNN LAYER START
+      // 2 conv1d layers
       if (l == 1 || l == 2) {
 
-        Mat<ZZ_p> conv1d;
-        reshape_conv(conv1d, act[l-1], 7);
-        act[l-1] = conv1d;
+        // MultMat by reshaping after beaver partition
+        mpc.MultMatForConv(activation, act[l-1], W[l], 7);
 
-//        ANN
+      // first layer of FC layers
       } else if (l == 3) {
         Mat<ZZ_p> ann;
         int channels = act[l-1].NumCols();
@@ -382,13 +324,13 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
           }
         }
         act[l-1] = ann;
-      }
-//      else {
-//
-//        mpc.MultMat(activation, act[l-1], W[l]);
-//      }
+        mpc.MultMat(activation, act[l-1], W[l]);
 
-      mpc.MultMat(activation, act[l-1], W[l]);
+      // the rest of FC layers
+      } else {
+
+        mpc.MultMat(activation, act[l-1], W[l]);
+      }
     }
     mpc.Trunc(activation);
 
@@ -396,7 +338,6 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     for (int i = 0; i < activation.NumRows(); i++) {
       activation[i] += b[l];
     }
-
 
     if (l == 0) {
       act.push_back(activation);
@@ -416,9 +357,9 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
       /* Save activation for backpropagation. */
       if (Param::DEBUG) tcout() << "ReLU -> col, rows (" << relu.NumRows() << ", " << relu.NumCols() << ")" << pid << endl;
       if (Param::DEBUG) tcout() << "after ReLU -> col, rows (" << after_relu.NumRows() << ", " << after_relu.NumCols() << ")" << pid << endl;
+      if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
       act.push_back(after_relu);
       relus.push_back(relu);
-      if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
     }
 
   }
@@ -490,41 +431,6 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   dscores *= norm_examples;
   mpc.Trunc(dscores);
 
-
-  double mse_score_double = 0.0;
-  ZZ_p mse_score;
-  Vec<ZZ_p> vmse;
-  Mat<ZZ_p> mse;
-  mpc.MultElem(mse, dscores, dscores);
-  mpc.Trunc(mse);
-
-  mpc.RevealSym(mse);
-  Mat<double> mse_double;
-
-  FPToDouble(mse_double, mse, Param::NBIT_K, Param::NBIT_F);
-  mse_score_double = Sum(mse_double);
-//  Print mse score
-  if (pid > 0 ) {
-
-//
-//    int size = mse.NumRows() * mse.NumCols();
-//    Init(vmse, size);
-//    ReshapeMatToVec(vmse, mse);
-//    mse_score = Sum(vmse);
-//    tcout() << "MSE Score: " << endl;
-//    mpc.RevealSym(mse_score);
-//    mse_score_double = FPToDouble(mse_score, Param::NBIT_K, Param::NBIT_F);
-  }
-
-//  if (pid > 0 && epoch % 100 == 0) {
-//    reveal(scores, cache(pid, "scores_epoch" + to_string(epoch)), mpc);
-//    tcout() << "Forward Score::" << scores << "epoch::" << epoch << endl;
-//  }
-//  reveal(scores, cache(pid, "scores_epoch" + to_string(epoch)), mpc);
-
-//  tcout() << "Forward Score::" << scores << "epoch::" << epoch << endl;
-//  mpc.PrintFP(dscores);
-
   /*********************
    * Back propagation. *
    *********************/
@@ -537,8 +443,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     Init(dW[l], W[l].NumRows(), W[l].NumCols());
     Mat<ZZ_p> X_T;
     if (l == 0) {
-//      X_T = transpose(X);
-      X_T = transpose(X_batch_for_cnn);
+      X_T = transpose(X_reshape);
     } else {
       X_T = transpose(act.back());
       act.pop_back();
@@ -566,6 +471,11 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
         X_T = resize_x_t;
 
         if (Param::DEBUG) tcout() << "X_T -> converted : (" << X_T.NumRows() << ", " << X_T.NumCols() << ")" << endl;
+
+        mpc.MultMat(dW[l], X_T, dhidden);
+      } else {
+
+        mpc.MultMatForConvBack(dW[l], X_T, dhidden, 7);
       }
 //      else {
 //        Mat<ZZ_p> tmp = transpose(X_T);
@@ -573,8 +483,10 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 //        X_T = transpose(resize_x_t);
 //      }
 
+    } else {
+
+      mpc.MultMat(dW[l], X_T, dhidden);
     }
-    mpc.MultMat(dW[l], X_T, dhidden);
     mpc.Trunc(dW[l]);
 
     /* Add regularization term to weights. */
@@ -618,7 +530,11 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 
       if (l == 1) {
         Mat<ZZ_p> temp;
-        back_reshape_conv(temp, dhidden_new, 7);
+        back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
+
+        if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.NumRows() << ", " << temp.NumCols()
+                                  << "), conv1d: (" << dhidden_new.NumRows() << ", " << dhidden_new.NumCols() << ")"
+                                  << endl;
         dhidden = temp;
       } else {
         Mat<ZZ_p> relu = relus.back();
@@ -628,7 +544,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
           tcout() << "relu : " << relu.NumRows() << "/" << relu.NumCols() << endl;
           tcout() << "l=" << l << "-------------" << endl;
         }
-//
+
         if (dhidden_new.NumCols() != relu.NumCols() || dhidden_new.NumRows() != relu.NumRows()) {
 
           if (l > 2) {
@@ -645,7 +561,11 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
             dhidden_new = temp;
           } else {
             Mat<ZZ_p> temp;
-            back_reshape_conv(temp, dhidden_new, 7);
+            back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
+
+            if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.NumRows() << ", " << temp.NumCols()
+                                      << "), conv1d: (" << dhidden_new.NumRows() << ", " << dhidden_new.NumCols() << ")"
+                                      << endl;
             dhidden_new = temp;
           }
           if (pid == 2 && Param::DEBUG) {
@@ -695,7 +615,16 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     b[l] += b_update;
 
   }
-  return mse_score_double;
+
+  Mat<ZZ_p> mse;
+  Mat<double> mse_double;
+  double mse_score_double;
+  mpc.MultElem(mse, dscores, dscores);
+  mpc.Trunc(mse);
+  mpc.RevealSym(mse);
+  FPToDouble(mse_double, mse, Param::NBIT_K, Param::NBIT_F);
+  mse_score_double = Sum(mse_double);
+  return mse_score_double * Param::BATCH_SIZE;
 }
 
 void load_X_y(string suffix, Mat<ZZ_p>& X, Mat<ZZ_p>& y,
@@ -708,7 +637,7 @@ void load_X_y(string suffix, Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   
   /* Load seed for CP1. */
   if (pid == 1) {
-    //    TODO CHange pwd!!!
+    // TODO Change path!!!
     string fname = "../cache/ecg_seed" + suffix + ".bin";
     if (Param::DEBUG) tcout() << "open Seed name:" << fname  << endl;
     ifs.open(fname.c_str(), ios::binary);
@@ -762,12 +691,12 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   int batches_in_file = X.NumRows() / Param::BATCH_SIZE;
   Mat<ZZ_p> X_batch;
   Mat<ZZ_p> y_batch;
-  X_batch.SetDims(Param::BATCH_SIZE, X.NumCols());
-  y_batch.SetDims(Param::BATCH_SIZE, y.NumCols());
+//  X_batch.SetDims(Param::BATCH_SIZE, X.NumCols());
+//  y_batch.SetDims(Param::BATCH_SIZE, y.NumCols());
 
-  vector<int> random_idx(X.NumRows());
-  iota(random_idx.begin(), random_idx.end(), 0);
-  random_shuffle(random_idx.begin(), random_idx.end());
+//  vector<int> random_idx(X.NumRows());
+//  iota(random_idx.begin(), random_idx.end(), 0);
+//  random_shuffle(random_idx.begin(), random_idx.end());
 
 
 //  Time
@@ -781,30 +710,35 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 
   for (int i = 0; i < batches_in_file; i++) {
 
-
     /* Scan matrix (pre-shuffled) to get batch. */
     int base_j = i * Param::BATCH_SIZE;
-    for (int j = base_j;
-         j < base_j + Param::BATCH_SIZE && j < X.NumRows();
-         j++) {
-      X_batch[j - base_j] = X[random_idx[j]];
-      y_batch[j - base_j] = y[random_idx[j]];
+//    for (int j = base_j;
+//         j < base_j + Param::BATCH_SIZE && j < X.NumRows();
+//         j++) {
+//      X_batch[j - base_j] = X[random_idx[j]];
+//      y_batch[j - base_j] = y[random_idx[j]];
+//    }
+
+    /* Iterate through all of X with batch. */
+    Init(X_batch, Param::BATCH_SIZE, X.NumCols());
+    Init(y_batch, Param::BATCH_SIZE, y.NumCols());
+    for (int j = base_j; j < base_j + Param::BATCH_SIZE && j < X.NumRows(); j++) {
+      X_batch[j - base_j] = X[j];
+      y_batch[j - base_j] = y[j];
     }
 
-    if (Param::DEBUG) tcout() << "x = (" << X.NumRows() << ", " << X.NumCols() << endl;
+    if (Param::DEBUG) tcout() << "x = " << X_batch.NumRows() << ", " << X_batch.NumCols() << endl;
     /* Do one round of mini-batch gradient descent. */
     double mse_score = gradient_descent(X_batch, y_batch,
                      W, b, dW, db, vW, vb, act, relus,
                      epoch, pid, mpc);
-//    gradient_descent(X_batch_for_cnn, y_batch,
-//                     W, b, dW, db, vW, vb, act, relus,
-//                     epoch, pid, mpc);
 
     /* Save state every 10 batches. */
     if (i % 10 == 0) {
       if (pid == 2) {
         tcout() << "Save parameters of W, b into .bin files." << endl;
       }
+
       for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
         Mat<ZZ_p> W_out;
         Init(W_out, W[l].NumRows(), W[l].NumCols());
@@ -821,7 +755,6 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     }
 
     if (pid == 2) {
-//      tcout() << "batch: " << i << "/" << batches_in_file << endl;
       end = time(NULL);
       laptime = (double)end - check;
       total_laptime = (int) end - start;
@@ -837,9 +770,11 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
               << " loss : " << mse_score
               << " laptime : " << laptime
               << " total time: " << hour << ":" << minute << ":" << second << endl;
+
+
     }
 
-    /* Update reference to training epoch. */
+    /* Update reference to training epoch. FOR TEST */
 //    epoch++;
 //
 //    if (epoch >= Param::MAX_EPOCHS) {

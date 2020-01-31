@@ -1011,6 +1011,54 @@ public:
   }
 
   template<class T>
+  void MultMatForConv(Mat<T>& c, Mat<T>& a, Mat<T>& b, int filter_size, int fid = 0) {
+    if(debug) cout << "MultMatForConv: (" << a.NumRows() << ", " << a.NumCols() << "), (" << b.NumRows() << ", " << b.NumCols() << ")" << endl;
+
+    Mat<T> ar, am, br, bm, ar_conv, am_conv;
+    BeaverPartition(ar, am, a, fid);
+    BeaverPartition(br, bm, b, fid);
+
+    reshape_conv(ar_conv, ar, filter_size, Param::BATCH_SIZE);
+    reshape_conv(am_conv, am, filter_size, Param::BATCH_SIZE);
+
+    int out_rows = ar_conv.NumRows();
+    int out_cols = b.NumCols();
+    assert(ar_conv.NumCols() == br.NumRows());
+    assert(am_conv.NumCols() == bm.NumRows());
+
+    Init(c, out_rows, out_cols);
+    BeaverMult(c, ar_conv, am_conv, br, bm, false, fid);
+
+    BeaverReconstruct(c, fid);
+  }
+
+  template<class T>
+  void MultMatForConvBack(Mat<T>& c, Mat<T>& a_t, Mat<T>& b, int filter_size, int fid = 0) {
+    Mat<T> a = transpose(a_t);
+    if(debug) cout << "MultMatForConv: (" << a.NumRows() << ", " << a.NumCols() << "), (" << b.NumRows() << ", " << b.NumCols() << ")" << endl;
+
+    Mat<T> ar, am, br, bm, ar_conv, am_conv;
+    BeaverPartition(ar, am, a, fid);
+    BeaverPartition(br, bm, b, fid);
+
+    reshape_conv(ar_conv, ar, filter_size, Param::BATCH_SIZE);
+    reshape_conv(am_conv, am, filter_size, Param::BATCH_SIZE);
+
+    Mat<T> ar_conv_t = transpose(ar_conv);
+    Mat<T> am_conv_t = transpose(am_conv);
+
+    int out_rows = ar_conv_t.NumRows();
+    int out_cols = b.NumCols();
+    assert(ar_conv_t.NumCols() == br.NumRows());
+    assert(am_conv_t.NumCols() == bm.NumRows());
+
+    Init(c, out_rows, out_cols);
+    BeaverMult(c, ar_conv_t, am_conv_t, br, bm, false, fid);
+
+    BeaverReconstruct(c, fid);
+  }
+
+  template<class T>
   void MultMatParallel(Vec< Mat<T> >& c, Vec< Mat<T> >& a, Vec< Mat<T> >& b, int fid = 0) {
     MultAuxParallel(c, a, b, false, fid);
   }
@@ -1021,6 +1069,7 @@ public:
     T br, bm;
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
+
 
     Init(c, a.length());
     BeaverMult(c, ar, am, br, bm, fid);
@@ -1431,10 +1480,8 @@ private:
 
   template<class T>
   void MultAux(Mat<T>& c, Mat<T>& a, Mat<T>& b, bool elem_wise, int fid = 0) {
-//    if (debug) cout << "MultAux: (" << a.NumRows() << ", " << a.NumCols() << "), (" << b.NumRows() << ", " << b.NumCols() << ")" << endl;
     if (debug) cout << "MultAux: (" << a.NumRows() << ", " << a.NumCols() << "), (" << b.NumRows() << ", " << b.NumCols() << ")" << endl;
     if (elem_wise) {
-//      cout << "elem wise" << endl;
       assert(a.NumRows() == b.NumRows() && a.NumCols() == b.NumCols());
     } else {
       assert(a.NumCols() == b.NumRows());

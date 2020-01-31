@@ -402,15 +402,69 @@ static inline void PrintMat(Mat<ZZ>& b) {
     cout<<"\n";
   }
 }
-#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
-#define PBWIDTH 60
 
-static inline void printProgress (double percentage)
-{
-  int val = (int) (percentage * 100);
-  int lpad = (int) (percentage * PBWIDTH);
-  int rpad = PBWIDTH - lpad;
-  printf ("BATCH LEARNING : \r%3d%% [%.*s%*s]\n", val, lpad, PBSTR, rpad, "");
-  fflush (stdout);
+static inline void initial_conv(Mat<ZZ_p>& conv1d, Mat<ZZ_p>& x, int input_channel, int kernel_size, int batch_size) {
+  int prev_row = x.NumCols() / input_channel;
+  int row = prev_row - kernel_size + 1;
+  Init(conv1d, batch_size * row, kernel_size * input_channel);
+
+  for (int batch = 0; batch < batch_size; batch++) {
+    for (int index = 0; index < row; index++) {
+      for (int channel = 0; channel < input_channel; channel++) {
+        for (int filter = 0; filter < kernel_size; filter++) {
+          conv1d[batch * row + index][kernel_size * channel + filter] = x[batch][prev_row * channel + index + filter];
+        }
+      }
+    }
+  }
 }
+
+
+static inline void initial_reshape(Mat<ZZ_p>& x_2d, Mat<ZZ_p>& x, int input_channel, int batch_size) {
+  int row = x.NumCols() / input_channel;
+  Init(x_2d, batch_size * row, input_channel);
+
+  for (int batch = 0; batch < batch_size; batch++) {
+    for (int index = 0; index < row; index++) {
+      for (int channel = 0; channel < input_channel; channel++) {
+        x_2d[batch * row + index][channel] = x[batch][row * channel + index];
+      }
+    }
+  }
+}
+
+static inline void reshape_conv(Mat<ZZ_p>& conv1d, Mat<ZZ_p>& x, int kernel_size, int batch_size) {
+  int channels = x.NumCols();
+  int prev_row = x.NumRows() / batch_size;  // 488
+  int row = prev_row - kernel_size + 1;  // 482
+  Init(conv1d, batch_size * row, kernel_size * channels);
+
+  for (int batch = 0; batch < batch_size; batch++) {
+    for (int index = 0; index < row; index++) {
+      for (int channel = 0; channel < channels; channel++) {
+        for (int filter = 0; filter < kernel_size; filter++) {
+          conv1d[batch * row + index][kernel_size * channel + filter] = x[batch * prev_row + index + filter][channel];
+        }
+      }
+    }
+  }
+}
+
+static inline void back_reshape_conv(Mat<ZZ_p>& x, Mat<ZZ_p>& conv1d, int kernel_size, int batch_size) {
+  int input_channel = conv1d.NumCols() / kernel_size;
+  int row = conv1d.NumRows() / batch_size; // 482
+  int prev_row = row + kernel_size - 1;  // 488
+  Init(x, batch_size * prev_row, input_channel);
+
+  for (int batch = 0; batch < batch_size; batch++) {
+    for (int index = 0; index < row; index++) {
+      for (int channel = 0; channel < input_channel; channel++) {
+        for (int filter = 0; filter < kernel_size; filter++) {
+          x[batch * prev_row + index + filter][channel] += conv1d[batch * row + index][kernel_size * channel + filter];
+        }
+      }
+    }
+  }
+}
+
 #endif

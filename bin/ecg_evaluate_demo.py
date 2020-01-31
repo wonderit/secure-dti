@@ -8,23 +8,23 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import torch
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-e", "--epoch", help="Set epoch", type=int, default=0)
+parser.add_argument("-b", "--batch", help="Set batch", type=int, default=0)
+
+args = parser.parse_args()
 
 N_HIDDEN = 5
 LOSS = 'mse'
+# LOSS = 'hinge'
 MEAN = 59.3
 STD = 10.6
 result_path = 'result'
-isTest = False
-epoch = 0
-batch = 110
-
-# 11000 criteria
-# mean_x = 1.66
-# std_x = 155.51
-
-# 11000 criteria
-# mean_x = 1.91397
-# std_x = 156.413
+isTest = True
+epoch = args.epoch
+batch = args.batch
 
 # 5500 criteria
 mean_x = 1.547
@@ -35,7 +35,6 @@ def scale(arr, m, s):
     arr = arr / (s + 1e-7)
     return arr
 
-# LOSS = 'hinge'
 
 def rescale(arr, m, s):
     arr = arr * s
@@ -46,10 +45,10 @@ def rescale(arr, m, s):
 def report_scores(X, y, W, b, act):
     y_true = []
     y_pred = []
-    y_score = []
+    # y_score = []
 
     X = scale(X, mean_x, std_x)
-    print(X[0, 0:3], y[0])
+    # print('Example : X - ', X[0, 0:3], 'y - ', y[0])
 
     torchX = torch.from_numpy(np.array(X))
     reshape_img = conv1d(torchX, 3, 6)
@@ -89,8 +88,8 @@ def report_scores(X, y, W, b, act):
     y = rescale(y, MEAN, STD)
     scores = rescale(scores, MEAN, STD)
 
-    print(y.shape, scores.shape)
-    print(y[0:5], scores[0:5])
+    # print(y.shape, scores.shape)
+    # print(y[0:5], scores[0:5])
 
     mse_loss = metrics.mean_squared_error(y, scores)
 
@@ -104,49 +103,18 @@ def report_scores(X, y, W, b, act):
     # else:
     #     predicted_class[scores >= 0.5] = 1
 
-    sys.stdout.write(str(datetime.datetime.now()) + ' | ')
-    print('Batch mse: {0:.2f}'
-          .format(mse_loss)
-    )
+    # sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+    # print('Batch mse: {0:.2f}'
+    #       .format(mse_loss)
+    # )
     
     y_true.extend(list(y))
     # y_pred.extend(list(predicted_class))
     y_pred.extend(scores)
     # y_score.extend(list(mse_loss))
-    y_score.append(mse_loss)
-    
-    # Output aggregated scores.
-    # try:
-    #     sys.stdout.write(str(datetime.datetime.now()) + ' | ')
-    #     print('Accuracy: {0:.2f}'.format(
-    #         metrics.accuracy_score(y_true, y_pred))
-    #     )
-    #     sys.stdout.write(str(datetime.datetime.now()) + ' | ')
-    #     print('F1: {0:.2f}'.format(
-    #         metrics.f1_score(y_true, y_pred))
-    #     )
-    #     sys.stdout.write(str(datetime.datetime.now()) + ' | ')
-    #     print('Precision: {0:.2f}'.format(
-    #         metrics.precision_score(y_true, y_pred))
-    #     )
-    #     sys.stdout.write(str(datetime.datetime.now()) + ' | ')
-    #     print('Recall: {0:.2f}'.format(
-    #         metrics.recall_score(y_true, y_pred))
-    #     )
-    #     sys.stdout.write(str(datetime.datetime.now()) + ' | ')
-    #     print('ROC AUC: {0:.2f}'.format(
-    #         metrics.roc_auc_score(y_true, y_score))
-    #     )
-    #     sys.stdout.write(str(datetime.datetime.now()) + ' | ')
-    #     print('Avg. precision: {0:.2f}'.format(
-    #         metrics.average_precision_score(y_true, y_score))
-    #     )
-    # except Exception as e:
-    #     sys.stderr.write(str(e))
-    #     sys.stderr.write('\n')
+    # y_score.append(mse_loss)
 
-        
-    return y_true, y_pred, y_score
+    return y_true, y_pred, mse_loss
 
 
 def load_model():
@@ -178,15 +146,41 @@ def r_squared_mse(y_true, y_pred, sample_weight=None, multioutput=None):
     # bounds_check = np.min(y_pred) > MIN_MOISTURE_BOUND
     # bounds_check = bounds_check&(np.max(y_pred) < MAX_MOISTURE_BOUND)
 
-    print('Scoring - std', np.std(y_true), np.std(y_pred))
-    print('Scoring - median', np.median(y_true), np.median(y_pred))
-    print('Scoring - min', np.min(y_true), np.min(y_pred))
-    print('Scoring - max', np.max(y_true), np.max(y_pred))
-    print('Scoring - mean', np.mean(y_true), np.mean(y_pred))
-    print('Scoring - MSE: ', mse, 'RMSE: ', math.sqrt(mse))
-    print('Scoring - R2: ', r2)
+    # print('Scoring - std', np.std(y_true), np.std(y_pred))
+    # print('Scoring - median', np.median(y_true), np.median(y_pred))
+    # print('Scoring - min', np.min(y_true), np.min(y_pred))
+    # print('Scoring - max', np.max(y_true), np.max(y_pred))
+    # print('Scoring - mean', np.mean(y_true), np.mean(y_pred))
+    # print('Scoring - MSE: ', mse, 'RMSE: ', math.sqrt(mse))
+    # print('Scoring - R2: ', r2)
     # print(y_pred)
     # exit()
+
+
+    # Output aggregated scores.
+    try:
+        sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+        print('type \t Actual \t\t Predictions'.format(np.std(y_true), np.std(y_pred)))
+        sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+        print('std \t {0:.2f} \t\t {1:.2f}'.format(np.std(y_true), np.std(y_pred)))
+        sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+        print('min \t {0:.2f} \t\t {1:.2f}'.format(np.min(y_true), np.min(y_pred)))
+        sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+        print('max \t {0:.2f} \t\t {1:.2f}'.format(np.max(y_true), np.max(y_pred)))
+        sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+        print('median \t {0:.2f} \t\t {1:.2f}'.format(np.median(y_true), np.median(y_pred)))
+        sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+        print('mean \t {0:.2f} \t\t {1:.2f}'.format(np.mean(y_true), np.mean(y_pred)))
+        sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+        print('MSE \t {0:.4f}'.format(mse))
+        sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+        print('RMSE \t {0:.4f}'.format(math.sqrt(mse)))
+        sys.stdout.write(str(datetime.datetime.now()) + ' | ')
+        print('R2 \t {0:.4f}'.format(r2))
+
+    except Exception as e:
+        sys.stderr.write(str(e))
+        sys.stderr.write('\n')
 
     result_message = 'r2:{:.3f}, mse:{:.3f}, std:{:.3f},{:.3f}'.format(r2, mse, np.std(y_true), np.std(y_pred))
     return result_message
@@ -217,29 +211,8 @@ def conv1d(
         in_channels,
         out_channels,
 ):
-    """
-    Overloads torch.conv1d to be able to use MPC on convolutional networks.
-    The idea is to build new tensors from input and weight to compute a
-    matrix multiplication equivalent to the convolution.
 
-    Args:
-        input: input image
-        weight: convolution kernels
-        bias: optional additive bias
-        stride: stride of the convolution kernels
-        padding:
-        dilation: spacing between kernel elements
-        groups:
-        padding_mode: type of padding, should be either 'zeros' or 'circular' but 'reflect' and 'replicate' accepted
-    Returns:
-        the result of the convolution as an AdditiveSharingTensor
-    """
-    # Currently, kwargs are not unwrapped by hook_args
-    # So this needs to be done manually
-    # if bias.is_wrapper:
-    #     bias = bias.child
     input = input.view(input.shape[0], in_channels, -1)
-
     assert len(input.shape) == 3
 
     # Change to tuple if not one
@@ -288,92 +261,37 @@ def conv1d(
             pixel = c * dilation
             pattern_ind.append(pixel + ch * nb_cols_in)
 
-    # The image tensor is reshaped for the matrix multiplication:
-    # on each row of the new tensor will be the input values used for each filter convolution
-    # We will get a matrix [[in values to compute out value 0],
-    #                       [in values to compute out value 1],
-    #                       ...
-    #                       [in values to compute out value nb_rows_out*nb_cols_out]]
     im_flat = input.view(batch_size, -1)
     im_reshaped = []
-    # for cur_row_out in range(nb_rows_out):
     for cur_col_out in range(nb_cols_out):
         # For each new output value, we just need to shift the receptive field
         offset = cur_col_out * stride
         tmp = [ind + offset for ind in pattern_ind]
         im_reshaped.append(im_flat[:, tmp])
-
-    # print('img reshaped shape', np.array(im_reshaped).shape)
-
     im_reshaped = torch.stack(im_reshaped).permute(1, 0, 2)
-    # print('after img reshaped shape', im_reshaped.shape)
-    # The convolution kernels are also reshaped for the matrix multiplication
-    # We will get a matrix [[weights for out channel 0],
-    #                       [weights for out channel 1],
-    #                       ...
-    #                       [weights for out channel nb_channels_out]].TRANSPOSE()
-    # weight_reshaped = weight.view(nb_channels_out // groups, -1).t()
-
-    # Now that everything is set up, we can compute the result
-    # if groups > 1:
-    #     res = []
-    #     chunks_im = torch.chunk(im_reshaped, groups, dim=1)
-    #     chunks_weights = torch.chunk(weight_reshaped, groups, dim=0)
-    #     for g in range(groups):
-    #         tmp = chunks_im[g].matmul(chunks_weights[g])
-    #         res.append(tmp)
-    #     res = torch.cat(res, dim=1)
-    # else:
-    #     res = im_reshaped.matmul(weight_reshaped)
-
-    # Add a bias if needed
-    # if bias is not None:
-    #     res += bias
-    #
-    # # ... And reshape it back to an image
-    # res = (
-    #     res.permute(0, 2, 1)
-    #         .view(batch_size, nb_channels_out, nb_cols_out)
-    #         .contiguous()
-    # )
     return im_reshaped
 
 if __name__ == '__main__':
     W, b, act = load_model()
+    # X_train = np.genfromtxt('../data/ecg/text_demo_440/Xtrain', delimiter=',', dtype='float')
+    # y_train = np.genfromtxt('../data/ecg/text_demo_440/ytrain', delimiter=',', dtype='float')
+    X_train = np.genfromtxt('../data/ecg/text_demo_5500/Xtrain', delimiter=',', dtype='float')
+    y_train = np.genfromtxt('../data/ecg/text_demo_5500/ytrain', delimiter=',', dtype='float')
 
-    # X_train = np.genfromtxt('demo_data/text_demo/Xtrain',
-    #                         delimiter=',', dtype='float')
-    # y_train = np.genfromtxt('demo_data/text_demo/ytrain',
-    #                         delimiter=',', dtype='float')
-    X_train = np.genfromtxt('../data/ecg/text_demo_5500/Xtrain',
-                            delimiter=',', dtype='float')
-    y_train = np.genfromtxt('../data/ecg/text_demo_5500/ytrain',
-                            delimiter=',', dtype='float')
-
-    if isTest:
-        X_train = X_train[:20,:]
-        y_train = y_train[:20]
-        print(X_train.shape, y_train.shape)
-
-    print('Training accuracy:')
-    report_scores(X_train, y_train, W, b, act)
-
-    # X_test = np.genfromtxt('demo_data/text_demo/Xtest',
-    #                         delimiter=',', dtype='float')
-    # y_test = np.genfromtxt('demo_data/text_demo/ytest',
-    #                         delimiter=',', dtype='float')
-    X_test = np.genfromtxt('../data/ecg/text_demo_5500/Xtest',
-                            delimiter=',', dtype='float')
-    y_test = np.genfromtxt('../data/ecg/text_demo_5500/ytest',
-                            delimiter=',', dtype='float')
+    # X_test = np.genfromtxt('../data/ecg/text_demo_440/Xtest', delimiter=',', dtype='float')
+    # y_test = np.genfromtxt('../data/ecg/text_demo_440/ytest', delimiter=',', dtype='float')
+    X_test = np.genfromtxt('../data/ecg/text_demo_5500/Xtest', delimiter=',', dtype='float')
+    y_test = np.genfromtxt('../data/ecg/text_demo_5500/ytest', delimiter=',', dtype='float')
 
     if isTest:
-        X_test = X_test[:20,:]
-        y_test = y_test[:20]
-        print(X_test.shape, y_test.shape)
+        X_train = X_train[:y_test.shape[0], :]
+        y_train = y_train[:y_test.shape[0]]
 
-    print('Testing accuracy:')
-    y_true, y_pred, _ = report_scores(X_test, y_test, W, b, act)
+    _, _, train_mse_loss = report_scores(X_train, y_train, W, b, act)
+    print('Training mse_loss: {0:.4f}'.format(train_mse_loss))
+
+    y_true, y_pred, test_mse_loss = report_scores(X_test, y_test, W, b, act)
+    print('Testing mse_loss: {0:.4f}'.format(test_mse_loss))
     rm = r_squared_mse(y_true, y_pred)
 
     scatter_plot(y_true, y_pred, rm)
