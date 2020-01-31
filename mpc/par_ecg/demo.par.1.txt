@@ -24,21 +24,21 @@ NUM_THREADS 20
 # DTI
 CACHE_FILE_PREFIX ../cache/ecg
 FEATURE_RANK 1500
-FEATURES_FILE ../../../data/ecg/text_demo_440/X
-LABELS_FILE ../../../data/ecg/text_demo_440/y
+FEATURES_FILE ../../../data/ecg/text_demo_5500/X
+LABELS_FILE ../../../data/ecg/text_demo_5500/y
 TRAIN_SUFFIXES ../../demo_data/text_demo/train_suffixes.txt
 TEST_SUFFIXES ../../demo_data/text_demo/test_suffixes.txt
 PROFILER 1
 
 # DEMO.
 # MAX_EPOCHS 50
-N_FILE_BATCH 400
-MAX_EPOCHS 2
-BATCH_SIZE 20
+N_FILE_BATCH 5000
+MAX_EPOCHS 10
+BATCH_SIZE 10
 N_NEURONS 16
 N_NEURONS_2 64
-N_HIDDEN 4
-LEARN_RATE 0.001
+N_HIDDEN 5
+LEARN_RATE 0.0004
 REG 0.0
 
 # FILES

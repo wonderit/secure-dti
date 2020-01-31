@@ -1444,6 +1444,8 @@ private:
     int out_cols = elem_wise ? a.NumCols() : b.NumCols();
 
     Mat<T> ar, am, br, bm;
+//    TODO RESHAPE AFTER BEAVER PARTITION for efficiency
+//    before reshaping ar and am
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 

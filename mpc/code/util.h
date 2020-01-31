@@ -67,6 +67,17 @@ static T Sum(Vec<T>& a) {
   }
   return val;
 }
+template<class T>
+static T Sum(Mat<T>& a) {
+  T val;
+  val = 0;
+  for (int i = 0; i < a.NumRows(); i++) {
+    for (int j = 0; j < a.NumCols(); j++) {
+      val += a[i][j];
+    }
+  }
+  return val;
+}
 
 template<class T>
 static void FilterMatRows(Mat<ZZ_p>& a, Vec<T>& filt) {

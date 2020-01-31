@@ -15,8 +15,6 @@ MEAN = 59.3
 STD = 10.6
 result_path = 'result'
 isTest = False
-epoch = 0
-batch = 40
 
 # 11000 criteria
 # mean_x = 1.66
@@ -152,12 +150,12 @@ def report_scores(X, y, W, b, act):
 def load_model():
     W = [ [] for _ in range(N_HIDDEN + 1) ]
     for l in range(N_HIDDEN+1):
-        W[l] = np.loadtxt('mpc/cache/ecg_P1_W{}_{}_{}.bin'.format(l, epoch, batch))
+        W[l] = np.loadtxt('mpc/cache/ecg_P1_W{}_final.bin'.format(l))
 
      # Initialize bias vector with zeros.
     b = [ []  for _ in range(N_HIDDEN + 1) ]
     for l in range(N_HIDDEN+1):
-        b[l] = np.loadtxt('mpc/cache/ecg_P1_b{}_{}_{}.bin'.format(l, epoch, batch))
+        b[l] = np.loadtxt('mpc/cache/ecg_P1_b{}_final.bin'.format(l))
 
     # Initialize activations.
     act = [ [] for _ in range(N_HIDDEN) ]
@@ -207,7 +205,7 @@ def scatter_plot(y_true, y_pred, message):
     plt.suptitle(message)
     plt.xlabel('Predictions')
     plt.ylabel('Actual')
-    plt.savefig("{}/scatter/{}_{}.png".format(result_path, epoch, batch))
+    plt.savefig("{}/scatter/{}.png".format(result_path, 1))
     plt.clf()
     # plt.show()
 
