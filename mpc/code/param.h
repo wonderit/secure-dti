@@ -20,8 +20,10 @@ class Param {
     static int PORT_P1_P2;
     static int PORT_P1_P3;
     static int PORT_P2_P3;
-    
+
     /* Directories and files */
+    static int CACHED_PARAM_EPOCH; // to use parameter from previous models
+    static int CACHED_PARAM_BATCH; // to use parameter from previous models
     static string KEY_PATH; // encryption keys for secure channels
     static string LOG_FILE; // runtime/communication profiler output file
     static string OUTPUT_FILE_PREFIX; // prefix for output

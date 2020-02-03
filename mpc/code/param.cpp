@@ -71,6 +71,10 @@ bool Param::ParseFile(const char *param_file) {
       ret = Convert(v, Param::ITER_PER_EVAL, k);
     } else if (k == "OUTPUT_FILE_PREFIX") {
       ret = Convert(v, Param::OUTPUT_FILE_PREFIX, k);
+    } else if (k == "CACHED_PARAM_EPOCH") {
+      ret = Convert(v, Param::CACHED_PARAM_EPOCH, k);
+    } else if (k == "CACHED_PARAM_BATCH") {
+      ret = Convert(v, Param::CACHED_PARAM_BATCH, k);
     } else if (k == "LOG_FILE") {
       ret = Convert(v, Param::LOG_FILE, k);
     } else if (k == "CACHE_FILE_PREFIX") {
@@ -159,6 +163,8 @@ int Param::ITER_PER_EVAL= 5;
 string Param::OUTPUT_FILE_PREFIX = "../out/ecg";
 string Param::CACHE_FILE_PREFIX = "../cache/ecg";
 string Param::LOG_FILE = "../log/ecg.txt";
+int Param::CACHED_PARAM_EPOCH = 0;
+int Param::CACHED_PARAM_BATCH = 0;
 
 long Param::FEATURE_RANK = 100;
 double Param::MOMENTUM = 0.9;
