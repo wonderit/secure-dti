@@ -1,0 +1,1 @@
+nohup ./ecg_share_data.sh > share_ecg.log &

@@ -240,12 +240,13 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
 
       // Set param from cached results
       if (Param::CACHED_PARAM_BATCH > 0 && Param::CACHED_PARAM_EPOCH > 0) {
-        if (!text_to_matrix(W_layer, ifs, "../cache/ecg_P1_W" + to_string(l) + "_"
-        + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH) + ".bin",
-                            W_layer.NumRows(), W_layer.NumCols()))
+        if (!text_to_matrix(W_layer, ifs, "../cache/ecg_P1_"
+        + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
+        + "_W" + to_string(l) + ".bin", W_layer.NumRows(), W_layer.NumCols()))
           return;
-        if (!text_to_vector(b_layer, ifs, "../cache/ecg_P1_b" + to_string(l) + "_"
-        + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH) + ".bin"))
+        if (!text_to_vector(b_layer, ifs, "../cache/ecg_P1_"
+        + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
+        + "_b" + to_string(l) + ".bin"))
           return;
       } else {
         initialize_parameters(W_layer, b_layer);
@@ -820,14 +821,12 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
         Mat<ZZ_p> W_out;
         Init(W_out, W[l].NumRows(), W[l].NumCols());
         W_out += W[l];
-        reveal(W_out, cache(pid, "W" + to_string(l) + "_" + to_string(epoch)
-        + "_" + to_string(i)), mpc);
+        reveal(W_out, cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "W" + to_string(l)), mpc);
 
         Vec<ZZ_p> b_out;
         Init(b_out, b[l].length());
         b_out += b[l];
-        reveal(b_out, cache(pid, "b" + to_string(l) + "_" + to_string(epoch)
-        + "_" + to_string(i)), mpc);
+        reveal(b_out, cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "b" + to_string(l)), mpc);
       }
     }
 
@@ -860,14 +859,14 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
         Mat<ZZ_p> W_out;
         Init(W_out, W[l].NumRows(), W[l].NumCols());
         W_out += W[l];
-        reveal(W_out, cache(pid, "errorW" + to_string(l) + "_" + to_string(epoch)
-                                 + "_" + to_string(i)), mpc);
+        reveal(W_out, cache(pid, "_" + to_string(epoch)
+                                 + "_" + to_string(i) + "_errorW" + to_string(l)), mpc);
 
         Vec<ZZ_p> b_out;
         Init(b_out, b[l].length());
         b_out += b[l];
-        reveal(b_out, cache(pid, "errorb" + to_string(l) + "_" + to_string(epoch)
-                                 + "_" + to_string(i)), mpc);
+        reveal(b_out, cache(pid, "_" + to_string(epoch)
+                                 + "_" + to_string(i) + "_errorb" + to_string(l)), mpc);
       }
 
       if (pid > 0 ) {
