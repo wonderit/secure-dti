@@ -142,6 +142,7 @@ void initialize_parameters(Mat<ZZ_p>& W_layer, Vec<ZZ_p>& b_layer) {
 void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
                       vector<Mat<ZZ_p> >& dW, vector<Vec<ZZ_p> >& db,
                       vector<Mat<ZZ_p> >& vW, vector<Vec<ZZ_p> >& vb,
+                      vector<Mat<ZZ_p> >& mW, vector<Vec<ZZ_p> >& mb,
                       int pid, MPCEnv& mpc) {
   /* Random number generator for Gaussian noise
      initialization of weight matrices. */
@@ -149,8 +150,8 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
 //  std::normal_distribution<double> distribution (0.0, 0.01);
 
   for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-    Mat<ZZ_p> W_layer, dW_layer, vW_layer;
-    Vec<ZZ_p> b_layer, db_layer, vb_layer;
+    Mat<ZZ_p> W_layer, dW_layer, vW_layer, mW_layer;
+    Vec<ZZ_p> b_layer, db_layer, vb_layer, mb_layer;
     Mat<double> double_W_layer;
     Vec<double> double_b_layer;
 
@@ -188,9 +189,11 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
     
     dW_layer.SetDims(W_layer.NumRows(), W_layer.NumCols());
     Init(vW_layer, W_layer.NumRows(), W_layer.NumCols());
+    Init(mW_layer, W_layer.NumRows(), W_layer.NumCols());
     
     db_layer.SetLength(b_layer.length());
     Init(vb_layer, b_layer.length());
+    Init(mb_layer, b_layer.length());
      
     Mat<ZZ_p> W_r;
     Vec<ZZ_p> b_r;
@@ -234,7 +237,19 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
 //
 //        initialize_parameters(W_layer, b_layer);
 //      }
-      initialize_parameters(W_layer, b_layer);
+
+      // Set param from cached results
+      if (Param::CACHED_PARAM_BATCH > 0 && Param::CACHED_PARAM_EPOCH > 0) {
+        if (!text_to_matrix(W_layer, ifs, "../cache/ecg_P1_W" + to_string(l) + "_"
+        + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH) + ".bin",
+                            W_layer.NumRows(), W_layer.NumCols()))
+          return;
+        if (!text_to_vector(b_layer, ifs, "../cache/ecg_P1_b" + to_string(l) + "_"
+        + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH) + ".bin"))
+          return;
+      } else {
+        initialize_parameters(W_layer, b_layer);
+      }
 
       /* Blind the data. */
       mpc.SwitchSeed(1);
@@ -257,9 +272,11 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
     W.push_back(W_layer);
     dW.push_back(dW_layer);
     vW.push_back(vW_layer);
+    mW.push_back(mW_layer);
     b.push_back(b_layer);
     db.push_back(db_layer);
     vb.push_back(vb_layer);
+    mb.push_back(mb_layer);
   }
 }
 
@@ -267,6 +284,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
                       vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
                       vector<Mat<ZZ_p> >& dW, vector<Vec<ZZ_p> >& db,
                       vector<Mat<ZZ_p> >& vW, vector<Vec<ZZ_p> >& vb,
+                        vector<Mat<ZZ_p> >& mW, vector<Vec<ZZ_p> >& mb,
                       vector<Mat<ZZ_p> >& act, vector<Mat<ZZ_p> >& relus,
                       int epoch, int pid, MPCEnv& mpc) {
 //  if (pid == 2)
@@ -615,6 +633,58 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     b[l] += b_update;
 
   }
+//
+//
+//  if (pid == 2)
+//    if (Param::DEBUG) tcout() << "Adam update." << endl;
+//  /* Update the model using Adam. */
+//  /* Compute constants that update various parameters. */
+//
+//  double beta_1 = 0.9;
+//  double beta_2 = 0.999;
+//  double eps = 1e-8;
+//
+//  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
+//                             Param::NBIT_K, Param::NBIT_F);
+//  ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
+//                                   Param::NBIT_K, Param::NBIT_F);
+//  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
+//                               Param::NBIT_K, Param::NBIT_F);
+//
+//  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+//
+//    int t = l;
+//    ZZ_p fp_b1_pow_t = DoubleToFP(pow(beta_1, l), Param::NBIT_K, Param::NBIT_F);
+//    ZZ_p fp_b2_pow_t = DoubleToFP(pow(beta_2, l), Param::NBIT_K, Param::NBIT_F);
+//    ZZ_p fp_b1 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
+//    ZZ_p fp_b2 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
+//    ZZ_p fp_1_b1 = DoubleToFP(1 - beta_1, Param::NBIT_K, Param::NBIT_F);
+//    ZZ_p fp_1_b2 = DoubleToFP(1 - beta_2, Param::NBIT_K, Param::NBIT_F);
+//    ZZ_p eps_fp = DoubleToFP(1e-8, Param::NBIT_K, Param::NBIT_F);
+//
+//    /* Update the weights. */
+//
+////    Mat<ZZ_p> vW_prev = vW[l];
+////    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
+////    Init(mW_layer, W_layer.NumRows(), W_layer.NumCols());
+//    Mat<ZZ_p> mW_prev = mW[l];
+//    Mat<ZZ_p> vW_prev = vW[l];
+//
+//    vW[l] = - (LEARN_RATE * dW[l]);
+//    mpc.Trunc(vW[l]);
+////    Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
+////    mpc.Trunc(W_update);
+//    W[l] += W_update;
+//
+//    /* Update the biases. */
+//    Vec<ZZ_p> vb_prev = vb[l];
+//    vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
+//    mpc.Trunc(vb[l]);
+//    Vec<ZZ_p> b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
+//    mpc.Trunc(b_update);
+//    b[l] += b_update;
+//
+//  }
 
   Mat<ZZ_p> mse;
   Mat<double> mse_double;
@@ -684,6 +754,7 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
                   vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
                   vector<Mat<ZZ_p> >& dW, vector<Vec<ZZ_p> >& db,
                   vector<Mat<ZZ_p> >& vW, vector<Vec<ZZ_p> >& vb,
+                  vector<Mat<ZZ_p> >& mW, vector<Vec<ZZ_p> >& mb,
                   vector<Mat<ZZ_p> >& act, vector<Mat<ZZ_p> >& relus,
                   int& epoch, int pid, MPCEnv& mpc) {
 
@@ -710,6 +781,12 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 
   for (int i = 0; i < batches_in_file; i++) {
 
+    // continue if using cached parameter
+    if (epoch == Param::CACHED_PARAM_EPOCH && i < Param::CACHED_PARAM_BATCH) {
+      if (Param::DEBUG) tcout() << "Epoch : " << epoch << " - Batch : " << i << " skipped" << endl;
+      continue;
+    }
+
     /* Scan matrix (pre-shuffled) to get batch. */
     int base_j = i * Param::BATCH_SIZE;
 //    for (int j = base_j;
@@ -730,22 +807,22 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     if (Param::DEBUG) tcout() << "x = " << X_batch.NumRows() << ", " << X_batch.NumCols() << endl;
     /* Do one round of mini-batch gradient descent. */
     double mse_score = gradient_descent(X_batch, y_batch,
-                     W, b, dW, db, vW, vb, act, relus,
+                     W, b, dW, db, vW, vb, mW, mb, act, relus,
                      epoch, pid, mpc);
 
     /* Save state every 10 batches. */
     if (i % 10 == 0) {
       if (pid == 2) {
-        tcout() << "Save parameters of W, b into .bin files." << endl;
+        tcout() << "save parameters of W, b into .bin files." << endl;
       }
-
+//
       for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
         Mat<ZZ_p> W_out;
         Init(W_out, W[l].NumRows(), W[l].NumCols());
         W_out += W[l];
         reveal(W_out, cache(pid, "W" + to_string(l) + "_" + to_string(epoch)
         + "_" + to_string(i)), mpc);
-        
+
         Vec<ZZ_p> b_out;
         Init(b_out, b[l].length());
         b_out += b[l];
@@ -771,7 +848,67 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
               << " laptime : " << laptime
               << " total time: " << hour << ":" << minute << ":" << second << endl;
 
+    }
 
+    if (mse_score < 0 && pid > 0) {
+
+      tcout() << "print FP" << endl;
+      mpc.PrintFP(X_batch[0][0]);
+      mpc.PrintFP(y_batch[0]);
+
+      for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+        Mat<ZZ_p> W_out;
+        Init(W_out, W[l].NumRows(), W[l].NumCols());
+        W_out += W[l];
+        reveal(W_out, cache(pid, "errorW" + to_string(l) + "_" + to_string(epoch)
+                                 + "_" + to_string(i)), mpc);
+
+        Vec<ZZ_p> b_out;
+        Init(b_out, b[l].length());
+        b_out += b[l];
+        reveal(b_out, cache(pid, "errorb" + to_string(l) + "_" + to_string(epoch)
+                                 + "_" + to_string(i)), mpc);
+      }
+
+      if (pid > 0 ) {
+        tcout() << "print FP" << endl;
+        mpc.PrintFP(X_batch[0][0]);
+        mpc.PrintFP(y_batch[0]);
+      }
+      reveal(X_batch, cache(pid, "errorX_" + to_string(epoch)
+                               + "_" + to_string(i)), mpc);
+
+      reveal(y_batch, cache(pid, "errory_" + to_string(epoch)
+                           + "_" + to_string(i)), mpc);
+
+//      fstream fs;
+//      for (int k = 0; k < 3; k++) {
+//
+//        string fname = "../cache/ecg_forceseed_P" + to_string(k) + ".bin";
+//        tcout() << "open Seed name:" << fname  << endl;
+//        fs.open(fname.c_str(), ios::binary);
+//        mpc.SwitchSeed(k);
+//        mpc.ExportSeed(fs, k);
+//        mpc.RestoreSeed();
+//        fs.close();
+//      }
+
+
+    } else {
+
+//      for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+//        Mat<ZZ_p> W_out;
+//        Init(W_out, W[l].NumRows(), W[l].NumCols());
+//        W_out += W[l];
+//        reveal(W_out, cache(pid, "normalW" + to_string(l) + "_" + to_string(epoch)
+//                                 + "_" + to_string(i)), mpc);
+//
+//        Vec<ZZ_p> b_out;
+//        Init(b_out, b[l].length());
+//        b_out += b[l];
+//        reveal(b_out, cache(pid, "normalb" + to_string(l) + "_" + to_string(epoch)
+//                                 + "_" + to_string(i)), mpc);
+//      }
     }
 
     /* Update reference to training epoch. FOR TEST */
@@ -792,9 +929,9 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
 
   /* Initialize model and data structures. */
   tcout() << "Initializing model." << endl;
-  vector<Mat<ZZ_p> > W, dW, vW, act, relus;
-  vector<Vec<ZZ_p> > b, db, vb;
-  initialize_model(W, b, dW, db, vW, vb, pid, mpc);
+  vector<Mat<ZZ_p> > W, dW, vW, act, relus, mW;
+  vector<Vec<ZZ_p> > b, db, vb, mb;
+  initialize_model(W, b, dW, db, vW, vb, mW, mb, pid, mpc);
 
   srand(0);  /* Seed 0 to have deterministic testing. */
 
@@ -820,8 +957,15 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
   for (int epoch = 0; epoch < Param::MAX_EPOCHS;
        /* model_update() updates epoch. */) {
 
+    // continue if using cached parameter
+    if (epoch < Param::CACHED_PARAM_EPOCH) {
+      if (Param::DEBUG) tcout() << "Epoch : " << epoch << " skipped" << endl;
+      epoch++;
+      continue;
+    }
+
     /* Do model updates and file reads in parallel. */
-    model_update(X, y, W, b, dW, db, vW, vb, act, relus,
+    model_update(X, y, W, b, dW, db, vW, vb, mW, mb,act, relus,
                  epoch, pid, mpc);
 
     suffix = suffixes[rand() % suffixes.size()];
