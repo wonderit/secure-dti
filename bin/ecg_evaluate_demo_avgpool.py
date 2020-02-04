@@ -41,6 +41,22 @@ def rescale(arr, m, s):
     arr = arr + m
     return arr
 
+def avgpool(arr, kernel_size, stride):
+    row = arr.shape[1] / stride
+    if row % 2 == 1:
+        row = row - 1
+    row = int(row)
+    print('row : ', row)
+    new_shape = (arr.shape[0], row, arr.shape[2])
+    new_arr = np.zeros(new_shape)
+    print('new arr ', new_arr.shape)
+
+    for r in range(row):
+        for k in range(kernel_size):
+            new_arr[:, r, :] += arr[:, r * stride + k,:] / kernel_size
+
+    return new_arr
+
 
 def report_scores(X, y, W, b, act):
     y_true = []
@@ -57,6 +73,7 @@ def report_scores(X, y, W, b, act):
         # print('l ==== ', l)
         if l == 0:
             act[l] = np.dot(reshape_img, W[l]) + b[l]
+            act[l] = avgpool(act[l], 2, 2)
             # act[l] = np.maximum(0, np.dot(reshape_img, W[l]) + b[l])
         else:
             # if l == 1:
@@ -77,6 +94,8 @@ def report_scores(X, y, W, b, act):
                 act[l] = np.dot(act[l-1], W[l]) + b[l]
             else:
                 act[l] = np.maximum(0, np.dot(act[l-1], W[l]) + b[l])
+                if l == 1 or l == 2:
+                    act[l] = avgpool(act[l], 2, 2)
 
     # print('act', act)
 

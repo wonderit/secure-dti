@@ -1035,7 +1035,7 @@ public:
   template<class T>
   void MultMatForConvBack(Mat<T>& c, Mat<T>& a_t, Mat<T>& b, int filter_size, int fid = 0) {
     Mat<T> a = transpose(a_t);
-    if(debug) cout << "MultMatForConv: (" << a.NumRows() << ", " << a.NumCols() << "), (" << b.NumRows() << ", " << b.NumCols() << ")" << endl;
+    if(Param::DEBUG) cout << "MultMatForConv: (" << a.NumRows() << ", " << a.NumCols() << "), (" << b.NumRows() << ", " << b.NumCols() << ")" << endl;
 
     Mat<T> ar, am, br, bm, ar_conv, am_conv;
     BeaverPartition(ar, am, a, fid);
@@ -1049,11 +1049,33 @@ public:
 
     int out_rows = ar_conv_t.NumRows();
     int out_cols = b.NumCols();
-    assert(ar_conv_t.NumCols() == br.NumRows());
-    assert(am_conv_t.NumCols() == bm.NumRows());
 
     Init(c, out_rows, out_cols);
-    BeaverMult(c, ar_conv_t, am_conv_t, br, bm, false, fid);
+
+    // dimension mismatch bc of pooling layers
+    if (ar_conv_t.NumCols() > br.NumRows()) {
+
+      if(Param::DEBUG) cout << "ar_conv_t: (" << ar_conv_t.NumRows() << ", " << ar_conv_t.NumCols() << "), (" << br.NumRows() << ", " << br.NumCols() << ")" << endl;
+      Mat<T> new_ar_conv_t;
+      Mat<T> new_am_conv_t;
+      Init(new_ar_conv_t, ar_conv_t.NumRows(), br.NumRows()); // 21, 4920
+      Init(new_am_conv_t, am_conv_t.NumRows(), bm.NumRows()); // 21, 4920
+
+      int prev_row = ar_conv_t.NumCols() / Param::BATCH_SIZE; // 494
+      int row = br.NumRows() / Param::BATCH_SIZE; // 492
+      int channel = ar_conv_t.NumRows(); // 21
+      for (int b = 0; b < Param::BATCH_SIZE; b++) {
+        for (int r = 0; r < row; r++) {
+          for (int c = 0; c < channel; c++) {
+            new_ar_conv_t[c][b * row + r] = ar_conv_t[c][b * prev_row + r];
+            new_am_conv_t[c][b * row + r] = am_conv_t[c][b * prev_row + r];
+          }
+        }
+      }
+      BeaverMult(c, new_ar_conv_t, new_am_conv_t, br, bm, false, fid);
+    } else {
+      BeaverMult(c, ar_conv_t, am_conv_t, br, bm, false, fid);
+    }
 
     BeaverReconstruct(c, fid);
   }

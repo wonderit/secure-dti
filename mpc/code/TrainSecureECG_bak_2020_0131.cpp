@@ -103,53 +103,6 @@ bool text_to_vector(Vec<ZZ_p>& vec, ifstream& ifs, string fname) {
   return true;
 }
 
-void AveragePool(Mat<ZZ_p>& avgpool, Mat<ZZ_p>& input, int kernel_size, int stride) {
-  int prev_row = input.NumRows() / Param::BATCH_SIZE;
-  int row = prev_row / stride;
-  if (row % 2 == 1)
-    row--;
-  Init(avgpool, row * Param::BATCH_SIZE, input.NumCols());
-  for (int b = 0; b < Param::BATCH_SIZE; b++) {
-    for (int i = 0; i < row; i++) {
-      for (int c = 0; c < input.NumCols(); c++) {
-        for (int k = 0; k < kernel_size; k++) {
-          avgpool[b * row + i][c] += input[b * row * stride + k][c];
-        }
-      }
-    }
-  }
-
-//  ZZ_p norm_examples;
-//  DoubleToFP(norm_examples, 1. / ((double) kernel_size),
-//             Param::NBIT_K, Param::NBIT_F);
-//  avgpool *= norm_examples;
-//  mpc.Trunc(avgpool);
-}
-
-void BackAveragePool(Mat<ZZ_p>& input, Mat<ZZ_p>& avgpool, int kernel_size, int stride) {
-
-  if (Param::DEBUG) tcout() << "avgpool row, cols (" << avgpool.NumRows() << ", " << avgpool.NumCols() << ")" << endl;
-  int prev_row = avgpool.NumRows() / Param::BATCH_SIZE;
-  int row = prev_row * stride;
-  Init(input, row * Param::BATCH_SIZE, avgpool.NumCols());
-
-  for (int b = 0; b < Param::BATCH_SIZE; b++) {
-    for (int i = 0; i < prev_row; i++) {
-      for (int c = 0; c < avgpool.NumCols(); c++) {
-        for (int k = 0; k < kernel_size; k++) {
-          input[b * prev_row * stride + k][c] = avgpool[b * prev_row + i][c];
-        }
-      }
-    }
-  }
-
-//  ZZ_p norm_examples;
-//  DoubleToFP(norm_examples, 1. / ((double) kernel_size),
-//             Param::NBIT_K, Param::NBIT_F);
-//  input *= norm_examples;
-//  Trunc(input);
-}
-
 void initialize_parameters(Mat<ZZ_p>& W_layer, Vec<ZZ_p>& b_layer) {
 
   Init(b_layer, b_layer.length());
@@ -222,7 +175,7 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
       W_layer.SetDims(42, 6);
       b_layer.SetLength(6);
     } else if (l == 3) {
-      W_layer.SetDims(336, Param::N_NEURONS); // 2892, 2928
+      W_layer.SetDims(2892, Param::N_NEURONS); // 2892, 2928
       b_layer.SetLength(Param::N_NEURONS);
     } else if (l == 4) {
       W_layer.SetDims(Param::N_NEURONS, Param::N_NEURONS_2);
@@ -284,20 +237,7 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
 //
 //        initialize_parameters(W_layer, b_layer);
 //      }
-
-      // Set param from cached results
-      if (Param::CACHED_PARAM_BATCH > 0 && Param::CACHED_PARAM_EPOCH > 0) {
-        if (!text_to_matrix(W_layer, ifs, "../cache/ecg_P1_"
-        + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
-        + "_W" + to_string(l) + ".bin", W_layer.NumRows(), W_layer.NumCols()))
-          return;
-        if (!text_to_vector(b_layer, ifs, "../cache/ecg_P1_"
-        + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
-        + "_b" + to_string(l) + ".bin"))
-          return;
-      } else {
-        initialize_parameters(W_layer, b_layer);
-      }
+      initialize_parameters(W_layer, b_layer);
 
       /* Blind the data. */
       mpc.SwitchSeed(1);
@@ -342,10 +282,6 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
    ************************/
 
   Mat<ZZ_p> X_reshape;
-
-  // calculate denominator for avgpooling
-  ZZ_p inv2;
-  DoubleToFP(inv2, 1. / ((double) 2), Param::NBIT_K, Param::NBIT_F);
 
   for (int l = 0; l < Param::N_HIDDEN; l++) {
 
@@ -410,14 +346,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     }
 
     if (l == 0) {
-
-      // Avg Pool
-      Mat<ZZ_p> avgpool;
-      AveragePool(avgpool, activation, 2, 2);
-      avgpool *= inv2;
-      mpc.Trunc(avgpool);
-      if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.NumRows() << ", " << avgpool.NumCols() << ")" << pid << endl;
-      act.push_back(avgpool);
+      act.push_back(activation);
 
     } else {
 
@@ -435,18 +364,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
       if (Param::DEBUG) tcout() << "ReLU -> col, rows (" << relu.NumRows() << ", " << relu.NumCols() << ")" << pid << endl;
       if (Param::DEBUG) tcout() << "after ReLU -> col, rows (" << after_relu.NumRows() << ", " << after_relu.NumCols() << ")" << pid << endl;
       if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
-
-      if (l <= 2) {
-        // Avg Pool
-        Mat<ZZ_p> avgpool;
-        AveragePool(avgpool, after_relu, 2, 2);
-        avgpool *= inv2;
-        mpc.Trunc(avgpool);
-        act.push_back(avgpool);
-        if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.NumRows() << ", " << avgpool.NumCols() << ")" << pid << endl;
-      } else {
-        act.push_back(after_relu);
-      }
+      act.push_back(after_relu);
       relus.push_back(relu);
     }
 
@@ -623,15 +541,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
         if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.NumRows() << ", " << temp.NumCols()
                                   << "), conv1d: (" << dhidden_new.NumRows() << ", " << dhidden_new.NumCols() << ")"
                                   << endl;
-
-        // Compute backpropagated avgpool
-        Mat<ZZ_p> backAvgPool;
-        BackAveragePool(backAvgPool, temp, 2, 2);
-        backAvgPool *= inv2;
-        mpc.Trunc(backAvgPool);
-        if (Param::DEBUG) tcout() << "backAvgPool: " << backAvgPool.NumRows() << "/" << backAvgPool.NumCols() << endl;
-
-        dhidden = backAvgPool;
+        dhidden = temp;
       } else {
         Mat<ZZ_p> relu = relus.back();
 
@@ -671,19 +581,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 
         }
 
-        // Compute backpropagated avgpool
-        /* Apply derivative of AvgPool1D (stride 2, kernel_size 2). */
-        if (l <= 2) {
-          Mat<ZZ_p> backAvgPool;
-          BackAveragePool(backAvgPool, dhidden_new, 2, 2);
-          backAvgPool *= inv2;
-          mpc.Trunc(backAvgPool);
-          if (Param::DEBUG) tcout() << "backAvgPool: " << backAvgPool.NumRows() << "/" << backAvgPool.NumCols() << endl;
-          mpc.MultElem(dhidden, backAvgPool, relu);
-        } else {
-          mpc.MultElem(dhidden, dhidden_new, relu);
-        }
-
+        mpc.MultElem(dhidden, dhidden_new, relu);
 
         /* Note: No need to not call Trunc().*/
         relus.pop_back();
@@ -694,46 +592,10 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   assert(act.size() == 0);
   assert(relus.size() == 0);
 
-  if (pid == 2)
-    if (Param::DEBUG) tcout() << "Momentum update." << endl;
-  /* Update the model using Nesterov momentum. */
-  /* Compute constants that update various parameters. */
-  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
-                             Param::NBIT_K, Param::NBIT_F);
-  ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
-                                   Param::NBIT_K, Param::NBIT_F);
-  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
-                               Param::NBIT_K, Param::NBIT_F);
-
-  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-    /* Update the weights. */
-    Mat<ZZ_p> vW_prev = vW[l];
-    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
-    mpc.Trunc(vW[l]);
-    Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
-    mpc.Trunc(W_update);
-    W[l] += W_update;
-
-    /* Update the biases. */
-    Vec<ZZ_p> vb_prev = vb[l];
-    vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
-    mpc.Trunc(vb[l]);
-    Vec<ZZ_p> b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
-    mpc.Trunc(b_update);
-    b[l] += b_update;
-
-  }
-//
-//
 //  if (pid == 2)
-//    if (Param::DEBUG) tcout() << "Adam update." << endl;
-//  /* Update the model using Adam. */
+//    if (Param::DEBUG) tcout() << "Momentum update." << endl;
+//  /* Update the model using Nesterov momentum. */
 //  /* Compute constants that update various parameters. */
-//
-//  double beta_1 = 0.9;
-//  double beta_2 = 0.999;
-//  double eps = 1e-8;
-//
 //  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
 //                             Param::NBIT_K, Param::NBIT_F);
 //  ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
@@ -742,28 +604,12 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 //                               Param::NBIT_K, Param::NBIT_F);
 //
 //  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-//
-//    int t = l;
-//    ZZ_p fp_b1_pow_t = DoubleToFP(pow(beta_1, l), Param::NBIT_K, Param::NBIT_F);
-//    ZZ_p fp_b2_pow_t = DoubleToFP(pow(beta_2, l), Param::NBIT_K, Param::NBIT_F);
-//    ZZ_p fp_b1 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
-//    ZZ_p fp_b2 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
-//    ZZ_p fp_1_b1 = DoubleToFP(1 - beta_1, Param::NBIT_K, Param::NBIT_F);
-//    ZZ_p fp_1_b2 = DoubleToFP(1 - beta_2, Param::NBIT_K, Param::NBIT_F);
-//    ZZ_p eps_fp = DoubleToFP(1e-8, Param::NBIT_K, Param::NBIT_F);
-//
 //    /* Update the weights. */
-//
-////    Mat<ZZ_p> vW_prev = vW[l];
-////    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
-////    Init(mW_layer, W_layer.NumRows(), W_layer.NumCols());
-//    Mat<ZZ_p> mW_prev = mW[l];
 //    Mat<ZZ_p> vW_prev = vW[l];
-//
-//    vW[l] = - (LEARN_RATE * dW[l]);
+//    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
 //    mpc.Trunc(vW[l]);
-////    Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
-////    mpc.Trunc(W_update);
+//    Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
+//    mpc.Trunc(W_update);
 //    W[l] += W_update;
 //
 //    /* Update the biases. */
@@ -775,6 +621,58 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 //    b[l] += b_update;
 //
 //  }
+
+
+  if (pid == 2)
+    if (Param::DEBUG) tcout() << "Adam update." << endl;
+  /* Update the model using Adam. */
+  /* Compute constants that update various parameters. */
+
+  double beta_1 = 0.9;
+  double beta_2 = 0.999;
+  double eps = 1e-8;
+
+  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
+                             Param::NBIT_K, Param::NBIT_F);
+  ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
+                                   Param::NBIT_K, Param::NBIT_F);
+  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
+                               Param::NBIT_K, Param::NBIT_F);
+
+  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+
+    int t = l;
+    ZZ_p fp_b1_pow_t = DoubleToFP(pow(beta_1, l), Param::NBIT_K, Param::NBIT_F);
+    ZZ_p fp_b2_pow_t = DoubleToFP(pow(beta_2, l), Param::NBIT_K, Param::NBIT_F);
+    ZZ_p fp_b1 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
+    ZZ_p fp_b2 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
+    ZZ_p fp_1_b1 = DoubleToFP(1 - beta_1, Param::NBIT_K, Param::NBIT_F);
+    ZZ_p fp_1_b2 = DoubleToFP(1 - beta_2, Param::NBIT_K, Param::NBIT_F);
+    ZZ_p eps_fp = DoubleToFP(1e-8, Param::NBIT_K, Param::NBIT_F);
+
+    /* Update the weights. */
+
+//    Mat<ZZ_p> vW_prev = vW[l];
+//    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
+//    Init(mW_layer, W_layer.NumRows(), W_layer.NumCols());
+    Mat<ZZ_p> mW_prev = mW[l];
+    Mat<ZZ_p> vW_prev = vW[l];
+
+    vW[l] = - (LEARN_RATE * dW[l]);
+    mpc.Trunc(vW[l]);
+//    Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
+//    mpc.Trunc(W_update);
+    W[l] += W_update;
+
+    /* Update the biases. */
+    Vec<ZZ_p> vb_prev = vb[l];
+    vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
+    mpc.Trunc(vb[l]);
+    Vec<ZZ_p> b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
+    mpc.Trunc(b_update);
+    b[l] += b_update;
+
+  }
 
   Mat<ZZ_p> mse;
   Mat<double> mse_double;
@@ -871,12 +769,6 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 
   for (int i = 0; i < batches_in_file; i++) {
 
-    // continue if using cached parameter
-    if (epoch == Param::CACHED_PARAM_EPOCH && i < Param::CACHED_PARAM_BATCH) {
-      if (Param::DEBUG) tcout() << "Epoch : " << epoch << " - Batch : " << i << " skipped" << endl;
-      continue;
-    }
-
     /* Scan matrix (pre-shuffled) to get batch. */
     int base_j = i * Param::BATCH_SIZE;
 //    for (int j = base_j;
@@ -903,19 +795,21 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     /* Save state every 10 batches. */
     if (i % 10 == 0) {
       if (pid == 2) {
-        tcout() << "save parameters of W, b into .bin files." << endl;
+        tcout() << "Save parameters of W, b into .bin files." << endl;
       }
-//
+
       for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
         Mat<ZZ_p> W_out;
         Init(W_out, W[l].NumRows(), W[l].NumCols());
         W_out += W[l];
-        reveal(W_out, cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "W" + to_string(l)), mpc);
-
+        reveal(W_out, cache(pid, "W" + to_string(l) + "_" + to_string(epoch)
+        + "_" + to_string(i)), mpc);
+        
         Vec<ZZ_p> b_out;
         Init(b_out, b[l].length());
         b_out += b[l];
-        reveal(b_out, cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "b" + to_string(l)), mpc);
+        reveal(b_out, cache(pid, "b" + to_string(l) + "_" + to_string(epoch)
+        + "_" + to_string(i)), mpc);
       }
     }
 
@@ -935,6 +829,7 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
               << " loss : " << mse_score
               << " laptime : " << laptime
               << " total time: " << hour << ":" << minute << ":" << second << endl;
+
 
     }
 
@@ -983,13 +878,6 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
   /* Do gradient descent over multiple training epochs. */
   for (int epoch = 0; epoch < Param::MAX_EPOCHS;
        /* model_update() updates epoch. */) {
-
-    // continue if using cached parameter
-    if (epoch < Param::CACHED_PARAM_EPOCH) {
-      if (Param::DEBUG) tcout() << "Epoch : " << epoch << " skipped" << endl;
-      epoch++;
-      continue;
-    }
 
     /* Do model updates and file reads in parallel. */
     model_update(X, y, W, b, dW, db, vW, vb, mW, mb,act, relus,
