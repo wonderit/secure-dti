@@ -1280,10 +1280,9 @@ void MPCEnv::IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a) {
   int size = a.NumRows() * a.NumCols();
   b.SetDims(a.NumRows(), a.NumCols());
   Init(av, size); Init(bv, size);
-
-  ReshapeMatToVec(av, a);
+  Reshape(av, a);
   IsPositive(bv, av);
-  ReshapeMat(b, bv, b.NumRows(), b.NumCols());
+  Reshape(b, bv, b.NumRows(), b.NumCols());
 }
 
 // Failure probability of 1 / BASE_P
@@ -1521,6 +1520,17 @@ void MPCEnv::FPSqrt(Vec<ZZ_p>& b, Vec<ZZ_p>& b_inv, Vec<ZZ_p>& a) {
 
   b_inv = 2 * h_and_g[0][0];
   b = h_and_g[1][0];
+}
+
+void MPCEnv::FPSqrt(Mat<ZZ_p>& b, Mat<ZZ_p>& b_inv, Mat<ZZ_p>& a) {
+
+  Vec<ZZ_p> bv, bv_inv, av;
+  int size = a.NumRows() * a.NumCols();
+  Init(av, size); Init(bv, size); Init(bv_inv, size);
+  Reshape(av, a);
+  FPSqrt(bv, bv_inv, av);
+  Reshape(b, bv, a.NumRows(), a.NumCols());
+  Reshape(b_inv, bv_inv, a.NumRows(), a.NumCols());
 }
 
 void MPCEnv::FPDiv(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b) {

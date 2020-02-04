@@ -431,7 +431,7 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   int size = mse.NumRows() * mse.NumCols();
   Init(vmse, size);
 
-  ReshapeMatToVec(vmse, mse);
+  mpc.Reshape(vmse, mse);
   mse_score = Sum(vmse);
   tcout() << "MSE Score: " << endl;
   mpc.PrintFP(mse_score);

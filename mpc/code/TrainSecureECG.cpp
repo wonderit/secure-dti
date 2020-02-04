@@ -334,7 +334,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
                       vector<Mat<ZZ_p> >& vW, vector<Vec<ZZ_p> >& vb,
                         vector<Mat<ZZ_p> >& mW, vector<Vec<ZZ_p> >& mb,
                       vector<Mat<ZZ_p> >& act, vector<Mat<ZZ_p> >& relus,
-                      int epoch, int pid, MPCEnv& mpc) {
+                      int epoch, int step, int pid, MPCEnv& mpc) {
 //  if (pid == 2)
 //    tcout() << "Epoch: " << epoch << endl;
   /************************
@@ -694,46 +694,10 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   assert(act.size() == 0);
   assert(relus.size() == 0);
 
-  if (pid == 2)
-    if (Param::DEBUG) tcout() << "Momentum update." << endl;
-  /* Update the model using Nesterov momentum. */
-  /* Compute constants that update various parameters. */
-  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
-                             Param::NBIT_K, Param::NBIT_F);
-  ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
-                                   Param::NBIT_K, Param::NBIT_F);
-  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
-                               Param::NBIT_K, Param::NBIT_F);
-
-  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-    /* Update the weights. */
-    Mat<ZZ_p> vW_prev = vW[l];
-    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
-    mpc.Trunc(vW[l]);
-    Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
-    mpc.Trunc(W_update);
-    W[l] += W_update;
-
-    /* Update the biases. */
-    Vec<ZZ_p> vb_prev = vb[l];
-    vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
-    mpc.Trunc(vb[l]);
-    Vec<ZZ_p> b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
-    mpc.Trunc(b_update);
-    b[l] += b_update;
-
-  }
-//
-//
 //  if (pid == 2)
-//    if (Param::DEBUG) tcout() << "Adam update." << endl;
-//  /* Update the model using Adam. */
+//    if (Param::DEBUG) tcout() << "Momentum update." << endl;
+//  /* Update the model using Nesterov momentum. */
 //  /* Compute constants that update various parameters. */
-//
-//  double beta_1 = 0.9;
-//  double beta_2 = 0.999;
-//  double eps = 1e-8;
-//
 //  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
 //                             Param::NBIT_K, Param::NBIT_F);
 //  ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
@@ -742,28 +706,12 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 //                               Param::NBIT_K, Param::NBIT_F);
 //
 //  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-//
-//    int t = l;
-//    ZZ_p fp_b1_pow_t = DoubleToFP(pow(beta_1, l), Param::NBIT_K, Param::NBIT_F);
-//    ZZ_p fp_b2_pow_t = DoubleToFP(pow(beta_2, l), Param::NBIT_K, Param::NBIT_F);
-//    ZZ_p fp_b1 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
-//    ZZ_p fp_b2 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
-//    ZZ_p fp_1_b1 = DoubleToFP(1 - beta_1, Param::NBIT_K, Param::NBIT_F);
-//    ZZ_p fp_1_b2 = DoubleToFP(1 - beta_2, Param::NBIT_K, Param::NBIT_F);
-//    ZZ_p eps_fp = DoubleToFP(1e-8, Param::NBIT_K, Param::NBIT_F);
-//
 //    /* Update the weights. */
-//
-////    Mat<ZZ_p> vW_prev = vW[l];
-////    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
-////    Init(mW_layer, W_layer.NumRows(), W_layer.NumCols());
-//    Mat<ZZ_p> mW_prev = mW[l];
 //    Mat<ZZ_p> vW_prev = vW[l];
-//
-//    vW[l] = - (LEARN_RATE * dW[l]);
+//    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
 //    mpc.Trunc(vW[l]);
-////    Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
-////    mpc.Trunc(W_update);
+//    Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
+//    mpc.Trunc(W_update);
 //    W[l] += W_update;
 //
 //    /* Update the biases. */
@@ -775,6 +723,66 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 //    b[l] += b_update;
 //
 //  }
+//
+//
+  if (pid == 2)
+    if (Param::DEBUG) tcout() << "Adam update." << endl;
+  /* Update the model using Adam. */
+  /* Compute constants that update various parameters. */
+
+  double beta_1 = 0.9;
+  double beta_2 = 0.999;
+//  double eps = 1e-8;
+  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
+                               Param::NBIT_K, Param::NBIT_F);
+
+
+  ZZ_p fp_b1 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
+  ZZ_p fp_b2 = DoubleToFP(beta_2, Param::NBIT_K, Param::NBIT_F);
+  ZZ_p fp_1_b1 = DoubleToFP(1 - beta_1, Param::NBIT_K, Param::NBIT_F);
+  ZZ_p fp_1_b2 = DoubleToFP(1 - beta_2, Param::NBIT_K, Param::NBIT_F);
+//  ZZ_p eps_fp = DoubleToFP(eps, Param::NBIT_K, Param::NBIT_F);
+
+  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+    double new_double_learn_rate = Param::LEARN_RATE * sqrt(1.0 - pow(beta_2, step)) / sqrt(1.0 - pow(beta_1, step));
+//    tcout() << "l=" << l << " new_double_learn_rate: " << new_double_learn_rate << endl;
+    ZZ_p fp_new_learn_rate = DoubleToFP(new_double_learn_rate, Param::NBIT_K, Param::NBIT_F);
+
+    Mat<ZZ_p> dW2;
+    mpc.MultElem(dW2, dW[l], dW[l]);
+    mpc.Trunc(dW2);
+    /* Update the weights. */
+    mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
+    vW[l] = fp_b2 * vW[l] + fp_1_b2 * dW2;
+    mpc.Trunc(mW[l]);
+    mpc.Trunc(vW[l]);
+    Mat<ZZ_p> W_update;
+    Mat<ZZ_p> vWsqrt, inv_vWsqrt;
+    mpc.FPSqrt(vWsqrt, inv_vWsqrt, vW[l]);
+    mpc.MultElem(W_update, mW[l], inv_vWsqrt);
+    mpc.Trunc(W_update);
+    W_update *= fp_new_learn_rate;
+    mpc.Trunc(W_update);
+    W[l] -= W_update;
+
+    /* Update the biases. */
+    Vec<ZZ_p> db2;
+    mpc.MultElem(db2, db[l], db[l]);
+    mpc.Trunc(db2);
+    mb[l] = fp_b1 * mb[l] + fp_1_b1 * db[l];
+    vb[l] = fp_b2 * vb[l] + fp_1_b2 * db2;
+    mpc.Trunc(mb[l]);
+    mpc.Trunc(vb[l]);
+    Vec<ZZ_p> b_update;
+    Vec<ZZ_p> vbsqrt, inv_vbsqrt;
+    mpc.FPSqrt(vbsqrt, inv_vbsqrt, vb[l]);
+    mpc.MultElem(b_update, mb[l], inv_vbsqrt);
+    mpc.Trunc(b_update);
+    b_update *= fp_new_learn_rate;
+    mpc.Trunc(b_update);
+    b[l] -= b_update;
+
+  }
 
   Mat<ZZ_p> mse;
   Mat<double> mse_double;
@@ -898,7 +906,7 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     /* Do one round of mini-batch gradient descent. */
     double mse_score = gradient_descent(X_batch, y_batch,
                      W, b, dW, db, vW, vb, mW, mb, act, relus,
-                     epoch, pid, mpc);
+                     epoch, epoch * batches_in_file + i + 1 , pid, mpc);
 
     /* Save state every 10 batches. */
     if (i % 10 == 0) {

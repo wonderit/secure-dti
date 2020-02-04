@@ -68,6 +68,7 @@ public:
 
   // Assumes a is strictly positive and NBIT_K - NBIT_F is even
   void FPSqrt(Vec<ZZ_p>& b, Vec<ZZ_p>& b_inv, Vec<ZZ_p>& a);
+  void FPSqrt(Mat<ZZ_p>& b, Mat<ZZ_p>& b_inv, Mat<ZZ_p>& a);
 
   // Assumes b is strictly positive
   void FPDiv(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b);

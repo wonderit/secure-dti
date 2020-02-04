@@ -162,20 +162,6 @@ static inline void ReshapeMat(Mat<T>& b, Vec<T>& a, int nrows, int ncols) {
   }
 }
 
-
-template<class T>
-static inline void ReshapeMatToVec(Vec<T>& b, Mat<T>& a) {
-  assert(b.length() == a.NumRows() * a.NumCols());
-
-  int bi = 0;
-  for (int i = 0; i < a.NumRows(); i++) {
-    for (int j = 0; j < a.NumCols(); j++) {
-      b[bi] = a[i][j];
-      bi++;
-    }
-  }
-}
-
 template<class T>
 static inline void ReshapeMat(Mat<T>& a, int nrows, int ncols) {
   assert(a.NumRows() * a.NumCols() == nrows * ncols);
