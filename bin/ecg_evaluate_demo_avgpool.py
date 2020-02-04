@@ -13,7 +13,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--epoch", help="Set epoch", type=int, default=0)
 parser.add_argument("-b", "--batch", help="Set batch", type=int, default=0)
-
+parser.add_argument("-t", "--is_test", help="Set isTest", action='store_true')
 args = parser.parse_args()
 
 N_HIDDEN = 5
@@ -22,7 +22,7 @@ LOSS = 'mse'
 MEAN = 59.3
 STD = 10.6
 result_path = 'result'
-isTest = True
+# isTest = True
 epoch = args.epoch
 batch = args.batch
 
@@ -302,7 +302,7 @@ if __name__ == '__main__':
     X_test = np.genfromtxt('../data/ecg/text_demo_5500/Xtest', delimiter=',', dtype='float')
     y_test = np.genfromtxt('../data/ecg/text_demo_5500/ytest', delimiter=',', dtype='float')
 
-    if isTest:
+    if args.is_test:
         X_train = X_train[:y_test.shape[0], :]
         y_train = y_train[:y_test.shape[0]]
 
