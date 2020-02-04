@@ -46,10 +46,8 @@ def avgpool(arr, kernel_size, stride):
     if row % 2 == 1:
         row = row - 1
     row = int(row)
-    print('row : ', row)
     new_shape = (arr.shape[0], row, arr.shape[2])
     new_arr = np.zeros(new_shape)
-    print('new arr ', new_arr.shape)
 
     for r in range(row):
         for k in range(kernel_size):
