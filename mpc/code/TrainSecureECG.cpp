@@ -113,7 +113,7 @@ void AveragePool(Mat<ZZ_p>& avgpool, Mat<ZZ_p>& input, int kernel_size, int stri
     for (int i = 0; i < row; i++) {
       for (int c = 0; c < input.NumCols(); c++) {
         for (int k = 0; k < kernel_size; k++) {
-          avgpool[b * row + i][c] += input[b * row * stride + k][c];
+          avgpool[b * row + i][c] += input[b * prev_row + i * stride + k][c];
         }
       }
     }
@@ -137,7 +137,7 @@ void BackAveragePool(Mat<ZZ_p>& input, Mat<ZZ_p>& avgpool, int kernel_size, int 
     for (int i = 0; i < prev_row; i++) {
       for (int c = 0; c < avgpool.NumCols(); c++) {
         for (int k = 0; k < kernel_size; k++) {
-          input[b * prev_row * stride + k][c] = avgpool[b * prev_row + i][c];
+          input[b * row + i * stride + k][c] = avgpool[b * prev_row + i][c];
         }
       }
     }

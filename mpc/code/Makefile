@@ -9,7 +9,7 @@ else
   INCPATHS = -I/usr/bin/include -Iinclude
 endif
 
-CFLAGS = -g -Wall -O1 $(INCPATHS) -march=native -std=c++11 -pthread -Wno-sign-compare
+CFLAGS = -g -Wall -O2 $(INCPATHS) -march=native -std=c++11 -pthread -Wno-sign-compare
 LDLIBS = -lssl -lcrypto -lntl -lgmp -lm -ldl
 LDPATH = -L/usr/local/lib
 
