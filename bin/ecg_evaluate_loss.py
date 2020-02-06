@@ -14,6 +14,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--epoch", help="Set epoch", type=int, default=0)
 parser.add_argument("-li", "--log_interval", help="Set batch interval for log", type=int, default=50)
+parser.add_argument("-lb", "--log_last_batch", help="Set last batch interval for log", type=int, default=0)
 parser.add_argument("-t", "--is_test", help="Set isTest", action='store_true')
 parser.add_argument("-c", "--is_comet", help="Set isTest", action='store_true')
 parser.add_argument("-p", "--comet_project", help="Set project name", type=str, default='secure-ecg-c')
@@ -265,7 +266,10 @@ if __name__ == '__main__':
     for e in range(args.epoch):
         for i in range(log_batches):
             step = (log_batches * e + i) * args.log_interval
-            print(e, '_', i * args.log_interval, step)
+            if e == args.epoch - 1 and i * args.log_interval > args.log_last_batch and args.log_last_batch > 0:
+                break
+
+            # print(e, '_', i * args.log_interval, step, args.log_last_batch)
             W, b, act = load_model(e, i * args.log_interval)
 
             y_true_train, y_pred_train, train_mse_loss = report_scores(X_train, y_train, W, b, act)
