@@ -126,14 +126,6 @@ def load_model(epoch, batch):
         print('Waiting 60s for the file to be generated : ', file_name_check)
         time.sleep(60)
 
-    # if os.path.isfile(file_name_check):
-    #
-    # else:
-    #     raise ValueError("%s isn't a file!" % file_name_check)
-    #
-    exit()
-
-
     W = [[] for _ in range(N_HIDDEN + 1)]
     for l in range(N_HIDDEN + 1):
         W[l] = np.loadtxt('mpc/cache/ecg_P1_{}_{}_W{}.bin'.format(epoch, batch, l))
@@ -146,9 +138,6 @@ def load_model(epoch, batch):
     # Initialize activations.
     act = [[] for _ in range(N_HIDDEN)]
 
-    # print(np.array(W[0]).shape, np.array(b[0]).shape, act)
-    # print(np.array(W[1]).shape, np.array(b[1]).shape, act)
-    # print(np.array(W[2]).shape, np.array(b[2]).shape, act)
     print('Model loaded from ', file_name_check)
 
     return W, b, act
