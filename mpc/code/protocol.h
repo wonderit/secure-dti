@@ -117,6 +117,8 @@ bool unit_test(MPCEnv& mpc, int pid) {
   tcout() << endl;
 
   tcout() << "[FP multiplcation] ";
+//  TODO MUCH BIGGER
+
   Init(xv, 3); Init(yv, 3);
   if (pid == 2) {
     xv[0] = DoubleToFP(1.34, Param::NBIT_K, Param::NBIT_F);

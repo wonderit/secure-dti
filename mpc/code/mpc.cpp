@@ -1658,27 +1658,28 @@ void MPCEnv::Trunc(Mat<ZZ_p>& a, int k, int m) {
     for (int i = 0; i < a.NumRows(); i++) {
       for (int j = 0; j < a.NumCols(); j++) {
         if (pid == 1)
-          a[i][j] -= conv<ZZ_p>(trunc_ZZ(rep(a[i][j]), m));
+          a[i][j] = conv<ZZ_p>(rep(a[i][j]) >> m);
         else
-          a[i][j] -= - conv<ZZ_p>(trunc_ZZ(rep(-a[i][j]), m));
+          a[i][j] = - conv<ZZ_p>(rep(-a[i][j]) >> m);
       }
     }
 
+
     // shift: 12000 -> 12
-    ZZ_p twoinvm;
-    map<int, ZZ_p>::iterator it = invpow_cache.find(m);
-    if (it == invpow_cache.end()) {
-      ZZ_p two(2);
-      ZZ_p twoinv;
-      inv(twoinv, two);
-      power(twoinvm, twoinv, m);
-      invpow_cache[m] = twoinvm;
-
-    } else {
-      twoinvm = it->second;
-    }
-
-    a *= twoinvm;
+//    ZZ_p twoinvm;
+//    map<int, ZZ_p>::iterator it = invpow_cache.find(m);
+//    if (it == invpow_cache.end()) {
+//      ZZ_p two(2);
+//      ZZ_p twoinv;
+//      inv(twoinv, two);
+//      power(twoinvm, twoinv, m);
+//      invpow_cache[m] = twoinvm;
+//
+//    } else {
+//      twoinvm = it->second;
+//    }
+//
+//    a *= twoinvm;
   }
 
 }
