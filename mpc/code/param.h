@@ -62,6 +62,7 @@ class Param {
     static double DROPOUT;
     static string LOSS;
     static int BATCH_SIZE;
+    static int LOG_PER_BATCH;
     static int N_FILE_BATCH;
     static string FEATURES_FILE;
     static string LABELS_FILE;

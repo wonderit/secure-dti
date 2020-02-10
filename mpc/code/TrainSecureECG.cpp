@@ -925,7 +925,7 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
                      epoch, epoch * batches_in_file + i + 1 , pid, mpc);
 
     /* Save state every 10 batches. */
-    if (i % 10 == 0) {
+    if (i % Param::LOG_PER_BATCH == 0) {
       if (pid == 2) {
         tcout() << "save parameters of W, b into .bin files." << endl;
       }

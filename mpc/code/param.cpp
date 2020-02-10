@@ -124,6 +124,8 @@ bool Param::ParseFile(const char *param_file) {
       ret = Convert(v, Param::LOSS, k);
     } else if (k == "BATCH_SIZE") {
       ret = Convert(v, Param::BATCH_SIZE, k);
+    } else if (k == "LOG_PER_BATCH") {
+      ret = Convert(v, Param::LOG_PER_BATCH, k);
     } else if (k == "DEBUG") {
       ret = Convert(v, Param::DEBUG, k);
     } else {
@@ -182,6 +184,7 @@ int Param::N_FILE_BATCH = 20000;
 int Param::N_NEURONS = 16;
 int Param::N_NEURONS_2 = 64;
 int Param::BATCH_SIZE = 50;
+int Param::LOG_PER_BATCH = 10;
 int Param::MAX_EPOCHS = 20000;
 
 string Param::FEATURES_FILE = "../test_data/features_masked.bin";
