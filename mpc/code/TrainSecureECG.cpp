@@ -754,16 +754,15 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     /* Update the weights. */
     mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
     vW[l] = fp_b2 * vW[l] + fp_1_b2 * dW2;
-    if (pid == 2)
-      AddScalar(vW[l], eps_fp);
+    mpc.AddPublic(vW[l], eps_fp);
     mpc.Trunc(mW[l]);
     mpc.Trunc(vW[l]);
 
     //  Check Infinite error
-    if (pid > 0) {
-      tcout() << "print vW" << endl;
-      mpc.PrintFP(vW[l][0]);
-    }
+//    if (pid > 0) {
+//      tcout() << "print vW" << endl;
+//      mpc.PrintFP(vW[l][0]);
+//    }
 
     Mat<ZZ_p> W_update;
     Mat<ZZ_p> vWsqrt, inv_vWsqrt;
@@ -780,16 +779,15 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     mpc.Trunc(db2);
     mb[l] = fp_b1 * mb[l] + fp_1_b1 * db[l];
     vb[l] = fp_b2 * vb[l] + fp_1_b2 * db2;
-    if (pid == 2)
-      AddScalar(vb[l], eps_fp);
+    mpc.AddPublic(vb[l], eps_fp);
     mpc.Trunc(mb[l]);
     mpc.Trunc(vb[l]);
 
     //  Check Infinite error
-    if (pid > 0) {
-      tcout() << "print vb" << endl;
-      mpc.PrintFP(vb[l][0]);
-    }
+//    if (pid > 0) {
+//      tcout() << "print vb" << endl;
+//      mpc.PrintFP(vb[l][0]);
+//    }
 
     Vec<ZZ_p> b_update;
     Vec<ZZ_p> vbsqrt, inv_vbsqrt;
