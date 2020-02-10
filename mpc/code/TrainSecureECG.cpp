@@ -732,7 +732,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 
   double beta_1 = 0.9;
   double beta_2 = 0.999;
-//  double eps = 1e-8;
+  double eps = 1e-7;
   ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
                                Param::NBIT_K, Param::NBIT_F);
 
@@ -741,7 +741,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   ZZ_p fp_b2 = DoubleToFP(beta_2, Param::NBIT_K, Param::NBIT_F);
   ZZ_p fp_1_b1 = DoubleToFP(1 - beta_1, Param::NBIT_K, Param::NBIT_F);
   ZZ_p fp_1_b2 = DoubleToFP(1 - beta_2, Param::NBIT_K, Param::NBIT_F);
-//  ZZ_p eps_fp = DoubleToFP(eps, Param::NBIT_K, Param::NBIT_F);
+  ZZ_p eps_fp = DoubleToFP(eps, Param::NBIT_K, Param::NBIT_F);
 
   for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
     double new_double_learn_rate = Param::LEARN_RATE * sqrt(1.0 - pow(beta_2, step)) / sqrt(1.0 - pow(beta_1, step));
@@ -754,8 +754,17 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     /* Update the weights. */
     mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
     vW[l] = fp_b2 * vW[l] + fp_1_b2 * dW2;
+    if (pid == 2)
+      AddScalar(vW[l], eps_fp);
     mpc.Trunc(mW[l]);
     mpc.Trunc(vW[l]);
+
+    //  Check Infinite error
+    if (pid > 0) {
+      tcout() << "print vW" << endl;
+      mpc.PrintFP(vW[l][0]);
+    }
+
     Mat<ZZ_p> W_update;
     Mat<ZZ_p> vWsqrt, inv_vWsqrt;
     mpc.FPSqrt(vWsqrt, inv_vWsqrt, vW[l]);
@@ -771,8 +780,17 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     mpc.Trunc(db2);
     mb[l] = fp_b1 * mb[l] + fp_1_b1 * db[l];
     vb[l] = fp_b2 * vb[l] + fp_1_b2 * db2;
+    if (pid == 2)
+      AddScalar(vb[l], eps_fp);
     mpc.Trunc(mb[l]);
     mpc.Trunc(vb[l]);
+
+    //  Check Infinite error
+    if (pid > 0) {
+      tcout() << "print vb" << endl;
+      mpc.PrintFP(vb[l][0]);
+    }
+
     Vec<ZZ_p> b_update;
     Vec<ZZ_p> vbsqrt, inv_vbsqrt;
     mpc.FPSqrt(vbsqrt, inv_vbsqrt, vb[l]);
