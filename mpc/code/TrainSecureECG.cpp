@@ -286,7 +286,7 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
 //      }
 
       // Set param from cached results
-      if (Param::CACHED_PARAM_BATCH > 0 && Param::CACHED_PARAM_EPOCH > 0) {
+      if (Param::CACHED_PARAM_BATCH >= 0 && Param::CACHED_PARAM_EPOCH >= 0) {
         if (!text_to_matrix(W_layer, ifs, "../cache/ecg_P1_"
         + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
         + "_W" + to_string(l) + ".bin", W_layer.NumRows(), W_layer.NumCols()))
@@ -732,7 +732,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 
   double beta_1 = 0.9;
   double beta_2 = 0.999;
-  double eps = 1e-7;
+  double eps = 1e-8;
   ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
                                Param::NBIT_K, Param::NBIT_F);
 
@@ -744,7 +744,7 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   ZZ_p eps_fp = DoubleToFP(eps, Param::NBIT_K, Param::NBIT_F);
 
   for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-    double new_double_learn_rate = Param::LEARN_RATE * sqrt(1.0 - pow(beta_2, step)) / sqrt(1.0 - pow(beta_1, step));
+    double new_double_learn_rate = Param::LEARN_RATE * (sqrt(1.0 - pow(beta_2, step)) / (1.0 - pow(beta_1, step)));
 //    tcout() << "l=" << l << " new_double_learn_rate: " << new_double_learn_rate << endl;
     ZZ_p fp_new_learn_rate = DoubleToFP(new_double_learn_rate, Param::NBIT_K, Param::NBIT_F);
 
