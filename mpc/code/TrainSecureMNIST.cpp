@@ -107,6 +107,7 @@ void initialize_parameters(Mat<ZZ_p>& W_layer, Vec<ZZ_p>& b_layer) {
 void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
                       vector<Mat<ZZ_p> >& dW, vector<Vec<ZZ_p> >& db,
                       vector<Mat<ZZ_p> >& vW, vector<Vec<ZZ_p> >& vb,
+                      vector<Mat<ZZ_p> >& mW, vector<Vec<ZZ_p> >& mb,
                       int pid, MPCEnv& mpc) {
   /* Random number generator for Gaussian noise
      initialization of weight matrices. */
@@ -114,8 +115,10 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
 //  std::normal_distribution<double> distribution (0.0, 0.01);
 
   for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-    Mat<ZZ_p> W_layer, dW_layer, vW_layer;
-    Vec<ZZ_p> b_layer, db_layer, vb_layer;
+    Mat<ZZ_p> W_layer, dW_layer, vW_layer, mW_layer;
+    Vec<ZZ_p> b_layer, db_layer, vb_layer, mb_layer;
+    Mat<double> double_W_layer;
+    Vec<double> double_b_layer;
 
     /* Handle case with 0 hidden layers. */
     if (Param::N_HIDDEN == 0 && l >= 1) {
@@ -168,9 +171,11 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
     
     dW_layer.SetDims(W_layer.NumRows(), W_layer.NumCols());
     Init(vW_layer, W_layer.NumRows(), W_layer.NumCols());
+    Init(mW_layer, W_layer.NumRows(), W_layer.NumCols());
     
     db_layer.SetLength(b_layer.length());
     Init(vb_layer, b_layer.length());
+    Init(mb_layer, b_layer.length());
      
     Mat<ZZ_p> W_r;
     Vec<ZZ_p> b_r;
@@ -214,13 +219,15 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
       W_layer = W_r;
       b_layer = b_r;
     }
-    
+
     W.push_back(W_layer);
     dW.push_back(dW_layer);
     vW.push_back(vW_layer);
+    mW.push_back(mW_layer);
     b.push_back(b_layer);
     db.push_back(db_layer);
     vb.push_back(vb_layer);
+    mb.push_back(mb_layer);
   }
 }
 
@@ -244,29 +251,30 @@ void initial_conv(Mat<ZZ_p>& conv1d, Mat<ZZ_p>& x, int input_channel, int kernel
     }
   }
 }
-
-void reshape_conv(Mat<ZZ_p>& conv1d, Mat<ZZ_p>& x, int input_channel, int kernel_size) {
-  int prev_row = x.NumRows() / Param::BATCH_SIZE;
-  int row = prev_row - kernel_size + 1;
-  conv1d.SetDims(Param::BATCH_SIZE * row, kernel_size * input_channel);
-  for (int batch = 0; batch < Param::BATCH_SIZE; batch++) {
-    for (int index = 0; index < row; index++) {
-      for (int filter = 0; filter < kernel_size; filter++) {
-        for (int channel = 0; channel < input_channel; channel++) {
-          conv1d[batch * row + index][kernel_size * channel + filter] = x[batch * prev_row + index + filter][channel];
-        }
-      }
-    }
-  }
-  tcout() << ",mult conv1d: (" << conv1d.NumRows() << ", " << conv1d.NumCols() << "), (" << x.NumRows() << ", " << x.NumCols() << ")"  << endl;
-}
+//
+//void reshape_conv(Mat<ZZ_p>& conv1d, Mat<ZZ_p>& x, int input_channel, int kernel_size) {
+//  int prev_row = x.NumRows() / Param::BATCH_SIZE;
+//  int row = prev_row - kernel_size + 1;
+//  conv1d.SetDims(Param::BATCH_SIZE * row, kernel_size * input_channel);
+//  for (int batch = 0; batch < Param::BATCH_SIZE; batch++) {
+//    for (int index = 0; index < row; index++) {
+//      for (int filter = 0; filter < kernel_size; filter++) {
+//        for (int channel = 0; channel < input_channel; channel++) {
+//          conv1d[batch * row + index][kernel_size * channel + filter] = x[batch * prev_row + index + filter][channel];
+//        }
+//      }
+//    }
+//  }
+//  tcout() << ",mult conv1d: (" << conv1d.NumRows() << ", " << conv1d.NumCols() << "), (" << x.NumRows() << ", " << x.NumCols() << ")"  << endl;
+//}
 
 void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
                       vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
                       vector<Mat<ZZ_p> >& dW, vector<Vec<ZZ_p> >& db,
                       vector<Mat<ZZ_p> >& vW, vector<Vec<ZZ_p> >& vb,
+                        vector<Mat<ZZ_p> >& mW, vector<Vec<ZZ_p> >& mb,
                       vector<Mat<ZZ_p> >& act, vector<Mat<ZZ_p> >& relus,
-                      int epoch, int pid, MPCEnv& mpc) {
+                      int epoch, int step, int pid, MPCEnv& mpc) {
   if (pid == 2)
     tcout() << "Epoch: " << epoch << endl;
       
@@ -480,18 +488,18 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     mpc.MultMat(dW[l], X_T, dhidden);
     mpc.Trunc(dW[l]);
   
-    /* Add regularization term to weights. */
-    ZZ_p REG;
-    DoubleToFP(REG, Param::REG, Param::NBIT_K, Param::NBIT_F);
-    Mat<ZZ_p> reg = W[l] * REG;
-    mpc.Trunc(reg);
-    if (pid == 2) {
-      tcout() << "W[l] : " << W[l].NumRows() << "/" << W[l].NumCols() << endl;
-      tcout() << "dW[l] : " << dW[l].NumRows() << "/" << dW[l].NumCols() << endl;
-      tcout() << "reg : " << reg.NumRows() << "/" << reg.NumCols() << endl;
-      tcout() << "db[l] : " << db[l].length() << endl;
-    }
-    dW[l] += reg;
+//    /* Add regularization term to weights. */
+//    ZZ_p REG;
+//    DoubleToFP(REG, Param::REG, Param::NBIT_K, Param::NBIT_F);
+//    Mat<ZZ_p> reg = W[l] * REG;
+//    mpc.Trunc(reg);
+//    if (pid == 2) {
+//      tcout() << "W[l] : " << W[l].NumRows() << "/" << W[l].NumCols() << endl;
+//      tcout() << "dW[l] : " << dW[l].NumRows() << "/" << dW[l].NumCols() << endl;
+//      tcout() << "reg : " << reg.NumRows() << "/" << reg.NumCols() << endl;
+//      tcout() << "db[l] : " << db[l].length() << endl;
+//    }
+//    dW[l] += reg;
 
     /* Compute derivative of biases. */
     Init(db[l], b[l].length());
@@ -574,35 +582,114 @@ void gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   assert(act.size() == 0);
   assert(relus.size() == 0);
 
+//  if (pid == 2)
+//    tcout() << "Momentum update." << endl;
+//  /* Update the model using Nesterov momentum. */
+//  /* Compute constants that update various parameters. */
+//  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
+//                             Param::NBIT_K, Param::NBIT_F);
+//  ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
+//                                   Param::NBIT_K, Param::NBIT_F);
+//  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
+//                               Param::NBIT_K, Param::NBIT_F);
+//
+//  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+//    /* Update the weights. */
+//    Mat<ZZ_p> vW_prev = vW[l];
+//    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
+//    mpc.Trunc(vW[l]);
+//
+//    Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
+//    mpc.Trunc(W_update);
+//    W[l] += W_update;
+//
+//    /* Update the biases. */
+//    Vec<ZZ_p> vb_prev = vb[l];
+//    vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
+//    mpc.Trunc(vb[l]);
+//    Vec<ZZ_p> b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
+//    mpc.Trunc(b_update);
+//    b[l] += b_update;
+//
+//  }
+
   if (pid == 2)
-    tcout() << "Momentum update." << endl;
-  /* Update the model using Nesterov momentum. */
+    if (Param::DEBUG) tcout() << "Adam update." << endl;
+  /* Update the model using Adam. */
   /* Compute constants that update various parameters. */
-  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
-                             Param::NBIT_K, Param::NBIT_F);
-  ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
-                                   Param::NBIT_K, Param::NBIT_F);
+
+  double beta_1 = 0.9;
+  double beta_2 = 0.999;
+  double eps = 1e-8;
   ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
                                Param::NBIT_K, Param::NBIT_F);
 
+
+  ZZ_p fp_b1 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
+  ZZ_p fp_b2 = DoubleToFP(beta_2, Param::NBIT_K, Param::NBIT_F);
+  ZZ_p fp_1_b1 = DoubleToFP(1 - beta_1, Param::NBIT_K, Param::NBIT_F);
+  ZZ_p fp_1_b2 = DoubleToFP(1 - beta_2, Param::NBIT_K, Param::NBIT_F);
+  ZZ_p eps_fp = DoubleToFP(eps, Param::NBIT_K, Param::NBIT_F);
+
   for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+
+    double new_double_learn_rate = Param::LEARN_RATE * (sqrt(1.0 - pow(beta_2, step)) / (1.0 - pow(beta_1, step)));
+//    tcout() << "l=" << l << " new_double_learn_rate: " << new_double_learn_rate << endl;
+
+    if (pid == 2)
+      if (Param::DEBUG) tcout() << "progress 1 " << new_double_learn_rate << " step : " << step << endl;
+
+    ZZ_p fp_new_learn_rate = DoubleToFP(new_double_learn_rate, Param::NBIT_K, Param::NBIT_F);
+
+    Mat<ZZ_p> dW2;
+    mpc.MultElem(dW2, dW[l], dW[l]);
+    mpc.Trunc(dW2);
     /* Update the weights. */
-    Mat<ZZ_p> vW_prev = vW[l];
-    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
+    mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
+    vW[l] = fp_b2 * vW[l] + fp_1_b2 * dW2;
+    mpc.AddPublic(vW[l], eps_fp);
+    mpc.Trunc(mW[l]);
     mpc.Trunc(vW[l]);
 
-    Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
+    //  Check Infinite error
+    if (pid > 0) {
+      tcout() << "print vW" << endl;
+      mpc.PrintFP(vW[l][0]);
+    }
+
+    Mat<ZZ_p> W_update;
+    Mat<ZZ_p> vWsqrt, inv_vWsqrt;
+    mpc.FPSqrt(vWsqrt, inv_vWsqrt, vW[l]);
+    mpc.MultElem(W_update, mW[l], inv_vWsqrt);
     mpc.Trunc(W_update);
-    W[l] += W_update;
+    W_update *= fp_new_learn_rate;
+    mpc.Trunc(W_update);
+    W[l] -= W_update;
 
     /* Update the biases. */
-    Vec<ZZ_p> vb_prev = vb[l];
-    vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
+    Vec<ZZ_p> db2;
+    mpc.MultElem(db2, db[l], db[l]);
+    mpc.Trunc(db2);
+    mb[l] = fp_b1 * mb[l] + fp_1_b1 * db[l];
+    vb[l] = fp_b2 * vb[l] + fp_1_b2 * db2;
+    mpc.AddPublic(vb[l], eps_fp);
+    mpc.Trunc(mb[l]);
     mpc.Trunc(vb[l]);
-    Vec<ZZ_p> b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
-    mpc.Trunc(b_update);
-    b[l] += b_update;
 
+    //  Check Infinite error
+    if (pid > 0) {
+      tcout() << "print vb" << endl;
+      mpc.PrintFP(vb[l][0]);
+    }
+
+    Vec<ZZ_p> b_update;
+    Vec<ZZ_p> vbsqrt, inv_vbsqrt;
+    mpc.FPSqrt(vbsqrt, inv_vbsqrt, vb[l]);
+    mpc.MultElem(b_update, mb[l], inv_vbsqrt);
+    mpc.Trunc(b_update);
+    b_update *= fp_new_learn_rate;
+    mpc.Trunc(b_update);
+    b[l] -= b_update;
   }
 
   tcout() << "dW[0]" << endl;
@@ -680,6 +767,7 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
                   vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
                   vector<Mat<ZZ_p> >& dW, vector<Vec<ZZ_p> >& db,
                   vector<Mat<ZZ_p> >& vW, vector<Vec<ZZ_p> >& vb,
+                  vector<Mat<ZZ_p> >& mW, vector<Vec<ZZ_p> >& mb,
                   vector<Mat<ZZ_p> >& act, vector<Mat<ZZ_p> >& relus,
                   int& epoch, int pid, MPCEnv& mpc) {
 
@@ -687,12 +775,12 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   int batches_in_file = X.NumRows() / Param::BATCH_SIZE;
   Mat<ZZ_p> X_batch;
   Mat<ZZ_p> y_batch;
-  X_batch.SetDims(Param::BATCH_SIZE, X.NumCols());
-  y_batch.SetDims(Param::BATCH_SIZE, y.NumCols());
+//  X_batch.SetDims(Param::BATCH_SIZE, X.NumCols());
+//  y_batch.SetDims(Param::BATCH_SIZE, y.NumCols());
 
-  vector<int> random_idx(X.NumRows());
-  iota(random_idx.begin(), random_idx.end(), 0);
-  random_shuffle(random_idx.begin(), random_idx.end());
+//  vector<int> random_idx(X.NumRows());
+//  iota(random_idx.begin(), random_idx.end(), 0);
+//  random_shuffle(random_idx.begin(), random_idx.end());
 
 
 //  Time
@@ -706,21 +794,29 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
 
     /* Scan matrix (pre-shuffled) to get batch. */
     int base_j = i * Param::BATCH_SIZE;
-    for (int j = base_j;
-         j < base_j + Param::BATCH_SIZE && j < X.NumRows();
-         j++) {
-      X_batch[j - base_j] = X[random_idx[j]];
-      y_batch[j - base_j] = y[random_idx[j]];
+//    for (int j = base_j;
+//         j < base_j + Param::BATCH_SIZE && j < X.NumRows();
+//         j++) {
+//      X_batch[j - base_j] = X[random_idx[j]];
+//      y_batch[j - base_j] = y[random_idx[j]];
+//    }
+
+    /* Iterate through all of X with batch. */
+    Init(X_batch, Param::BATCH_SIZE, X.NumCols());
+    Init(y_batch, Param::BATCH_SIZE, y.NumCols());
+    for (int j = base_j; j < base_j + Param::BATCH_SIZE && j < X.NumRows(); j++) {
+      X_batch[j - base_j] = X[j];
+      y_batch[j - base_j] = y[j];
     }
 
     tcout() << "x = (" << X_batch.NumRows() << ", " << X_batch.NumCols() << endl;
     /* Do one round of mini-batch gradient descent. */
     gradient_descent(X_batch, y_batch,
-                     W, b, dW, db, vW, vb, act, relus,
-                     epoch, pid, mpc);
+                     W, b, dW, db, vW, vb, mW, mb, act, relus,
+                     epoch, epoch * batches_in_file + i + 1 , pid, mpc);
 
     /* Save state every 500 epochs. */
-    if (i % 500 == 0) {
+    if (i > 0) {
       for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
         Mat<ZZ_p> W_out;
         Init(W_out, W[l].NumRows(), W[l].NumCols());
@@ -743,7 +839,7 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
       total_laptime = (double)end - start;
       check = end;
       tcout() << "batch: " << i+1 << "/" << batches_in_file << " ::: laptime : " << laptime << " total time: " << total_laptime << endl;
-      printProgress((i+1) / batches_in_file);
+//      printProgress((i+1) / batches_in_file);
     }
 
     /* Update reference to training epoch. */
@@ -765,9 +861,9 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
 
   /* Initialize model and data structures. */
   tcout() << "Initializing model." << endl;
-  vector<Mat<ZZ_p> > W, dW, vW, act, relus;
-  vector<Vec<ZZ_p> > b, db, vb;
-  initialize_model(W, b, dW, db, vW, vb, pid, mpc);
+  vector<Mat<ZZ_p> > W, dW, vW, act, relus, mW;
+  vector<Vec<ZZ_p> > b, db, vb, mb;
+  initialize_model(W, b, dW, db, vW, vb, mW, mb, pid, mpc);
 
   srand(0);  /* Seed 0 to have deterministic testing. */
 
@@ -794,7 +890,7 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
        /* model_update() updates epoch. */) {
     tcout() << "check" << endl;
     /* Do model updates and file reads in parallel. */
-    model_update(X, y, W, b, dW, db, vW, vb, act, relus,
+    model_update(X, y, W, b, dW, db, vW, vb, mW, mb,act, relus,
                  epoch, pid, mpc);
 
     suffix = suffixes[rand() % suffixes.size()];

@@ -72,10 +72,10 @@ bool text_to_matrix(Mat<ZZ_p>& matrix, ifstream& ifs, string fname, size_t n_row
   for(int i = 0; std::getline(ifs, line); i ++) {
     std::istringstream stream(line);
     for(int j = 0; stream >> x; j ++) {
-      if (Param::DEBUG) printf("%f", x);
+      if (Param::DEBUG) printf("%f,", x);
       DoubleToFP(matrix[i][j], x, Param::NBIT_K, Param::NBIT_F);
     }
-    if (Param::DEBUG) printf("-- \n");
+    if (Param::DEBUG) printf("/\n");
   }
   ifs.close();
   return true;
@@ -94,10 +94,12 @@ bool text_to_vector(Vec<ZZ_p>& vec, ifstream& ifs, string fname) {
   for(int i = 0; std::getline(ifs, line); i ++) {
     std::istringstream stream(line);
     for(int j = 0; stream >> x; j ++) {
-      if (Param::DEBUG) printf(" : %f", x);
-      DoubleToFP(vec[j], x, Param::NBIT_K, Param::NBIT_F);
+      if (Param::DEBUG) printf("%f,", x);
+      if (Param::DEBUG) printf("i = %d,", i);
+      if (Param::DEBUG) printf("j = %d,", j);
+      DoubleToFP(vec[i], x, Param::NBIT_K, Param::NBIT_F);
     }
-    if (Param::DEBUG) printf("-- \n");
+    if (Param::DEBUG) printf("/\n");
   }
   ifs.close();
   return true;
@@ -577,17 +579,17 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     }
     mpc.Trunc(dW[l]);
 
-    /* Add regularization term to weights. */
-    ZZ_p REG;
-    DoubleToFP(REG, Param::REG, Param::NBIT_K, Param::NBIT_F);
-    Mat<ZZ_p> reg = W[l] * REG;
-    mpc.Trunc(reg);
-    if (pid == 2 && Param::DEBUG) {
-      tcout() << "W[l] : " << W[l].NumRows() << "/" << W[l].NumCols() << endl;
-      tcout() << "dW[l] : " << dW[l].NumRows() << "/" << dW[l].NumCols() << endl;
-      tcout() << "reg : " << reg.NumRows() << "/" << reg.NumCols() << endl;
-    }
-    dW[l] += reg;
+//    /* Add regularization term to weights. */
+//    ZZ_p REG;
+//    DoubleToFP(REG, Param::REG, Param::NBIT_K, Param::NBIT_F);
+//    Mat<ZZ_p> reg = W[l] * REG;
+//    mpc.Trunc(reg);
+//    if (pid == 2 && Param::DEBUG) {
+//      tcout() << "W[l] : " << W[l].NumRows() << "/" << W[l].NumCols() << endl;
+//      tcout() << "dW[l] : " << dW[l].NumRows() << "/" << dW[l].NumCols() << endl;
+//      tcout() << "reg : " << reg.NumRows() << "/" << reg.NumCols() << endl;
+//    }
+//    dW[l] += reg;
 
     /* Compute derivative of biases. */
     Init(db[l], b[l].length());
@@ -769,9 +771,9 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     mpc.FPSqrt(vWsqrt, inv_vWsqrt, vW[l]);
     mpc.MultElem(W_update, mW[l], inv_vWsqrt);
     mpc.Trunc(W_update);
-    W_update *= fp_new_learn_rate;
+    W_update *= -fp_new_learn_rate;
     mpc.Trunc(W_update);
-    W[l] -= W_update;
+    W[l] += W_update;
 
     /* Update the biases. */
     Vec<ZZ_p> db2;
@@ -794,9 +796,9 @@ double gradient_descent(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
     mpc.FPSqrt(vbsqrt, inv_vbsqrt, vb[l]);
     mpc.MultElem(b_update, mb[l], inv_vbsqrt);
     mpc.Trunc(b_update);
-    b_update *= fp_new_learn_rate;
+    b_update *= -fp_new_learn_rate;
     mpc.Trunc(b_update);
-    b[l] -= b_update;
+    b[l] += b_update;
 
   }
 
@@ -925,7 +927,7 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
                      epoch, epoch * batches_in_file + i + 1 , pid, mpc);
 
     /* Save state every 10 batches. */
-    if (i % Param::LOG_PER_BATCH == 0) {
+    if (i % Param::LOG_PER_BATCH == 0 && i > 0) {
       if (pid == 2) {
         tcout() << "save parameters of W, b into .bin files." << endl;
       }

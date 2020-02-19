@@ -18,7 +18,7 @@ PROGS = bin
 
 SRC = crypto.cpp connect.cpp aesstream.cpp mpc.cpp param.cpp
 #PROGNAMES = ShareData TrainSecureDTI GenerateKey AnalyzeFeature test UnitTestClient
-PROGNAMES = TrainSecureECG ShareDataECG GenerateKey UnitTestClient
+PROGNAMES = TrainSecureECG ShareDataECG
 #PROGNAMES = TrainSecureMNIST ShareDataMNIST
 
 OBJPATHS = $(patsubst %.cpp,$(BUILD)/%.o, $(SRC))
