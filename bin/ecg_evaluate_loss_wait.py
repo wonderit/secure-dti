@@ -276,6 +276,8 @@ if __name__ == '__main__':
 
 
         for i in range(log_batches):
+            if i == 0:
+                continue
             step = (log_batches * e + i)
             W, b, act = load_model(e, i * args.log_interval)
 
