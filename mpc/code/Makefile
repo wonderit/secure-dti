@@ -1,7 +1,7 @@
 OS := $(shell uname)
 ifeq ($(OS),Darwin)
   # Run MacOS commands
-  CPP = /usr/bin/clang++
+  CPP = g++
   INCPATHS = -I~/projects/local/include
 else
   # check for Linux and run other commands

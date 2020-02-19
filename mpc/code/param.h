@@ -27,6 +27,7 @@ class Param {
     static string KEY_PATH; // encryption keys for secure channels
     static string LOG_FILE; // runtime/communication profiler output file
     static string OUTPUT_FILE_PREFIX; // prefix for output
+    static string CACHE_FOLDER;
     static string CACHE_FILE_PREFIX; // prefix for cache files; includes
                                      // input shares, which can be large
 

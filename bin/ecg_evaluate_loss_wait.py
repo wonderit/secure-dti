@@ -19,6 +19,7 @@ parser.add_argument("-li", "--log_interval", help="Set batch interval for log", 
 parser.add_argument("-b", "--batch_size", help="Set batch size for log", type=int, default=20)
 parser.add_argument("-t", "--is_test", help="Set isTest", action='store_true')
 parser.add_argument("-c", "--is_comet", help="Set isTest", action='store_true')
+parser.add_argument("-f", "--cache_folder", help="Set folder name", type=str, default='cache')
 parser.add_argument("-p", "--comet_project", help="Set project name", type=str, default='secure-ecg-c')
 args = parser.parse_args()
 
@@ -121,7 +122,7 @@ def report_scores(X, y, W, b, act):
 
 
 def load_model(epoch, batch):
-    file_name_check = 'mpc/cache/ecg_P1_{}_{}_W0.bin'.format(epoch, batch)
+    file_name_check = 'mpc/{}/ecg_P1_{}_{}_W0.bin'.format(args.cache_folder, epoch, batch)
 
     while not os.path.exists(file_name_check):
         print('Waiting 60s for the file to be generated : ', file_name_check)
@@ -129,12 +130,12 @@ def load_model(epoch, batch):
 
     W = [[] for _ in range(N_HIDDEN + 1)]
     for l in range(N_HIDDEN + 1):
-        W[l] = np.loadtxt('mpc/cache/ecg_P1_{}_{}_W{}.bin'.format(epoch, batch, l))
+        W[l] = np.loadtxt('mpc/{}/ecg_P1_{}_{}_W{}.bin'.format(args.cache_folder, epoch, batch, l))
 
     # Initialize bias vector with zeros.
     b = [[] for _ in range(N_HIDDEN + 1)]
     for l in range(N_HIDDEN + 1):
-        b[l] = np.loadtxt('mpc/cache/ecg_P1_{}_{}_b{}.bin'.format(epoch, batch, l))
+        b[l] = np.loadtxt('mpc/{}/ecg_P1_{}_{}_b{}.bin'.format(args.cache_folder, epoch, batch, l))
 
     # Initialize activations.
     act = [[] for _ in range(N_HIDDEN)]

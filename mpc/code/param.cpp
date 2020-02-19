@@ -77,6 +77,8 @@ bool Param::ParseFile(const char *param_file) {
       ret = Convert(v, Param::CACHED_PARAM_BATCH, k);
     } else if (k == "LOG_FILE") {
       ret = Convert(v, Param::LOG_FILE, k);
+    } else if (k == "CACHE_FOLDER") {
+      ret = Convert(v, Param::CACHE_FOLDER, k);
     } else if (k == "CACHE_FILE_PREFIX") {
       ret = Convert(v, Param::CACHE_FILE_PREFIX, k);
       if (v[v.size() - 1] != '/') v += "/";
@@ -163,6 +165,7 @@ uint64_t Param::MPC_BUF_SIZE = 1000000;
 
 int Param::ITER_PER_EVAL= 5;
 string Param::OUTPUT_FILE_PREFIX = "../out/ecg";
+string Param::CACHE_FOLDER = "../cache";
 string Param::CACHE_FILE_PREFIX = "../cache/ecg";
 string Param::LOG_FILE = "../log/ecg.txt";
 int Param::CACHED_PARAM_EPOCH = 0;

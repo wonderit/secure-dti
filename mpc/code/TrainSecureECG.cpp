@@ -289,11 +289,11 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
 
       // Set param from cached results
       if (Param::CACHED_PARAM_BATCH >= 0 && Param::CACHED_PARAM_EPOCH >= 0) {
-        if (!text_to_matrix(W_layer, ifs, "../cache/ecg_P1_"
+        if (!text_to_matrix(W_layer, ifs, Param::CACHE_FOLDER + "/ecg_P1_"
         + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
         + "_W" + to_string(l) + ".bin", W_layer.NumRows(), W_layer.NumCols()))
           return;
-        if (!text_to_vector(b_layer, ifs, "../cache/ecg_P1_"
+        if (!text_to_vector(b_layer, ifs, Param::CACHE_FOLDER + "/ecg_P1_"
         + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
         + "_b" + to_string(l) + ".bin"))
           return;
@@ -824,7 +824,8 @@ void load_X_y(string suffix, Mat<ZZ_p>& X, Mat<ZZ_p>& y,
   /* Load seed for CP1. */
   if (pid == 1) {
     // TODO Change path!!!
-    string fname = "../cache/ecg_seed" + suffix + ".bin";
+    string fname = Param::CACHE_FOLDER + "/ecg_seed" + suffix + ".bin";
+//    string fname = "../cache/ecg_seed" + suffix + ".bin";
     if (Param::DEBUG) tcout() << "open Seed name:" << fname  << endl;
     ifs.open(fname.c_str(), ios::binary);
     if (!ifs.is_open()) {
@@ -943,6 +944,19 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
         b_out += b[l];
         reveal(b_out, cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "b" + to_string(l)), mpc);
       }
+
+      for (int pn = 0; pn < 3; pn++) {
+
+        string fname = cache(pn, to_string(epoch) + "_" + to_string(i) + "_seed");
+        fstream fs;
+        fs.open(fname.c_str(), ios::out | ios::binary);
+        if (!fs.is_open()) {
+          tcout() << "Error: could not open " << fname << endl;
+        }
+        mpc.SwitchSeed(pn);
+        mpc.ExportSeed(fs);
+        fs.close();
+      }
     }
 
     if (pid == 2) {
@@ -962,6 +976,11 @@ void model_update(Mat<ZZ_p>& X, Mat<ZZ_p>& y,
               << " laptime : " << laptime
               << " total time: " << hour << ":" << minute << ":" << second << endl;
 
+    }
+
+    if (mse_score > 100000) {
+      tcout() << "OVER FLOW ERROR OCCURED : " << mse_score << endl;
+      break;
     }
 
     /* Update reference to training epoch. FOR TEST */

@@ -1,0 +1,1 @@
+nohup python ./bin/ecg_evaluate_loss_wait.py -li 10 -b 10 -c -f cache_new > evaluate_ecg_new_02191700.log &
