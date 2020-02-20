@@ -91,13 +91,14 @@ bool text_to_vector(Vec<ZZ_p>& vec, ifstream& ifs, string fname) {
   if (Param::DEBUG) printf("reading vector");
   std::string line;
   double x;
+  int n = 0;
   for(int i = 0; std::getline(ifs, line); i ++) {
     std::istringstream stream(line);
     for(int j = 0; stream >> x; j ++) {
       if (Param::DEBUG) printf("%f,", x);
-      if (Param::DEBUG) printf("i = %d,", i);
-      if (Param::DEBUG) printf("j = %d,", j);
-      DoubleToFP(vec[i], x, Param::NBIT_K, Param::NBIT_F);
+      if (Param::DEBUG) printf("i,j,n = %d,%d,%d", i,j,n);
+      DoubleToFP(vec[n], x, Param::NBIT_K, Param::NBIT_F);
+      n++;
     }
     if (Param::DEBUG) printf("/\n");
   }
