@@ -246,9 +246,9 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
      
     Mat<ZZ_p> W_r;
     Vec<ZZ_p> b_r;
+    ifstream ifs;
     if (pid == 2) {
 
-      ifstream ifs;
       /* CP2 will have real data minus random data. */
       /* Initialize weight matrix with Gaussian noise. */
 //      for (int i = 0; i < W_layer.NumRows(); i++) {
@@ -301,8 +301,25 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
         initialize_parameters(W_layer, b_layer);
       }
 
-      /* Blind the data. */
-      mpc.SwitchSeed(1);
+      if (Param::CACHED_PARAM_BATCH >= 0 && Param::CACHED_PARAM_EPOCH >= 0) {
+        string fname = cache(1, to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH) + "_seed");
+        if (Param::DEBUG) tcout() << "open Seed name:" << fname  << endl;
+        ifs.open(fname.c_str(), ios::binary);
+        if (!ifs.is_open()) {
+          tcout() << "Error: could not open " << fname << endl;
+          return;
+        }
+        mpc.ImportSeed(1, ifs);
+        ifs.close();
+
+        mpc.SwitchSeed(1);
+      } else {
+
+        /* Blind the data. */
+        mpc.SwitchSeed(1);
+      }
+
+
       mpc.RandMat(W_r, W_layer.NumRows(), W_layer.NumCols());
       mpc.RandVec(b_r, b_layer.length());
       mpc.RestoreSeed();
@@ -310,8 +327,25 @@ void initialize_model(vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
       b_layer -= b_r;
       
     } else if (pid == 1) {
-      /* CP1 will just have the random data. */
-      mpc.SwitchSeed(2);
+
+      if (Param::CACHED_PARAM_BATCH >= 0 && Param::CACHED_PARAM_EPOCH >= 0) {
+        string fname = cache(2, to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH) + "_seed");
+        if (Param::DEBUG) tcout() << "open Seed name:" << fname  << endl;
+        ifs.open(fname.c_str(), ios::binary);
+        if (!ifs.is_open()) {
+          tcout() << "Error: could not open " << fname << endl;
+          return;
+        }
+        mpc.ImportSeed(2, ifs);
+        ifs.close();
+
+        mpc.SwitchSeed(2);
+      } else {
+
+        /* CP1 will just have the random data. */
+        mpc.SwitchSeed(2);
+      }
+
       mpc.RandMat(W_r, W_layer.NumRows(), W_layer.NumCols());
       mpc.RandVec(b_r, b_layer.length());
       mpc.RestoreSeed();
