@@ -225,28 +225,28 @@ bool unit_test(MPCEnv& mpc, int pid) {
   mpc.PrintFP(zv);
   tcout() << endl;
 
-//  tcout() << "[FP division] ";
-//  Init(xv, 3); Init(yv, 3);
-//  if (pid == 2) {
-//    xv[0] = DoubleToFP(1.34, Param::NBIT_K, Param::NBIT_F);
-//    xv[1] = DoubleToFP(100.3, Param::NBIT_K, Param::NBIT_F);
-//    xv[2] = DoubleToFP(-0.304, Param::NBIT_K, Param::NBIT_F);
-//    yv[0] = DoubleToFP(0.001, Param::NBIT_K, Param::NBIT_F);
-//    yv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
-//    yv[2] = DoubleToFP(539, Param::NBIT_K, Param::NBIT_F);
-//  }
-//  mpc.FPDiv(zv, xv, yv);
-//  mpc.RevealSym(zv);
-//
-//  FPToDouble(zdv, zv, Param::NBIT_K, Param::NBIT_F);
-//  if (pid > 0) {
-//    tcout() << zdv << endl;
-//    assert(ABS(zdv[0] - (1340.000000000000000)) < eps);
-//    assert(ABS(zdv[1] - (0.331023102310231)) < eps);
-//    assert(ABS(zdv[2] - (-0.000564007421150)) < eps);
-//    tcout() << "Success";
-//  }
-//  tcout() << endl;
+  tcout() << "[FP division] ";
+  Init(xv, 3); Init(yv, 3);
+  if (pid == 2) {
+    xv[0] = DoubleToFP(1.34, Param::NBIT_K, Param::NBIT_F);
+    xv[1] = DoubleToFP(100.3, Param::NBIT_K, Param::NBIT_F);
+    xv[2] = DoubleToFP(-0.304, Param::NBIT_K, Param::NBIT_F);
+    yv[0] = DoubleToFP(0.001, Param::NBIT_K, Param::NBIT_F);
+    yv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
+    yv[2] = DoubleToFP(539, Param::NBIT_K, Param::NBIT_F);
+  }
+  mpc.FPDiv(zv, xv, yv);
+  mpc.RevealSym(zv);
+
+  FPToDouble(zdv, zv, Param::NBIT_K, Param::NBIT_F);
+  if (pid > 0) {
+    tcout() << zdv << endl;
+    assert(ABS(zdv[0] - (1340.000000000000000)) < eps);
+    assert(ABS(zdv[1] - (0.331023102310231)) < eps);
+    assert(ABS(zdv[2] - (-0.000564007421150)) < eps);
+    tcout() << "Success";
+  }
+  tcout() << endl;
 
   tcout() << "[Householder] ";
   mpc.Householder(yv, xv);

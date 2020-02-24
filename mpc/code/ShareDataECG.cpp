@@ -48,11 +48,11 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
       if (ss.peek() == ',')
         ss.ignore();
 
-      if(name.rfind("X") == 0) {
-        // Normalize
-        k -= 1.547;
-        k /= (156.820 + 1e-7);
-      }
+//      if(name.rfind("X") == 0) {
+//        // Normalize
+//        k -= 1.547;
+//        k /= (156.820 + 1e-7);
+//      }
 
       if (j % 500 == 0)
         tcout() << "Read Column k " << k << endl;
