@@ -61,7 +61,7 @@ def report_scores(X, y, trained_model):
 
     # DON'T NORMALIZE X
     # X = scale(X, mean_x, std_x)
-    print('Example : X - ', X[0, 0:3], 'y - ', y[0])
+    # print('Example : X - ', X[0, 0:3], 'y - ', y[0])
 
     reshaped_X = X.reshape(X.shape[0], 3, 500)
 
