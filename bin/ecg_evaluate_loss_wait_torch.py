@@ -368,5 +368,3 @@ if __name__ == '__main__':
                 experiment.log_metric("test_r2", test_r2, epoch=e + 1, step=step)
 
             scatter_plot(y_true, y_pred, rm, e, i * args.log_interval)
-
-            exit()
