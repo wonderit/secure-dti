@@ -114,8 +114,7 @@ void AveragePool(Mat<ZZ_p> &avgpool, Mat<ZZ_p> &input, int kernel_size,
                  int stride) {
   int prev_row = input.NumRows() / Param::BATCH_SIZE;
   int row = prev_row / stride;
-  if (row % 2 == 1)
-    row--;
+
   Init(avgpool, row * Param::BATCH_SIZE, input.NumCols());
   for (int b = 0; b < Param::BATCH_SIZE; b++) {
     for (int i = 0; i < row; i++) {
@@ -135,13 +134,20 @@ void AveragePool(Mat<ZZ_p> &avgpool, Mat<ZZ_p> &input, int kernel_size,
 }
 
 void BackAveragePool(Mat<ZZ_p> &input, Mat<ZZ_p> &avgpool, int kernel_size,
-                     int stride) {
+                     int stride, bool isDifferent=false) {
 
   if (Param::DEBUG)
     tcout() << "avgpool row, cols (" << avgpool.NumRows() << ", "
-            << avgpool.NumCols() << ")" << endl;
+            << avgpool.NumCols() << ") -- input rows, cols ("
+            << input.NumRows() << ", " << input.NumCols()
+            << endl;
+
   int prev_row = avgpool.NumRows() / Param::BATCH_SIZE;
   int row = prev_row * stride;
+  if (isDifferent){
+    row++;
+  }
+
   Init(input, row * Param::BATCH_SIZE, avgpool.NumCols());
 
   for (int b = 0; b < Param::BATCH_SIZE; b++) {
@@ -149,10 +155,13 @@ void BackAveragePool(Mat<ZZ_p> &input, Mat<ZZ_p> &avgpool, int kernel_size,
       for (int c = 0; c < avgpool.NumCols(); c++) {
         for (int k = 0; k < kernel_size; k++) {
           input[b * row + i * stride + k][c] = avgpool[b * prev_row + i][c];
+          if (isDifferent && i == prev_row-1 && k == 0)
+            input[b * row + prev_row * stride + k][c] = avgpool[b * prev_row + i][c];
         }
       }
     }
   }
+
 
   //  ZZ_p norm_examples;
   //  DoubleToFP(norm_examples, 1. / ((double) kernel_size),
@@ -236,7 +245,7 @@ void initialize_model(vector<Mat<ZZ_p>> &W, vector<Vec<ZZ_p>> &b,
       W_layer.SetDims(42, 6);
       b_layer.SetLength(6);
     } else if (l == 3) {
-      W_layer.SetDims(336, Param::N_NEURONS); // 2892, 2928
+      W_layer.SetDims(342, Param::N_NEURONS); // 2892, 2928
       b_layer.SetLength(Param::N_NEURONS);
     } else if (l == 4) {
       W_layer.SetDims(Param::N_NEURONS, Param::N_NEURONS_2);
@@ -741,7 +750,7 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
         /* Apply derivative of AvgPool1D (stride 2, kernel_size 2). */
         if (l <= 2) {
           Mat<ZZ_p> backAvgPool;
-          BackAveragePool(backAvgPool, dhidden_new, 2, 2);
+          BackAveragePool(backAvgPool, dhidden_new, 2, 2, true);
           backAvgPool *= inv2;
           mpc.Trunc(backAvgPool);
           if (Param::DEBUG)

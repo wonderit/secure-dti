@@ -1,1 +1,1 @@
-nohup python ./bin/ecg_evaluate_loss_wait.py -li 5 -b 20 -c > evaluate_ecg.log &
+nohup python ./bin/ecg_evaluate_loss_wait_torch.py -li 5 -b 20 -c > evaluate_ecg.log &
