@@ -54,102 +54,6 @@ def rescale(arr, m, s):
     return arr
 
 
-# def avgpool(arr, kernel_size, stride):
-#     row = arr.shape[1] / stride
-#     if row % 2 == 1:
-#         row = row - 1
-#     row = int(row)
-#     new_shape = (arr.shape[0], row, arr.shape[2])
-#     new_arr = np.zeros(new_shape)
-#
-#     for r in range(row):
-#         for k in range(kernel_size):
-#             new_arr[:, r, :] += arr[:, r * stride + k, :] / kernel_size
-#
-#     return new_arr
-
-#
-# def report_scores(X, y, W, b, act):
-#     y_true = []
-#     y_pred = []
-#     # y_score = []
-#
-#     # DON'T NORMALIZE X
-#     # X = scale(X, mean_x, std_x)
-#     print('Example : X - ', X[0, 0:3], 'y - ', y[0])
-#
-#     torchX = torch.from_numpy(np.array(X))
-#     reshape_img = conv1d(torchX, 3, 6)
-#     print('reshape img' , reshape_img.shape)
-#     for l in range(N_HIDDEN):
-#         # print('l ==== ', l)
-#         if l == 0:
-#             act[l] = np.dot(reshape_img, W[l]) + b[l]
-#             act[l] = avgpool(act[l], 2, 2)
-#             # act[l] = np.maximum(0, np.dot(reshape_img, W[l]) + b[l])
-#         else:
-#             # if l == 1:
-#             #     reshape_img
-#             if l == 1 or l == 2:
-#                 print('before', act[l-1].shape)
-#                 reshape_img2 = conv1d(torch.from_numpy(act[l - 1]), 6, 6)
-#                 act[l - 1] = reshape_img2
-#                 print('after', act[l-1].shape)
-#             else:
-#                 act_col = act[l - 1].shape[-1]
-#                 w_row = W[l].shape[0]
-#                 print('act_col, w_row', act_col, w_row)
-#                 if act_col != w_row:
-#                     act[l - 1] = act[l - 1].reshape(act[l - 1].shape[0], -1)
-#
-#             if l == N_HIDDEN - 1:
-#                 act[l] = np.dot(act[l - 1], W[l]) + b[l]
-#             else:
-#                 act[l] = np.maximum(0, np.dot(act[l - 1], W[l]) + b[l])
-#                 if l == 1 or l == 2:
-#                     act[l] = avgpool(act[l], 2, 2)
-#
-#     # print('act', act)
-#
-#     if N_HIDDEN == 0:
-#         scores = np.dot(reshape_img, W[-1]) + b[-1]
-#     else:
-#         scores = np.dot(act[-1], W[-1]) + b[-1]
-#
-#     y = rescale(y, MEAN, STD)
-#     scores = rescale(scores, MEAN, STD)
-#
-#     mse_loss = metrics.mean_squared_error(y, scores)
-#
-#     y_true.extend(list(y))
-#     y_pred.extend(scores)
-#
-#     return y_true, y_pred, mse_loss
-
-#
-# def load_model(epoch, batch):
-#     file_name_check = 'mpc/{}/ecg_P1_{}_{}_W0.bin'.format(args.cache_folder, epoch, batch)
-#
-#     while not os.path.exists(file_name_check):
-#         print('Waiting 60s for the file to be generated : ', file_name_check)
-#         time.sleep(60)
-#
-#     W = [[] for _ in range(N_HIDDEN + 1)]
-#     for l in range(N_HIDDEN + 1):
-#         W[l] = np.loadtxt('mpc/{}/ecg_P1_{}_{}_W{}.bin'.format(args.cache_folder, epoch, batch, l))
-#
-#     # Initialize bias vector with zeros.
-#     b = [[] for _ in range(N_HIDDEN + 1)]
-#     for l in range(N_HIDDEN + 1):
-#         b[l] = np.loadtxt('mpc/{}/ecg_P1_{}_{}_b{}.bin'.format(args.cache_folder, epoch, batch, l))
-#
-#     # Initialize activations.
-#     act = [[] for _ in range(N_HIDDEN)]
-#
-#     print('Model loaded from ', file_name_check)
-#
-#     return W, b, act
-
 def report_scores(X, y, trained_model):
     y_true = []
     y_pred = []
@@ -161,6 +65,7 @@ def report_scores(X, y, trained_model):
 
     reshaped_X = X.reshape(X.shape[0], 3, 500)
 
+
     with torch.no_grad():
         scores = trained_model(torch.from_numpy(reshaped_X))
         #
@@ -169,9 +74,6 @@ def report_scores(X, y, trained_model):
         y = rescale(y, MEAN, STD)
 
         mse_loss = metrics.mean_squared_error(y, scores)
-
-        y_true.extend(list(y))
-        y_pred.extend(scores)
 
         y_true.extend(list(y))
         y_pred.extend(scores)
@@ -276,7 +178,6 @@ def scatter_plot(y_true, y_pred, message, epoch, batch):
 
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
-    print(y_pred.shape, y_true.shape)
     plt.scatter(y_pred, y_true, s=3)
     plt.suptitle(message)
     plt.xlabel('Predictions')
