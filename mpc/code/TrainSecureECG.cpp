@@ -465,7 +465,7 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
 
       if (Param::DEBUG && pid > 0) {
         tcout() << "relu l = " << l << endl;
-        mpc.PrintFP(relu[0]);
+        mpc.Print(relu[0]);
         tcout() << "activation after relu l = " << l << endl;
         mpc.PrintFP(after_relu[0]);
       }
@@ -808,7 +808,7 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
 
   double beta_1 = 0.9;
   double beta_2 = 0.999;
-  double eps = 1e-8;
+  double eps = 1e-7;
   ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE, Param::NBIT_K, Param::NBIT_F);
 
   ZZ_p fp_b1 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
@@ -856,9 +856,9 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
     mpc.FPSqrt(vWsqrt, inv_vWsqrt, vW[l]);
     mpc.MultElem(W_update, mW[l], inv_vWsqrt);
     mpc.Trunc(W_update);
-    W_update *= -fp_new_learn_rate;
+    W_update *= fp_new_learn_rate;
     mpc.Trunc(W_update);
-    W[l] += W_update;
+    W[l] -= W_update;
 
     //    if (pid > 0) {
     //      tcout() << "print W_Update" << endl;
@@ -891,9 +891,9 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
     mpc.FPSqrt(vbsqrt, inv_vbsqrt, vb[l]);
     mpc.MultElem(b_update, mb[l], inv_vbsqrt);
     mpc.Trunc(b_update);
-    b_update *= -fp_new_learn_rate;
+    b_update *= fp_new_learn_rate;
     mpc.Trunc(b_update);
-    b[l] += b_update;
+    b[l] -= b_update;
 
     //    if (pid > 0) {
     //        tcout() << "print b_update" << endl;
@@ -1031,23 +1031,41 @@ void model_update(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
     ifstream ifs;
     if (Param::CACHED_PARAM_BATCH >= 0 && Param::CACHED_PARAM_EPOCH >= 0 &&
         epoch == Param::CACHED_PARAM_EPOCH && i == Param::CACHED_PARAM_BATCH) {
-      string fname =
-          cache(pid, to_string(Param::CACHED_PARAM_EPOCH) + "_" +
-                         to_string(Param::CACHED_PARAM_BATCH) + "_seed");
-      if (Param::DEBUG)
-        tcout() << "open Seed name:" << fname << endl;
+//      string fname =
+//          cache(pid, to_string(Param::CACHED_PARAM_EPOCH) + "_" +
+//                         to_string(Param::CACHED_PARAM_BATCH) + "_seed");
+//      if (Param::DEBUG)
+//        tcout() << "open Seed name:" << fname << endl;
       if (Param::DEBUG)
         tcout() << pid << " : " << epoch << " / " << i << endl;
-      ifs.open(fname.c_str(), ios::binary);
-      if (!ifs.is_open()) {
-        tcout() << "Error: could not open " << fname << endl;
-      } else {
-        mpc.ImportSeed(pid, ifs);
-        ifs.close();
+//      ifs.open(fname.c_str(), ios::binary);
+//      if (!ifs.is_open()) {
+//        tcout() << "Error: could not open " << fname << endl;
+//      } else {
+//        mpc.ImportSeed(pid, ifs);
+//        ifs.close();
+//      }
+      if (pid == 1) {
+
+        for (int pn = 0; pn < 3; pn++) {
+          string fname =
+              cache_file(pn, to_string(epoch) + "_" + to_string(i) + "_seed");
+          if (Param::DEBUG)
+            tcout() << "open Seed name:" << fname << endl;
+          ifs.open(fname.c_str(), ios::out | ios::binary);
+          if (!ifs.is_open()) {
+            tcout() << "Error: could not open " << fname << endl;
+          }
+          mpc.SwitchSeed(pn);
+          mpc.ImportSeed(pn, ifs);
+          ifs.close();
+        }
       }
+
+      srand(0); /* Seed 0 to have deterministic testing. */
     }
 
-    if (i % Param::LOG_PER_BATCH == 0 && i > 0) {
+    if (i % Param::LOG_PER_BATCH == 0 && i > 0 && !Param::DEBUG) {
       string fname =
           cache(pid, to_string(epoch) + "_" + to_string(i) + "_seed");
 
@@ -1070,31 +1088,6 @@ void model_update(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
         X_batch, y_batch, W, b, dW, db, vW, vb, mW, mb, act, relus, epoch,
         epoch * batches_in_file + i + 1, pid, mpc);
 
-    /* Save state every 10 batches. */
-    if (i % Param::LOG_PER_BATCH == 0 && i > 0) {
-      if (pid == 2) {
-        tcout() << "save parameters of W, b into .bin files." << endl;
-      }
-      //
-      for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-        Mat<ZZ_p> W_out;
-        Init(W_out, W[l].NumRows(), W[l].NumCols());
-        W_out += W[l];
-        reveal(W_out,
-               cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "W" +
-                              to_string(l)),
-               mpc);
-
-        Vec<ZZ_p> b_out;
-        Init(b_out, b[l].length());
-        b_out += b[l];
-        reveal(b_out,
-               cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "b" +
-                              to_string(l)),
-               mpc);
-      }
-    }
-
     if (pid == 2) {
       end = time(NULL);
       laptime = (double)end - check;
@@ -1112,7 +1105,7 @@ void model_update(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
               << minute << ":" << second << endl;
     }
 
-    if (pid > 0 && (mse_score > 100000 || mse_score < -100000)) {
+    if (pid > 0 && (mse_score > 1000 || mse_score < -100)) {
       tcout() << "OVER FLOW ERROR OCCURED : " << mse_score << endl;
       for (int pn = 0; pn < 3; pn++) {
         string fname =
@@ -1127,6 +1120,32 @@ void model_update(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
         fs.close();
       }
       exit(0);
+    }
+
+
+    /* Save state every 10 batches. */
+    if (i % Param::LOG_PER_BATCH == 0 && i > 0) {
+      if (pid == 2) {
+        tcout() << "save parameters of W, b into .bin files." << endl;
+      }
+      //
+      for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+        Mat<ZZ_p> W_out;
+        Init(W_out, W[l].NumRows(), W[l].NumCols());
+        W_out += W[l];
+        reveal(W_out,
+               cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "W" +
+                          to_string(l)),
+               mpc);
+
+        Vec<ZZ_p> b_out;
+        Init(b_out, b[l].length());
+        b_out += b[l];
+        reveal(b_out,
+               cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "b" +
+                          to_string(l)),
+               mpc);
+      }
     }
 
     /* Update reference to training epoch. FOR TEST */

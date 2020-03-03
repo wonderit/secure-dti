@@ -41,6 +41,12 @@ string cache(int pid, string desc) {
   return oss.str();
 }
 
+string cache_file(int pid, string desc) {
+  ostringstream oss;
+  oss << "../cache/ecg_P" << to_string(pid) << "_" << desc << ".bin";
+  return oss.str();
+}
+
 string cache(int pid, int index) {
   ostringstream oss;
   oss << Param::CACHE_FILE_PREFIX << "_" << index << ".bin";

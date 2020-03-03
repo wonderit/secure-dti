@@ -15,18 +15,18 @@ set(SOURCE_FILES
         aesstream.cpp
         mpc.cpp
         param.cpp
-        UnitTestClient.cpp
+#        UnitTestClient.cpp
 #        ShareData.cpp
 #        TrainSecureMNIST.cpp
 #        TrainSecureDTI.cpp
-#        TrainSecureECG.cpp
+        TrainSecureECG.cpp
 #        GenerateKey.cpp
 #        AnalyzeFeature.cpp
 #        boost_test.cpp
         )
 
 # Add executable target with source files listed in SOURCE_FILES variable
-add_executable(UnitTestClient ${SOURCE_FILES})
+add_executable(TrainSecureECG ${SOURCE_FILES})
 
 include_directories(${CMAKE_CURRENT_LIST_DIR})
 include_directories(/usr/local/include /usr/local/lib /usr/local/opt/openssl/lib)
@@ -48,4 +48,4 @@ if(NOT GMP_LIB)
 endif()
 message(${NTL_LIB}, ${GMP_LIB})
 
-target_link_libraries(UnitTestClient ${OPENSSL_LIBRARIES} ${NTL_LIB} ${M_LIB} ${GMP_LIB})
+target_link_libraries(TrainSecureECG ${OPENSSL_LIBRARIES} ${NTL_LIB} ${M_LIB} ${GMP_LIB})

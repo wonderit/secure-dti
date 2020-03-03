@@ -1191,6 +1191,14 @@ void MPCEnv::LessThanBitsAux(Vec<ZZ>& c, Mat<ZZ>& a, Mat<ZZ>& b, int public_flag
   }
  
   if (public_flag == 2) {
+
+    //  print f, b
+    tcout() << "f :: \t ";
+    Print(f[0], 10);
+
+    tcout() << "b :: \t ";
+    tcout() << b[0] << endl;
+
     c.SetLength(n);
  
     if (pid > 0) {
@@ -1290,9 +1298,41 @@ void MPCEnv::IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a) {
 void MPCEnv::IsPositive(Vec<ZZ_p>& b, Vec<ZZ_p>& a) {
   if (false) tcout() << "IsPositive: " << a.length() << endl;
 
+  tcout() << "a :: \n" << endl;
+  PrintFP(a, 5);
+
   int n = a.length();
   int nbits = ZZ_bits[0];
   int fid = 2;
+
+  if (pid == 1) {
+    SwitchSeed(2);
+    RandVec(b, 1);
+    RestoreSeed();
+    tcout() << "pid 1 :: " << b[0] << endl;
+    SwitchSeed(0);
+    RandVec(b, 1);
+    RestoreSeed();
+    tcout() << "pid 1 :: " << b[0] << endl;
+  } else if (pid == 2) {
+    SwitchSeed(1);
+    RandVec(b, 1);
+    RestoreSeed();
+    tcout() << "pid 2 :: " << b[0] << endl;
+    SwitchSeed(0);
+    RandVec(b, 1);
+    RestoreSeed();
+    tcout() << "pid 2 :: " << b[0] << endl;
+  } else {
+    SwitchSeed(1);
+    RandVec(b, 1);
+    RestoreSeed();
+    tcout() << "pid 0 :: " << b[0] << endl;
+    SwitchSeed(2);
+    RandVec(b, 1);
+    RestoreSeed();
+    tcout() << "pid 0 :: " << b[0] << endl;
+  }
 
   if ((pid) == 69)
     tcout() << "Transfering data" << endl;
@@ -1352,6 +1392,10 @@ void MPCEnv::IsPositive(Vec<ZZ_p>& b, Vec<ZZ_p>& a) {
   // Incorrect result if r = 0, which happens with probaility 1 / BASE_P
   Vec<ZZ> no_overflow;
   LessThanBitsPublic(no_overflow, r_bits, c_bits, fid);
+
+
+//  tcout() << "no_overflow :: \n" << endl;
+//  Print(no_overflow, 10);
 
   if ((pid) == 69)
     tcout() << "Compute c_xor_r" << endl;
