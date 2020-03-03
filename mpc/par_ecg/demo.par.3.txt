@@ -16,7 +16,7 @@ CACHE_FILE_PREFIX ../cache/ecg
 TRAIN_SUFFIXES ../../demo_data/text_demo/train_suffixes.txt
 TEST_SUFFIXES ../../demo_data/text_demo/test_suffixes.txt
 FEATURE_RANK 1500
-N_FILE_BATCH 5000
+N_FILE_BATCH 5
 
 # FILES
 KEY_PATH ../key/

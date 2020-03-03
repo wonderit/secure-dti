@@ -19,15 +19,15 @@ NUM_THREADS 20
 # DTI
 CACHE_FILE_PREFIX ../cache/ecg
 FEATURE_RANK 1500
-FEATURES_FILE ../../../data/ecg/text_demo_overflow/X
-LABELS_FILE ../../../data/ecg/text_demo_overflow/y
+FEATURES_FILE ../../demo_data/text_demo_overflow/X
+LABELS_FILE ../../demo_data/text_demo_overflow/y
 TRAIN_SUFFIXES ../../demo_data/text_demo/train_suffixes.txt
 TEST_SUFFIXES ../../demo_data/text_demo/test_suffixes.txt
 PROFILER 1
 
 # DEMO.
 # MAX_EPOCHS 50
-N_FILE_BATCH 5000
+N_FILE_BATCH 5
 MAX_EPOCHS 10
 BATCH_SIZE 1
 LOG_PER_BATCH 5
