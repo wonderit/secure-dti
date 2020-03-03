@@ -808,7 +808,7 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
 
   double beta_1 = 0.9;
   double beta_2 = 0.999;
-  double eps = 1e-8;
+  double eps = 1e-7;
   ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE, Param::NBIT_K, Param::NBIT_F);
 
   ZZ_p fp_b1 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
