@@ -156,7 +156,8 @@ void BackAveragePool(Mat<ZZ_p> &input, Mat<ZZ_p> &avgpool, int kernel_size,
         for (int k = 0; k < kernel_size; k++) {
           input[b * row + i * stride + k][c] = avgpool[b * prev_row + i][c];
           if (isDifferent && i == prev_row-1 && k == 0)
-            input[b * row + prev_row * stride + k][c] = avgpool[b * prev_row + i][c];
+            input[b * row + prev_row * stride + k][c] = 0;
+//            input[b * row + prev_row * stride + k][c] = avgpool[b * prev_row + i][c];
         }
       }
     }
@@ -347,6 +348,9 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
   ZZ_p inv2;
   DoubleToFP(inv2, 1. / ((double)2), Param::NBIT_K, Param::NBIT_F);
 
+  ZZ_p two;
+  DoubleToFP(two, (double)2., Param::NBIT_K, Param::NBIT_F);
+
   for (int l = 0; l < Param::N_HIDDEN; l++) {
 
     if (pid == 2)
@@ -366,12 +370,23 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
                 << X.NumCols() << "), X_reshape : (" << X_reshape.NumRows()
                 << ", " << X_reshape.NumCols() << ")" << endl;
 
+//      if (pid > 0)
+//        mpc.PrintFP(X_reshape);
+
+//      if (pid > 0) {
+//        tcout() << "W[" << l << "]" << endl;
+//        mpc.PrintFP(W[l]);
+//      }
+
       // MultMat by reshaping after beaver partition
       mpc.MultMatForConv(activation, X_reshape, W[l], 7);
 
       if (Param::DEBUG)
         tcout() << "First CNN Layer (" << activation.NumRows() << ","
                 << activation.NumCols() << ")" << endl;
+
+//      if (pid > 0)
+//        mpc.PrintFP(activation);
 
     } else {
 
@@ -557,10 +572,17 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
   }
 
   ZZ_p norm_examples;
-  DoubleToFP(norm_examples, 1. / ((double)X.NumRows()), Param::NBIT_K,
+  tcout() << "X row :: " << X.NumRows() << endl;
+  DoubleToFP(norm_examples, 2. / ((double)X.NumRows()), Param::NBIT_K,
              Param::NBIT_F);
   dscores *= norm_examples;
   mpc.Trunc(dscores);
+
+  if (pid > 0) {
+    tcout() << "score  = " << endl;
+    mpc.PrintFP(scores);
+  }
+//  exit(0);
 
   /*********************
    * Back propagation. *
@@ -656,8 +678,14 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
 
     /* Compute derivative of biases. */
     Init(db[l], b[l].length());
+
     for (int i = 0; i < dhidden.NumRows(); i++) {
       db[l] += dhidden[i];
+    }
+
+    if (Param::DEBUG && pid > 0) {
+      tcout() << "db [l] = " << l << endl;
+      mpc.PrintFP(db[l]);
     }
 
     if (l > 0) {
@@ -816,26 +844,30 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
   ZZ_p fp_1_b1 = DoubleToFP(1 - beta_1, Param::NBIT_K, Param::NBIT_F);
   ZZ_p fp_1_b2 = DoubleToFP(1 - beta_2, Param::NBIT_K, Param::NBIT_F);
   ZZ_p eps_fp = DoubleToFP(eps, Param::NBIT_K, Param::NBIT_F);
+  double new_double_learn_rate =
+      Param::LEARN_RATE *
+      (sqrt(1.0 - pow(beta_2, step)) / (1.0 - pow(beta_1, step)));
+  tcout() << " new_double_learn_rate: "
+          << new_double_learn_rate << endl;
+  ZZ_p fp_new_learn_rate =
+      DoubleToFP(new_double_learn_rate, Param::NBIT_K, Param::NBIT_F);
+
+  double fp_to_double = FPToDouble(fp_new_learn_rate,Param::NBIT_K, Param::NBIT_F );
+  tcout() << " fptodobule: "
+          << fp_to_double << endl;
 
   for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-    double new_double_learn_rate =
-        Param::LEARN_RATE *
-        (sqrt(1.0 - pow(beta_2, step)) / (1.0 - pow(beta_1, step)));
-    //    tcout() << "l=" << l << " new_double_learn_rate: " <<
-    //    new_double_learn_rate << endl;
-    ZZ_p fp_new_learn_rate =
-        DoubleToFP(new_double_learn_rate, Param::NBIT_K, Param::NBIT_F);
 
     Mat<ZZ_p> dW2;
     mpc.MultElem(dW2, dW[l], dW[l]);
     mpc.Trunc(dW2);
 
-    //      if (pid > 0) {
-    //          tcout() << "dW [l] = " << l << endl;
-    //          mpc.PrintFP(dW[l][0]);
-    //          tcout() << "print dW2" << endl;
-    //          mpc.PrintFP(dW2[0]);
-    //      }
+    if (pid > 0) {
+        tcout() << "dW [l] = " << l << endl;
+        mpc.PrintFP(dW[l]);
+//        tcout() << "print dW2" << endl;
+//        mpc.PrintFP(dW2);
+    }
     /* Update the weights. */
     mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
     vW[l] = fp_b2 * vW[l] + fp_1_b2 * dW2;
@@ -844,12 +876,12 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
     mpc.AddPublic(vW[l], eps_fp);
 
     //  Check Infinite error
-    //    if (pid > 0) {
-    //      tcout() << "print mW" << endl;
-    //      mpc.PrintFP(mW[l][0]);
-    //      tcout() << "print vW" << endl;
-    //      mpc.PrintFP(vW[l][0]);
-    //    }
+//    if (pid > 0) {
+//      tcout() << "print mW" << endl;
+//      mpc.PrintFP(mW[l][0]);
+//      tcout() << "print vW" << endl;
+//      mpc.PrintFP(vW[l][0]);
+//    }
 
     Mat<ZZ_p> W_update;
     Mat<ZZ_p> vWsqrt, inv_vWsqrt;
@@ -860,12 +892,15 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
     mpc.Trunc(W_update);
     W[l] += W_update;
 
-    //    if (pid > 0) {
-    //      tcout() << "print W_Update" << endl;
-    //      mpc.PrintFP(W_update[0]);
-    //        tcout() << "print W l" << l << endl;
-    //        mpc.PrintFP(W[l][0]);
-    //    }
+//    if (pid > 0) {
+//      tcout() << "print fp_new_learn_rate" << endl;
+//      mpc.PrintFP(fp_new_learn_rate);
+//
+//      tcout() << "print W_Update" << endl;
+//      mpc.PrintFP(W_update[0]);
+//        tcout() << "print W l" << l << endl;
+//        mpc.PrintFP(W[l][0]);
+//    }
 
     /* Update the biases. */
     Vec<ZZ_p> db2;
@@ -910,7 +945,7 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
   mpc.Trunc(mse);
   mpc.RevealSym(mse);
   FPToDouble(mse_double, mse, Param::NBIT_K, Param::NBIT_F);
-  mse_score_double = Sum(mse_double);
+  mse_score_double = Sum(mse_double) / 4.;
   return mse_score_double * Param::BATCH_SIZE;
 }
 
