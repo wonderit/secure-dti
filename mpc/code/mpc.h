@@ -1034,8 +1034,8 @@ public:
   }
 
   template<class T>
-  void MultMatForConvBack(Mat<T>& c, Mat<T>& a_t, Mat<T>& b, int filter_size, int fid = 0) {
-    Mat<T> a = transpose(a_t);
+  void MultMatForConvBack(Mat<T>& c, Mat<T>& a, Mat<T>& b, int filter_size, int fid = 0) {
+//    Mat<T> a = transpose(a_t);
     if(Param::DEBUG) cout << "MultMatForConv: (" << a.NumRows() << ", " << a.NumCols() << "), (" << b.NumRows() << ", " << b.NumCols() << ")" << endl;
 
     Mat<T> ar, am, br, bm, ar_conv, am_conv;
