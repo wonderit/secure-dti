@@ -25,7 +25,7 @@ TRAIN_SUFFIXES ../../demo_data/text_demo/train_suffixes.txt
 TEST_SUFFIXES ../../demo_data/text_demo/test_suffixes.txt
 PROFILER 1
 
-# DEMO.
+# DEMO
 # MAX_EPOCHS 50
 N_FILE_BATCH 5000
 MAX_EPOCHS 10
@@ -38,8 +38,8 @@ LEARN_RATE 0.001
 REG 0.0
 
 # FILES
-CACHED_PARAM_EPOCH 0
-CACHED_PARAM_BATCH 0
+CACHED_PARAM_EPOCH -1
+CACHED_PARAM_BATCH -1
 KEY_PATH ../key/
 LOG_FILE ../log/ecg_P1.txt
 OUTPUT_FILE_PREFIX ../out/ecg

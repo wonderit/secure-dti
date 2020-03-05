@@ -370,23 +370,12 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
                 << X.NumCols() << "), X_reshape : (" << X_reshape.NumRows()
                 << ", " << X_reshape.NumCols() << ")" << endl;
 
-//      if (pid > 0)
-//        mpc.PrintFP(X_reshape);
-
-//      if (pid > 0) {
-//        tcout() << "W[" << l << "]" << endl;
-//        mpc.PrintFP(W[l]);
-//      }
-
       // MultMat by reshaping after beaver partition
       mpc.MultMatForConv(activation, X_reshape, W[l], 7);
 
       if (Param::DEBUG)
         tcout() << "First CNN Layer (" << activation.NumRows() << ","
                 << activation.NumCols() << ")" << endl;
-
-//      if (pid > 0)
-//        mpc.PrintFP(activation);
 
     } else {
 
@@ -864,8 +853,6 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
     if (Param::DEBUG && pid > 0) {
         tcout() << "dW [l] = " << l << endl;
         mpc.PrintFP(dW[l]);
-//        tcout() << "print dW2" << endl;
-//        mpc.PrintFP(dW2);
     }
     /* Update the weights. */
     mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
