@@ -572,7 +572,7 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
   }
 
   ZZ_p norm_examples;
-  tcout() << "X row :: " << X.NumRows() << endl;
+
   DoubleToFP(norm_examples, 2. / ((double)X.NumRows()), Param::NBIT_K,
              Param::NBIT_F);
   dscores *= norm_examples;
@@ -847,14 +847,10 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
   double new_double_learn_rate =
       Param::LEARN_RATE *
       (sqrt(1.0 - pow(beta_2, step)) / (1.0 - pow(beta_1, step)));
-  tcout() << " new_double_learn_rate: "
-          << new_double_learn_rate << endl;
   ZZ_p fp_new_learn_rate =
       DoubleToFP(new_double_learn_rate, Param::NBIT_K, Param::NBIT_F);
 
   double fp_to_double = FPToDouble(fp_new_learn_rate,Param::NBIT_K, Param::NBIT_F );
-  tcout() << " fptodobule: "
-          << fp_to_double << endl;
 
   for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
 
