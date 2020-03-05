@@ -855,8 +855,6 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
   ZZ_p fp_new_learn_rate =
       DoubleToFP(new_double_learn_rate, Param::NBIT_K, Param::NBIT_F);
 
-  double fp_to_double = FPToDouble(fp_new_learn_rate,Param::NBIT_K, Param::NBIT_F );
-
   for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
 
     Mat<ZZ_p> dW2;
