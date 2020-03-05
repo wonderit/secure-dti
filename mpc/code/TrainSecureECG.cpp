@@ -595,11 +595,13 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
         tcout() << "Back prop, multiplication." << endl;
     /* Compute derivative of weights. */
     Init(dW[l], W[l].NumRows(), W[l].NumCols());
-    Mat<ZZ_p> X_T;
+    Mat<ZZ_p> X_T, X_org;
     if (l == 0) {
+      X_org = X_reshape;
       X_T = transpose(X_reshape);
     } else {
-      X_T = transpose(act.back());
+      X_org = act.back();
+      X_T = transpose(X_org);
       act.pop_back();
     }
     if (pid == 2) {
@@ -642,7 +644,7 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
         mpc.MultMat(dW[l], X_T, dhidden);
       } else {
 
-        mpc.MultMatForConvBack(dW[l], X_T, dhidden, 7);
+        mpc.MultMatForConvBack(dW[l], X_org, dhidden, 7);
       }
       //      else {
       //        Mat<ZZ_p> tmp = transpose(X_T);
@@ -746,8 +748,8 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
 
           if (l > 2) {
             Mat<ZZ_p> temp;
-            temp.SetDims(relu.NumRows(), relu.NumCols());
             int row = dhidden_new.NumCols() / relu.NumCols();
+            temp.SetDims(row, relu.NumCols());
             for (int b = 0; b < Param::BATCH_SIZE; b++) {
               for (int c = 0; c < relu.NumCols(); c++) {
                 for (int r = 0; r < row; r++) {
@@ -776,9 +778,12 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
 
         // Compute backpropagated avgpool
         /* Apply derivative of AvgPool1D (stride 2, kernel_size 2). */
-        if (l <= 2) {
+        if (l <= 3) {
           Mat<ZZ_p> backAvgPool;
-          BackAveragePool(backAvgPool, dhidden_new, 2, 2, true);
+          if (l == 2)
+            BackAveragePool(backAvgPool, dhidden_new, 2, 2, true);
+          else
+            BackAveragePool(backAvgPool, dhidden_new, 2, 2);
           backAvgPool *= inv2;
           mpc.Trunc(backAvgPool);
           if (Param::DEBUG)

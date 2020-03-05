@@ -129,7 +129,7 @@ def load_model(model, epoch, batch):
     model.fc2.bias = torch.nn.Parameter(b4_from_text)
 
     w5_from_text = torch.from_numpy(W[5])
-    w5_from_text = w5_from_text.reshape(1, 16)
+    w5_from_text = w5_from_text.reshape(1, 64)
     model.fc3.weight = torch.nn.Parameter(w5_from_text)
     b5_from_text = torch.from_numpy(b[5])
     model.fc3.bias = torch.nn.Parameter(b5_from_text)
@@ -204,8 +204,8 @@ class CNNAVG(nn.Module):
         self.conv3 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
                                padding=self.padding_size)
         self.fc1 = nn.Linear(342, 16)
-        self.fc2 = nn.Linear(16, 16)
-        self.fc3 = nn.Linear(16, 1)
+        self.fc2 = nn.Linear(16, 64)
+        self.fc3 = nn.Linear(64, 1)
 
     def forward(self, x):
         x = self.conv1(x)  # 32
