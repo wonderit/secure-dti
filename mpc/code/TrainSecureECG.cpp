@@ -738,7 +738,7 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
           if (l > 2) {
             Mat<ZZ_p> temp;
             int row = dhidden_new.NumCols() / relu.NumCols();
-            temp.SetDims(row, relu.NumCols());
+            temp.SetDims(row * Param::BATCH_SIZE, relu.NumCols());
             for (int b = 0; b < Param::BATCH_SIZE; b++) {
               for (int c = 0; c < relu.NumCols(); c++) {
                 for (int r = 0; r < row; r++) {
