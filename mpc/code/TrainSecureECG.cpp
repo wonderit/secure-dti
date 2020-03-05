@@ -578,7 +578,7 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
   dscores *= norm_examples;
   mpc.Trunc(dscores);
 
-  if (pid > 0) {
+  if (Param::DEBUG && pid > 0) {
     tcout() << "score  = " << endl;
     mpc.PrintFP(scores);
   }
@@ -862,7 +862,7 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
     mpc.MultElem(dW2, dW[l], dW[l]);
     mpc.Trunc(dW2);
 
-    if (pid > 0) {
+    if (Param::DEBUG && pid > 0) {
         tcout() << "dW [l] = " << l << endl;
         mpc.PrintFP(dW[l]);
 //        tcout() << "print dW2" << endl;
