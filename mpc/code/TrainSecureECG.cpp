@@ -1172,7 +1172,7 @@ bool dti_protocol(MPCEnv &mpc, int pid) {
   vector<Vec<ZZ_p>> b, db, vb, mb;
   initialize_model(W, b, dW, db, vW, vb, mW, mb, pid, mpc);
 
-  srand(0); /* Seed 0 to have deterministic testing. */
+  srand(Param::RAND_SEED); /* Seed 0 to have deterministic testing. */
 
   /* Create list of training file suffixes. */
   vector<string> suffixes;

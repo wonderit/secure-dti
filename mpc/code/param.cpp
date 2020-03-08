@@ -69,6 +69,8 @@ bool Param::ParseFile(const char *param_file) {
       ret = Convert(v, Param::MPC_BUF_SIZE, k);
     } else if (k == "ITER_PER_EVAL") {
       ret = Convert(v, Param::ITER_PER_EVAL, k);
+    } else if (k == "RAND_SEED") {
+      ret = Convert(v, Param::RAND_SEED, k);
     } else if (k == "OUTPUT_FILE_PREFIX") {
       ret = Convert(v, Param::OUTPUT_FILE_PREFIX, k);
     } else if (k == "CACHED_PARAM_EPOCH") {
@@ -164,6 +166,7 @@ string Param::BASE_P = "1461501637330902918203684832716283019655932542929";
 uint64_t Param::MPC_BUF_SIZE = 1000000;
 
 int Param::ITER_PER_EVAL= 5;
+int Param::RAND_SEED= 0;
 string Param::OUTPUT_FILE_PREFIX = "../out/ecg";
 string Param::CACHE_FOLDER = "../cache";
 string Param::CACHE_FILE_PREFIX = "../cache/ecg";

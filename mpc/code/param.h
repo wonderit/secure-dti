@@ -44,13 +44,8 @@ class Param {
     static string BASE_P; // base prime for finite field
     
     /* Algorithm parameters */
-    static long N_INTERACTIONS;
-    static long N_DRUGS;
-    static long N_TARGETS;
     static long FEATURE_RANK;
     static int MAX_EPOCHS;
-    static double LAMBDA_D;
-    static double LAMBDA_T;
     static double MOMENTUM;
     static double LEARN_RATE;
     static int N_CLASSES;
@@ -70,6 +65,7 @@ class Param {
     static string TRAIN_SUFFIXES;
     static string TEST_SUFFIXES;
     static int ITER_PER_EVAL;
+    static int RAND_SEED;
     
     /* Software parameters */
     static uint64_t MPC_BUF_SIZE; // size of data buffer in bytes
