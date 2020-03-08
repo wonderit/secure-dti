@@ -15,7 +15,7 @@ set(SOURCE_FILES
         aesstream.cpp
         mpc.cpp
         param.cpp
-#        UnitTestClient.cpp
+        UnitTestClient.cpp
 #        ShareData.cpp
 #        TrainSecureMNIST.cpp
 #        TrainSecureDTI.cpp

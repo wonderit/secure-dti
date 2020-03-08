@@ -1296,7 +1296,7 @@ void MPCEnv::IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a) {
 // Failure probability of 1 / BASE_P
 // Base field index 2
 void MPCEnv::IsPositive(Vec<ZZ_p>& b, Vec<ZZ_p>& a) {
-  if (false) tcout() << "IsPositive: " << a.length() << endl;
+  if (true) tcout() << "IsPositive: " << a.length() << endl;
 
   tcout() << "a :: \n" << endl;
   PrintFP(a, 5);
@@ -1305,34 +1305,34 @@ void MPCEnv::IsPositive(Vec<ZZ_p>& b, Vec<ZZ_p>& a) {
   int nbits = ZZ_bits[0];
   int fid = 2;
 
-  if (pid == 1) {
-    SwitchSeed(2);
-    RandVec(b, 1);
-    RestoreSeed();
-    tcout() << "pid 1 :: " << b[0] << endl;
-    SwitchSeed(0);
-    RandVec(b, 1);
-    RestoreSeed();
-    tcout() << "pid 1 :: " << b[0] << endl;
-  } else if (pid == 2) {
-    SwitchSeed(1);
-    RandVec(b, 1);
-    RestoreSeed();
-    tcout() << "pid 2 :: " << b[0] << endl;
-    SwitchSeed(0);
-    RandVec(b, 1);
-    RestoreSeed();
-    tcout() << "pid 2 :: " << b[0] << endl;
-  } else {
-    SwitchSeed(1);
-    RandVec(b, 1);
-    RestoreSeed();
-    tcout() << "pid 0 :: " << b[0] << endl;
-    SwitchSeed(2);
-    RandVec(b, 1);
-    RestoreSeed();
-    tcout() << "pid 0 :: " << b[0] << endl;
-  }
+//  if (pid == 1) {
+//    SwitchSeed(2);
+//    RandVec(b, 1);
+//    RestoreSeed();
+//    tcout() << "pid 1 :: " << b[0] << endl;
+//    SwitchSeed(0);
+//    RandVec(b, 1);
+//    RestoreSeed();
+//    tcout() << "pid 1 :: " << b[0] << endl;
+//  } else if (pid == 2) {
+//    SwitchSeed(1);
+//    RandVec(b, 1);
+//    RestoreSeed();
+//    tcout() << "pid 2 :: " << b[0] << endl;
+//    SwitchSeed(0);
+//    RandVec(b, 1);
+//    RestoreSeed();
+//    tcout() << "pid 2 :: " << b[0] << endl;
+//  } else {
+//    SwitchSeed(1);
+//    RandVec(b, 1);
+//    RestoreSeed();
+//    tcout() << "pid 0 :: " << b[0] << endl;
+//    SwitchSeed(2);
+//    RandVec(b, 1);
+//    RestoreSeed();
+//    tcout() << "pid 0 :: " << b[0] << endl;
+//  }
 
   if ((pid) == 69)
     tcout() << "Transfering data" << endl;
@@ -1378,6 +1378,12 @@ void MPCEnv::IsPositive(Vec<ZZ_p>& b, Vec<ZZ_p>& a) {
     tcout() << "Reveal c" << endl;
   RevealSym(c);
 
+  if (pid > 0) {
+    if(pid == 1) tcout() << "print c" << endl;
+    PrintFP(c);
+    if(pid == 1) tcout() << "print c -- finished" << endl;
+  }
+
   if ((pid) == 69)
     tcout() << "c to c_bits" << endl;
   Mat<ZZ> c_bits;
@@ -1396,6 +1402,13 @@ void MPCEnv::IsPositive(Vec<ZZ_p>& b, Vec<ZZ_p>& a) {
 
 //  tcout() << "no_overflow :: \n" << endl;
 //  Print(no_overflow, 10);
+
+  if (pid > 0) {
+    if(pid == 1) tcout() << "print c" << endl;
+    PrintFP(c);
+    if(pid == 1) tcout() << "print c -- finished" << endl;
+  }
+
 
   if ((pid) == 69)
     tcout() << "Compute c_xor_r" << endl;

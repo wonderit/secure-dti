@@ -8,5 +8,5 @@ sleep 2
 sleep 2
 ./bin/ShareDataECG 2 ../par_ecg/demo.par.2.txt &
 sleep 2
-./bin/ShareDataECG 3 ../par_ecg/demo.par.3.txt ../../../data/ecg/text_demo_overflow/ &
+./bin/ShareDataECG 3 ../par_ecg/demo.par.3.txt ../../demo_data/text_demo_overflow/ &
 wait

@@ -435,8 +435,17 @@ public:
     Vec<double> ad;
     FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
 
+    double min = 9999.;
+    double max = -9999.;
     if (pid == 2) {
       for (int i = 0; i < ad.length(); i++) {
+        //  LOG MIN and MAX
+        if (ad[i] < min)
+          min = ad[i];
+
+        if (ad[i] > max)
+          max = ad[i];
+
         os << ad[i];
         if (i == ad.length() - 1) {
           os << endl;
@@ -444,6 +453,9 @@ public:
           os << '\t';
         }
       }
+
+      //  LOG MIN and MAX
+      tcout() << "min : " << to_string(min) << ", max : " << to_string(max) << endl;
     }
   }
 

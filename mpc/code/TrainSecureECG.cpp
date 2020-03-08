@@ -846,10 +846,10 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
     mpc.MultElem(dW2, dW[l], dW[l]);
     mpc.Trunc(dW2);
 
-    if (Param::DEBUG && pid > 0) {
-        tcout() << "dW [l] = " << l << endl;
-        mpc.PrintFP(dW[l]);
-    }
+//    if (Param::DEBUG && pid > 0) {
+//        tcout() << "dW [l] = " << l << endl;
+//        mpc.PrintFP(dW[l]);
+//    }
     /* Update the weights. */
     mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
     vW[l] = fp_b2 * vW[l] + fp_1_b2 * dW2;
@@ -1048,36 +1048,21 @@ void model_update(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
     ifstream ifs;
     if (Param::CACHED_PARAM_BATCH >= 0 && Param::CACHED_PARAM_EPOCH >= 0 &&
         epoch == Param::CACHED_PARAM_EPOCH && i == Param::CACHED_PARAM_BATCH) {
-//      string fname =
-//          cache(pid, to_string(Param::CACHED_PARAM_EPOCH) + "_" +
-//                         to_string(Param::CACHED_PARAM_BATCH) + "_seed");
-//      if (Param::DEBUG)
-//        tcout() << "open Seed name:" << fname << endl;
-      if (Param::DEBUG)
-        tcout() << pid << " : " << epoch << " / " << i << endl;
-//      ifs.open(fname.c_str(), ios::binary);
-//      if (!ifs.is_open()) {
-//        tcout() << "Error: could not open " << fname << endl;
-//      } else {
-//        mpc.ImportSeed(pid, ifs);
-//        ifs.close();
-//      }
-      if (pid == 1) {
 
-        for (int pn = 0; pn < 3; pn++) {
-          string fname =
-              cache_file(pn, to_string(epoch) + "_" + to_string(i) + "_seed");
-          if (Param::DEBUG)
-            tcout() << "open Seed name:" << fname << endl;
-          ifs.open(fname.c_str(), ios::out | ios::binary);
-          if (!ifs.is_open()) {
-            tcout() << "Error: could not open " << fname << endl;
-          }
-          mpc.SwitchSeed(pn);
-          mpc.ImportSeed(pn, ifs);
-          ifs.close();
-        }
+      // load seeds from file
+      ifstream ifs;
+      string fname =
+          cache_file(pid, to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH) + "_seed");
+      if (Param::DEBUG)
+        tcout() << "open Seed name:" << fname << endl;
+      ifs.open(fname.c_str(), ios::out | ios::binary);
+      if (!ifs.is_open()) {
+        tcout() << "Error: could not open " << fname << endl;
       }
+      mpc.SwitchSeed(pid);
+      mpc.ImportSeed(pid, ifs);
+      mpc.RestoreSeed();
+      ifs.close();
 
       srand(0); /* Seed 0 to have deterministic testing. */
     }
@@ -1206,6 +1191,7 @@ bool dti_protocol(MPCEnv &mpc, int pid) {
     tcout() << "print FP" << endl;
     mpc.PrintFP(X[0][0]);
     mpc.PrintFP(y[0]);
+    tcout() << "print FP end" << endl;
   }
   /* Do gradient descent over multiple training epochs. */
   for (int epoch = 0; epoch < Param::MAX_EPOCHS;
