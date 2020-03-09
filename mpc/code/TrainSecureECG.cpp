@@ -405,15 +405,17 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
         act[l - 1] = ann;
         mpc.MultMat(activation, act[l - 1], W[l]);
 
-        // the rest of FC layers
       } else {
-        if (Param::DEBUG && pid > 0) {
-          tcout() << "W l = " << l << endl;
-          mpc.PrintFP(W[l][0]);
-          tcout() << "act l-1 = " << l - 1 << endl;
-          mpc.PrintFP(act[l - 1][0]);
-        }
+
+        // the rest of FC layers
         mpc.MultMat(activation, act[l - 1], W[l]);
+      }
+
+      if (Param::DEBUG && pid > 0) {
+        tcout() << "W l = " << l << endl;
+        mpc.PrintFP(W[l][0]);
+        tcout() << "act l-1 = " << l - 1 << endl;
+        mpc.PrintFP(act[l - 1][0]);
       }
     }
     mpc.Trunc(activation);
@@ -599,12 +601,12 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
                 << dhidden.NumCols() << ")" << endl;
     }
 
-    if (Param::DEBUG && pid > 0) {
-      tcout() << "X_T [l] = " << l << endl;
-      mpc.PrintFP(X_T[0]);
-      tcout() << "dhidden [l] = " << l << endl;
-      mpc.PrintFP(dhidden[0]);
-    }
+//    if (Param::DEBUG && pid > 0) {
+//      tcout() << "X_T [l] = " << l << endl;
+//      mpc.PrintFP(X_T[0]);
+//      tcout() << "dhidden [l] = " << l << endl;
+//      mpc.PrintFP(dhidden[0]);
+//    }
 
     // resize
     if (X_T.NumCols() != dhidden.NumRows()) {
@@ -644,12 +646,12 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
     }
     mpc.Trunc(dW[l]);
 
-    if (Param::DEBUG && pid > 0) {
-      tcout() << "dW [l] = " << l << endl;
-      mpc.PrintFP(dW[l][0]);
-      tcout() << "-------" << l << endl;
-      mpc.PrintFP(dW[l][1]);
-    }
+//    if (Param::DEBUG && pid > 0) {
+//      tcout() << "dW [l] = " << l << endl;
+//      mpc.PrintFP(dW[l][0]);
+//      tcout() << "-------" << l << endl;
+//      mpc.PrintFP(dW[l][1]);
+//    }
 
     //    /* Add regularization term to weights. */
     //    ZZ_p REG;
@@ -670,10 +672,10 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
       db[l] += dhidden[i];
     }
 
-    if (Param::DEBUG && pid > 0) {
-      tcout() << "db [l] = " << l << endl;
-      mpc.PrintFP(db[l]);
-    }
+//    if (Param::DEBUG && pid > 0) {
+//      tcout() << "db [l] = " << l << endl;
+//      mpc.PrintFP(db[l]);
+//    }
 
     if (l > 0) {
       /* Compute backpropagated activations. */

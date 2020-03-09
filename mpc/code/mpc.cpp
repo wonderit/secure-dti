@@ -1193,11 +1193,11 @@ void MPCEnv::LessThanBitsAux(Vec<ZZ>& c, Mat<ZZ>& a, Mat<ZZ>& b, int public_flag
   if (public_flag == 2) {
 
     //  print f, b
-    tcout() << "f :: \t ";
-    Print(f[0], 10);
-
-    tcout() << "b :: \t ";
-    tcout() << b[0] << endl;
+//    tcout() << "f :: \t ";
+//    Print(f[0], 10);
+//
+//    tcout() << "b :: \t ";
+//    tcout() << b[0] << endl;
 
     c.SetLength(n);
  
@@ -1378,12 +1378,6 @@ void MPCEnv::IsPositive(Vec<ZZ_p>& b, Vec<ZZ_p>& a) {
     tcout() << "Reveal c" << endl;
   RevealSym(c);
 
-  if (pid > 0) {
-    if(pid == 1) tcout() << "print c" << endl;
-    PrintFP(c);
-    if(pid == 1) tcout() << "print c -- finished" << endl;
-  }
-
   if ((pid) == 69)
     tcout() << "c to c_bits" << endl;
   Mat<ZZ> c_bits;
@@ -1402,13 +1396,6 @@ void MPCEnv::IsPositive(Vec<ZZ_p>& b, Vec<ZZ_p>& a) {
 
 //  tcout() << "no_overflow :: \n" << endl;
 //  Print(no_overflow, 10);
-
-  if (pid > 0) {
-    if(pid == 1) tcout() << "print c" << endl;
-    PrintFP(c);
-    if(pid == 1) tcout() << "print c -- finished" << endl;
-  }
-
 
   if ((pid) == 69)
     tcout() << "Compute c_xor_r" << endl;
