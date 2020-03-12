@@ -30,12 +30,15 @@ N_HIDDEN = 5
 LOSS = 'mse'
 
 # previous one
-# MEAN = 59.3
-# STD = 10.6
+MEAN = 61.9
+STD = 10.6
 
 # outlier removed one
-MEAN = 61.6
-STD = 9.8
+# MEAN = 61.6
+# STD = 9.8
+# x, y outlier removed
+# MEAN = 61.4
+# STD = 9.7
 _ = torch.manual_seed(args.seed)
 
 result_path = 'result'
