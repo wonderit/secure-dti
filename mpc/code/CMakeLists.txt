@@ -16,6 +16,7 @@ set(SOURCE_FILES
         param.cpp
         ShareData.cpp
         TrainSecureMNIST.cpp
+        UnitTestClient.cpp
         TrainSecureDTI.cpp
         TrainSecureECG.cpp
         GenerateKey.cpp

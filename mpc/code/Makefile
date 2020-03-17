@@ -10,7 +10,7 @@ else
 endif
 
 CFLAGS = -g -Wall -O2 $(INCPATHS) -march=native -std=c++11 -pthread -Wno-sign-compare
-LDLIBS = -lssl -lcrypto -lntl -lgmp -lm -ldl
+LDLIBS = -lssl -lcrypto -lntl -lgmp -lm -ldl -lboost_system -lboost_filesystem
 LDPATH = -L/usr/local/lib
 
 BUILD = build
@@ -18,7 +18,7 @@ PROGS = bin
 
 SRC = crypto.cpp connect.cpp aesstream.cpp mpc.cpp param.cpp
 #PROGNAMES = ShareData TrainSecureDTI GenerateKey AnalyzeFeature test UnitTestClient
-PROGNAMES = TrainSecureECG ShareDataECG GenerateKey
+PROGNAMES = UnitTestClient ShareDataECG
 #PROGNAMES = TrainSecureMNIST ShareDataMNIST
 
 OBJPATHS = $(patsubst %.cpp,$(BUILD)/%.o, $(SRC))
