@@ -30,8 +30,11 @@ N_HIDDEN = 5
 LOSS = 'mse'
 
 # previous one
-MEAN = 61.9
-STD = 10.6
+# MEAN = 61.9
+# STD = 10.6
+# threshold maxabs<1000
+MEAN = 61.8
+STD = 10.5
 
 # outlier removed one
 # MEAN = 61.6
