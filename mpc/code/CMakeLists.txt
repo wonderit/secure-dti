@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.13)  # CMake version check
-project(mpc_multiply)               # Create project "simple_example"
-set(CMAKE_CXX_STANDARD 11)            # Enable c++14 standard
+cmake_minimum_required(VERSION 3.5.1)  # CMake version check
+project(secure_ecg)               # Create project "simple_example"
+set(CMAKE_CXX_STANDARD 14)            # Enable c++14 standard
 set(INCPATHS -I/Users/wonsuk/projects/local/include)
 set(LDLIBS -lssl -lcrypto -lntl -lgmp -lm -ldl)
 set(LDPATH -L/usr/local/lib)
@@ -12,7 +12,7 @@ set(SOURCE_FILES
         crypto.cpp
         connect.cpp
         aesstream.cpp
-        mpc.cpp
+        mpc_int.cpp
         param.cpp
         ShareData.cpp
         TrainSecureMNIST.cpp
@@ -20,8 +20,7 @@ set(SOURCE_FILES
         TrainSecureDTI.cpp
         TrainSecureECG.cpp
         GenerateKey.cpp
-        AnalyzeFeature.cpp
-        )
+        AnalyzeFeature.cpp)
 
 # Add executable target with source files listed in SOURCE_FILES variable
 add_executable(ShareData ${SOURCE_FILES})

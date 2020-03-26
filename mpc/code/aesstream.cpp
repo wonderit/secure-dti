@@ -1,6 +1,12 @@
 #include "aesstream.h"
 #include "crypto.h"
+#include "global.h"
+
+#if IS_INT
+#include "util_int.h"
+#else
 #include "util.h"
+#endif
 
 AESStream::AESStream(const unsigned char *key) {
   setup_prf_key(&(this->key), key, PRF_KEY_BYTES);

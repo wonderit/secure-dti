@@ -183,11 +183,11 @@ bool unit_test(MPCEnv& mpc, int pid) {
 
   tcout() << "[LessThanBitsPublic]" << endl;
   Init(bm, 5, 3);
-    bm[0][0] = 0; bm[0][1] = 0; bm[0][2] = 1;
-    bm[1][0] = 0; bm[1][1] = 1; bm[1][2] = 1;
-    bm[2][0] = 0; bm[2][1] = 0; bm[2][2] = 1;
-    bm[3][0] = 1; bm[3][1] = 0; bm[3][2] = 1;
-    bm[4][0] = 0; bm[4][1] = 1; bm[4][2] = 1;
+  bm[0][0] = 0; bm[0][1] = 0; bm[0][2] = 1;
+  bm[1][0] = 0; bm[1][1] = 1; bm[1][2] = 1;
+  bm[2][0] = 0; bm[2][1] = 0; bm[2][2] = 1;
+  bm[3][0] = 1; bm[3][1] = 0; bm[3][2] = 1;
+  bm[4][0] = 0; bm[4][1] = 1; bm[4][2] = 1;
   mpc.LessThanBitsPublic(cv, am, bm, 2);
   mpc.Print(cv, 100, 2);
 

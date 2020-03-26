@@ -1,5 +1,10 @@
 #include "param.h"
+
+#if IS_INT
+#include "util_int.h"
+#else
 #include "util.h"
+#endif
 #include <fstream>
 #include <sstream>
 

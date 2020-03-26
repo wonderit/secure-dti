@@ -16,7 +16,12 @@
 #include <unistd.h>
 
 #include "crypto.h"
+#include "global.h"
+#if IS_INT
+#include "util_int.h"
+#else
 #include "util.h"
+#endif
 #include "openssl/evp.h"
 #include <fstream>
 

@@ -16,9 +16,9 @@ LDPATH = -L/usr/local/lib
 BUILD = build
 PROGS = bin
 
-SRC = crypto.cpp connect.cpp aesstream.cpp mpc.cpp param.cpp
+SRC = crypto.cpp param.cpp connect.cpp aesstream.cpp  mpc_int.cpp
 #PROGNAMES = ShareData TrainSecureDTI GenerateKey AnalyzeFeature test UnitTestClient
-PROGNAMES = UnitTestClient ShareDataECG
+PROGNAMES = UnitTestClient
 #PROGNAMES = TrainSecureMNIST ShareDataMNIST
 
 OBJPATHS = $(patsubst %.cpp,$(BUILD)/%.o, $(SRC))

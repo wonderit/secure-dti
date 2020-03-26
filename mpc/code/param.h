@@ -1,8 +1,8 @@
 #ifndef __PARAM_H__
 #define __PARAM_H__
 
+#include "global.h"
 #include <iostream>
-using namespace std;
 
 class Param {
   public:
@@ -84,6 +84,7 @@ class Param {
     template<class T>
     static bool Convert(string s, T &var, string name);
     static bool ParseFile(const char *param_file);
+
 };
 
-#endif 
+#endif

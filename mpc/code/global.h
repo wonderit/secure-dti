@@ -1,0 +1,28 @@
+#ifndef __GLOBAL_H__
+#define __GLOBAL_H__
+
+#include <boost/multiprecision/cpp_int.hpp>
+using namespace boost::multiprecision;
+using namespace std;
+
+#define INT_TYPE 64
+
+#if INT_TYPE == 128
+  typedef uint128_t myType;
+  #define IS_INT true
+#elif INT_TYPE == 64
+  typedef uint64_t myType;
+  #define IS_INT true
+#else
+  #define IS_INT false
+#endif
+
+typedef uint8_t smallType;
+
+const myType MINUS_ONE = (myType)-1;
+const int BIT_SIZE = (sizeof(myType) * CHAR_BIT);
+const myType LARGEST_NEG = ((myType)1 << (BIT_SIZE - 1));
+const myType FIELD = ((myType)1 << (BIT_SIZE - 2));
+#define PRIME_NUMBER 67
+
+#endif
