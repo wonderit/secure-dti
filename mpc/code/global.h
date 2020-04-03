@@ -5,13 +5,22 @@
 using namespace boost::multiprecision;
 using namespace std;
 
-#define INT_TYPE 64
+#define INT_TYPE 32
 
 #if INT_TYPE == 128
   typedef uint128_t myType;
   #define IS_INT true
 #elif INT_TYPE == 64
   typedef uint64_t myType;
+  #define IS_INT true
+#elif INT_TYPE == 32
+  typedef uint32_t myType;
+  #define IS_INT true
+#elif INT_TYPE == 16
+  typedef uint16_t myType;
+  #define IS_INT true
+#elif INT_TYPE == 8
+  typedef uint8_t myType;
   #define IS_INT true
 #else
   #define IS_INT false
@@ -24,5 +33,7 @@ const int BIT_SIZE = (sizeof(myType) * CHAR_BIT);
 const myType LARGEST_NEG = ((myType)1 << (BIT_SIZE - 1));
 const myType FIELD = ((myType)1 << (BIT_SIZE - 2));
 #define PRIME_NUMBER 67
+
+#define getrandom(min, max) ((rand()%(int)(((max) + 1)-(min)))+ (min))
 
 #endif

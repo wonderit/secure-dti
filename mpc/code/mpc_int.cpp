@@ -765,6 +765,13 @@ void MPCEnv::IsPositive(Vec<ZZ_p>& b, Vec<ZZ_p>& a) {
 
   if ((pid) == 69)
     tcout() << "Transfering data" << endl;
+
+  // TODO int type -> zz_p  prime = 2 ** n - 1
+  // initialize zz_p
+
+  // TODO implement Secure NN Algorithm5 -  5 ~ 8
+
+
   Vec<ZZ_p> r;
   Mat<ZZ> r_bits;
   if (pid == 0) {
@@ -1001,6 +1008,67 @@ void MPCEnv::FPSqrt(Vec<ZZ_p>& b, Vec<ZZ_p>& b_inv, Vec<ZZ_p>& a) {
 //  Reshape(b, bv, a.NumRows(), a.NumCols());
 //  Reshape(b_inv, bv_inv, a.NumRows(), a.NumCols());
 //}
+
+
+void MPCEnv::Trunc(ublas::vector<myType>& a, int f) {
+
+  if (pid > 0) {
+
+    // get rid of k lower bits : 12014 -> 12000
+    for (int i = 0; i < a.size(); i++) {
+
+      bitset<64> aBits = bitset<64>(a[i]);
+      if (i == 0) {
+        cout << "before : pid : " << pid << " i >> " << i << " >> ";
+        for(int i = 63; i >= 0; i--) cout << aBits[i];
+        cout << endl;
+      }
+
+
+//      a[i] = a[i] % FIELD;
+//
+//      if (pid == 1)
+//        a[i] = (myType) (a[i] / (1 << f));
+//      else
+//        a[i] = (myType) (a[i] - FIELD) / (1 << f) + FIELD;
+
+//
+      if (a[i] > LARGEST_NEG) { // negative number
+        a[i] = (myType) (a[i] - FIELD) / (1 << f) + FIELD;
+      } else {
+        a[i] = (myType) (a[i] / (1 << f));
+      }
+//
+//      if (pid == 1)
+//        a[i] = static_cast<myType>(static_cast<int64_t>(a[i]) >> f);
+//      else
+//        a[i] = - static_cast<myType>(static_cast<int64_t>(- a[i]) >> f);
+//
+
+      if (i == 0) {
+
+        aBits = bitset<64>(a[i]);
+        cout << "after : pid : " << pid << " i >> " << i << " >> ";
+        for(int i = 63; i >= 0; i--) cout << aBits[i];
+        cout << endl;
+      }
+
+//        a[i] = - a[i];
+//
+//
+//        if (i == 0) {
+//
+//          aBits = bitset<64>(a[i]);
+//          cout << "after -1 pid : " << pid << " i >> " << i << " >> ";
+//          for(int i = 63; i >= 0; i--) cout << aBits[i];
+//          cout << endl;
+//        }
+
+    }
+
+  }
+
+}
 
 void MPCEnv::Trunc(Mat<ZZ_p>& a, int k, int m) {
 
@@ -1798,6 +1866,40 @@ void MPCEnv::BeaverWriteToFile(Mat<ZZ_p>& ar, Mat<ZZ_p>& am, fstream& ofs) {
     Write(ar, ofs);
   }
   Write(am, ofs);
+}
+
+
+void MPCEnv::BeaverMultElem(ublas::vector<myType>& ab, ublas::vector<myType>& ar, ublas::vector<myType>& am, ublas::vector<myType>& br, ublas::vector<myType>& bm, int fid) {
+  if (pid == 0) {
+    tcout() << "BeaverMultElem 1 - pid = 0 s" << endl;
+    ublas::vector<myType> ambm(am.size());
+    mul_elem(ambm, am, bm);
+    ab += ambm;
+
+    tcout() << "BeaverMultElem 1 - pid = 0 e" << endl;
+  } else {
+    tcout() << "BeaverMultElem 1 - pid = 1/2 s" << endl;
+//    ZZ_pContext context;
+//    context.save();
+//
+//    NTL_GEXEC_RANGE(ab.size() > Param::PAR_THRES, ab.size(), first, last)
+//
+//          context.restore();
+
+    for (int i = 0; i < ab.size(); i++) {
+      ab[i] += ar[i] * bm[i];
+      ab[i] += am[i] * br[i];
+      if (pid == 1) {
+        ab[i] += ar[i] * br[i];
+      }
+    }
+
+    tcout() << "BeaverMultElem 1 - pid = 1/2 e" << endl;
+//    NTL_GEXEC_RANGE_END
+
+  }
+
+//  Mod(ab, fid);
 }
 
 void MPCEnv::BeaverMultElem(Vec<ZZ_p>& ab, Vec<ZZ_p>& ar, Vec<ZZ_p>& am, Vec<ZZ_p>& br, Vec<ZZ_p>& bm, int fid) {

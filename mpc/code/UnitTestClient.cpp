@@ -60,13 +60,13 @@ int main(int argc, char** argv) {
 
   // This is here just to keep P0 online until the end for data transfer
   // In practice, P0 would send data in advance before each phase and go offline
-//  if (pid == 0) {
-//    mpc.ReceiveBool(2);
-//  } else if (pid == 2) {
-//    mpc.SendBool(true, 0);
-//  }
-//
-//  mpc.CleanUp();
+  if (pid == 0) {
+    mpc.ReceiveBool(2);
+  } else if (pid == 2) {
+    mpc.SendBool(true, 0);
+  }
+
+  mpc.CleanUp();
 
   if (success) {
     tcout() << "Protocol successfully completed" << endl;

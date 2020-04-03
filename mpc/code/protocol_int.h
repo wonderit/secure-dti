@@ -2,12 +2,11 @@
 #define __PROTOCOL_H_
 
 #include "global.h"
-//#include "pprint.h"
 #if IS_INT
-#include "mpc_int.h"
-#include "util_int.h"
+  #include "mpc_int.h"
+  #include "util_int.h"
 #else
-#include "mpc.h"
+  #include "mpc.h"
   #include "util.h"
 #endif
 #include <NTL/mat_ZZ_p.h>
@@ -23,6 +22,7 @@
 
 #include <chrono>
 
+using namespace boost::numeric;
 using namespace NTL;
 using namespace std;
 using msec = chrono::milliseconds;
@@ -64,70 +64,65 @@ string outname(string desc) {
 bool unit_test(MPCEnv& mpc, int pid) {
   myType x, y, z;
   ublas::vector<myType> xv(3), yv(3);
-  boost::numeric::ublas::vector<myType> xv1(3), yv1(3), zv, wv, pc;
-  boost::numeric::ublas::vector<double> xdv(3), ydv, zdv, wdv;
+  boost::numeric::ublas::vector<myType> xv1(3), yv1(3), zv(3), wv, pc;
+  boost::numeric::ublas::vector<double> xdv(3), ydv, zdv(3), wdv;
   boost::numeric::ublas::matrix<myType> xm, ym, zm;
   boost::numeric::ublas::vector<myType> av, bv, cv, dv;
   boost::numeric::ublas::matrix<myType> am, bm, cm, dm;
   double d;
-  double eps = 1e-6;
+//  double eps = 1e-6;
+  double eps = 1e-1;
 
-//  Debug Bit array from uint
-//  double a = -13;
-//  printf("a=%f\n", a);
-//  bitset<64>  aBits = bitset<64> (a);
-//  for(int i = 63; i >= 0; i--) cout << aBits[i];
-//  cout << endl;
-//
-//  //#define floatToMyType(a) ((myType)(a * (1 << FLOAT_PRECISION)))
-//  a = a * (1 << 13);
-//  aBits = bitset<64> (a);
-//  for(int i = 63; i >= 0; i--) cout << aBits[i];
-//  cout << endl;
-//
-//  myType b = static_cast<myType>((int64_t)a);
-//  bitset<64>  bBits = bitset<64> (b);
-////  aBits = bitset<64> (b);
-//  for(int i = 63; i >= 0; i--) cout << bBits[i];
-//  cout << endl;
-//  cout << b << endl;
-//  cout << Param::myTypeToDouble(b) << endl;
-//
+
+//  cout << myTypeToDouble(b) << endl;
 //  tcout() << "[Fixed-point ZZ_p <-> Double conversion] ";
 //  x = Param::doubleToMyType(-3.141592653589793238462643383279);
 //  aBits = bitset<64> (x);
 //  for(int i = 63; i >= 0; i--) cout << aBits[i];
 //  cout << endl;
+//  x = doubleToMyType(-3.141592653589793238462643383279, Param::NBIT_F);
+//  d = ABS(myTypeToDouble(x, Param::NBIT_F) - (-3.141592653589793238462643383279));
 
-//  tcout() << "---:" << x << "---" << endl;
-//  tcout() << "---:" << Param::myTypeToDouble(x) << "---" << endl;
-//  tcout() << "bit size : " << Param::BIT_SIZE << "" << endl;
-//  tcout() << "largest neg : " << Param::LARGEST_NEG << "---" << endl;
-
-  x = doubleToMyType(-3.141592653589793238462643383279, Param::NBIT_F);
-  d = ABS(myTypeToDouble(x, Param::NBIT_F) - (-3.141592653589793238462643383279));
-  assert(d < eps);
-  tcout() << "Success" << endl;
+  //  Debug Bit array from uint
+//  double a = -3.5;
+//  myType a_m;
+//  printf("a=%f\n", a);
+//  bitset<BIT_SIZE>  aBits = bitset<BIT_SIZE> (a);
+//  for(int i = BIT_SIZE-1; i >= 0; i--) cout << aBits[i];
+//  cout << endl;
+//  a_m = doubleToMyType(a, Param::NBIT_F);
+//  aBits = bitset<BIT_SIZE> (a_m);
+//  for(int i = BIT_SIZE-1; i >= 0; i--) cout << aBits[i];
+//  cout << endl;
+//  double b = myTypeToDouble(a_m, Param::NBIT_F);
+//  bitset<BIT_SIZE>  bBits = bitset<BIT_SIZE> (b);
+//  for(int i = BIT_SIZE-1; i >= 0; i--) cout << bBits[i];
+//  cout << endl;
+//  cout << b << endl;
+//  x = doubleToMyType(-3.5, Param::NBIT_F);
+//  tcout() << "doubletomytype : " << x << endl;
+//  d = ABS(myTypeToDouble(x, Param::NBIT_F) - (-3.5));
+//  tcout() << "double: " << myTypeToDouble(x, Param::NBIT_F) << " d :: " << d << " / " << Param::NBIT_F << endl;
+//  assert(d < eps);
+//  tcout() << "Success" << endl;
 
   ublas::vector<myType> maskxv(3), maskyv(3);
   if (pid == 2) {
-    xv[0] = doubleToMyType(1.34, Param::NBIT_F);
-    xv[1] = doubleToMyType(100.3, Param::NBIT_F);
-    xv[2] = doubleToMyType(-0.304, Param::NBIT_F);
-    yv[0] = doubleToMyType(-0.001, Param::NBIT_F);
-    yv[1] = doubleToMyType(303, Param::NBIT_F);
-    yv[2] = doubleToMyType(-539, Param::NBIT_F);
+    xv[0] = 1;
+    xv[1] = 2;
+    xv[2] = 3;
 
+    yv[0] = 1;
+    yv[1] = 2;
+    yv[2] = -4;
 
     mpc.SwitchSeed(1);
     mpc.RandVec(maskxv);
     mpc.RandVec(maskyv);
     mpc.RestoreSeed();
 
-    for (int i = 0; i < xv.size(); i++) {
-      xv[i] -= maskxv[i];
-      yv[i] -= maskyv[i];
-    }
+    xv -= maskxv;
+    yv -= maskyv;
 
     tcout() << "::: pid = 2 ::: " << endl;
     mpc.Print(maskxv);
@@ -148,29 +143,41 @@ bool unit_test(MPCEnv& mpc, int pid) {
     tcout() << "::: pid = 1 ::: " << endl;
   }
 
-  for (int i = 0; i < xv.size(); i++) {
-    xv[i] += yv[i];
-  }
-
-  mpc.RevealSym(xv);
-  mpc.PrintFP(xv);
-
-//  Init(xv, 3); Init(yv, 3);
-//  if (pid == 2) {
-//    xv[0] = DoubleToFP(1.34, Param::NBIT_K, Param::NBIT_F);
-//    xv[1] = DoubleToFP(100.3, Param::NBIT_K, Param::NBIT_F);
-//    xv[2] = DoubleToFP(-0.304, Param::NBIT_K, Param::NBIT_F);
-//    yv[0] = DoubleToFP(-0.001, Param::NBIT_K, Param::NBIT_F);
-//    yv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
-//    yv[2] = DoubleToFP(-539, Param::NBIT_K, Param::NBIT_F);
+//  use int to test multiply
+//  xv += yv; // 2
+//
+//  mpc.RevealSym(xv);
+//
+//  mpc.Print(xv); // 2 0 6
+//
+//  for (int i = 0; i < zv.size(); i++) {
+//    xdv[i] = myTypeToDouble(xv[i], 0);
 //  }
-//  mpc.MultElem(zv, xv, yv);
+//
+//  mpc.Print(xdv);
+
+//  TEST START
+  mpc.MultElem(zv, xv, yv);  // (1 2 3) * (1 2 -4) -> (1 4 -12)
+
+
+  mpc.RevealSym(zv);
+  mpc.Print(zv);
+
+  for (int i = 0; i < zv.size(); i++) {
+    zdv[i] = myTypeToDouble(zv[i], 0);
+  }
+  mpc.Print(zdv);
+
+
 //  tcout() << "before trunc" << endl;
-//  mpc.PrintFP(zv);
 //  mpc.Trunc(zv);
 //  tcout() << "after trunc" << endl;
-//  mpc.PrintFP(zv);
+//
 //  mpc.RevealSym(zv);
+//  mpc.Print(zv);
+//  TEST END
+
+
 //
 //  FPToDouble(zdv, zv, Param::NBIT_K, Param::NBIT_F);
 //  if (pid > 0) {
@@ -323,8 +330,9 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  mpc.PrintFP(ym);
 //  tcout() << endl;
 //  //
-//  // This is here just to keep P0 online until the end for data transfer
-//  // In practice, P0 would send data in advance before each phase and go offline
+
+  // This is here just to keep P0 online until the end for data transfer
+  // In practice, P0 would send data in advance before each phase and go offline
 //  if (pid == 0) {
 //    mpc.ReceiveBool(2);
 //  } else if (pid == 2) {

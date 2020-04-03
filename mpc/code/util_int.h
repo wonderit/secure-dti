@@ -129,16 +129,24 @@ static myType doubleToMyType(double a, myType f) {
 static double myTypeToDouble(myType a, myType f) {
 
   long gate = 0;
+//  tcout() << "neg : " << LARGEST_NEG << endl;
   if (a > LARGEST_NEG) { // negative number
     gate = 1;
   }
 
-  double value = a % LARGEST_NEG;
+//  tcout() << "FIELD : " << FIELD << endl;
+
+  double value = a % FIELD;
+
+//  tcout() << "value : " << value << endl;
 
   //  negative + positive
-  value = gate * (value + LARGEST_NEG) + (1 - gate) * (value);
+  value = gate * (value - FIELD) + (1 - gate) * (value);
 
-  return ((double)value / (double)(1 << f));
+
+  tcout() << "doubletomyType  a : " << a << " -> " << (double)(value / (1 << f)) << endl;
+
+  return (double)(value / (1 << f));
 }
 
 template<class T>
