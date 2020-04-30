@@ -3,10 +3,10 @@
 
 #include "global.h"
 #if IS_INT
-  #include "mpc_int.h"
-  #include "util_int.h"
+#include "mpc_int.h"
+#include "util_int.h"
 #else
-  #include "mpc.h"
+#include "mpc.h"
   #include "util.h"
 #endif
 #include <NTL/mat_ZZ_p.h>
@@ -63,12 +63,13 @@ string outname(string desc) {
 
 bool unit_test(MPCEnv& mpc, int pid) {
   myType x, y, z;
-  ublas::vector<myType> xv(3), yv(3);
-  boost::numeric::ublas::vector<myType> xv1(3), yv1(3), zv(3), wv, pc;
-  boost::numeric::ublas::vector<double> xdv(3), ydv, zdv(3), wdv;
-  boost::numeric::ublas::matrix<myType> xm, ym, zm;
-  boost::numeric::ublas::vector<myType> av, bv, cv, dv;
-  boost::numeric::ublas::matrix<myType> am, bm, cm, dm;
+  size_t size = 10000000;
+  ublas::vector<myType> xv(size, 0), yv(size, 0);
+  boost::numeric::ublas::vector<myType> xv1(size, 0), yv1(size, 0), zv(size, 0), wv, pc(size, 0);
+  boost::numeric::ublas::vector<double> xdv(size, 0), ydv, zdv(size, 0), wdv;
+//  boost::numeric::ublas::matrix<myType> xm, ym, zm;
+//  boost::numeric::ublas::vector<myType> av, bv, cv, dv;
+//  boost::numeric::ublas::matrix<myType> am, bm, cm, dm;
   double d;
 //  double eps = 1e-6;
   double eps = 1e-1;
@@ -76,45 +77,59 @@ bool unit_test(MPCEnv& mpc, int pid) {
 
 //  cout << myTypeToDouble(b) << endl;
 //  tcout() << "[Fixed-point ZZ_p <-> Double conversion] ";
-//  x = Param::doubleToMyType(-3.141592653589793238462643383279);
-//  aBits = bitset<64> (x);
-//  for(int i = 63; i >= 0; i--) cout << aBits[i];
+//  x = doubleToMyType(-3.14update for overflow test	b47c954	wonderit <wonsuk@broadinstitute.org>	Mar 3, 2020 at 4:12 PM1592653589793238462643383279);
+//  bitset<64> xBits = bitset<64>(x);
+//  for(int i = 63; i >= 0; i--) cout << xBits[i];
 //  cout << endl;
-//  x = doubleToMyType(-3.141592653589793238462643383279, Param::NBIT_F);
-//  d = ABS(myTypeToDouble(x, Param::NBIT_F) - (-3.141592653589793238462643383279));
+//  x = doubleToMyType(-3.141592653589793238462643383279, BASE_FIXED_PRECISION);
+//  d = ABS(myTypeToDouble(x, BASE_FIXED_PRECISION) - (-3.141592653589793238462643383279));
 
   //  Debug Bit array from uint
-//  double a = -3.5;
+//  double a = 7;
 //  myType a_m;
 //  printf("a=%f\n", a);
 //  bitset<BIT_SIZE>  aBits = bitset<BIT_SIZE> (a);
 //  for(int i = BIT_SIZE-1; i >= 0; i--) cout << aBits[i];
 //  cout << endl;
-//  a_m = doubleToMyType(a, Param::NBIT_F);
+//  a_m = doubleToMyType(a);
+//  printf("a_m=%f\n", a_m);
 //  aBits = bitset<BIT_SIZE> (a_m);
 //  for(int i = BIT_SIZE-1; i >= 0; i--) cout << aBits[i];
 //  cout << endl;
-//  double b = myTypeToDouble(a_m, Param::NBIT_F);
+//  double b = myTypeToDouble(a_m);
 //  bitset<BIT_SIZE>  bBits = bitset<BIT_SIZE> (b);
 //  for(int i = BIT_SIZE-1; i >= 0; i--) cout << bBits[i];
 //  cout << endl;
 //  cout << b << endl;
-//  x = doubleToMyType(-3.5, Param::NBIT_F);
-//  tcout() << "doubletomytype : " << x << endl;
-//  d = ABS(myTypeToDouble(x, Param::NBIT_F) - (-3.5));
-//  tcout() << "double: " << myTypeToDouble(x, Param::NBIT_F) << " d :: " << d << " / " << Param::NBIT_F << endl;
+//  x = doubleToMyType(-3.5);
+//  tcout() << "doubletomytype x : " << x << endl;
+//  d = ABS(myTypeToDouble(x) - (-3.5));
+//  tcout() << "double: " << myTypeToDouble(x) << " d :: " << d << " / " << FIXED_POINT_FRACTIONAL_BITS << endl;
 //  assert(d < eps);
 //  tcout() << "Success" << endl;
 
-  ublas::vector<myType> maskxv(3), maskyv(3);
+  ublas::vector<myType> maskxv(size, 0), maskyv(size, 0);
   if (pid == 2) {
-    xv[0] = 1;
-    xv[1] = 2;
-    xv[2] = 3;
+//    xv[0] = 1;
+//    xv[1] = 2;
+//    xv[2] = 3;
+//
+//    yv[0] = 1;
+//    yv[1] = 2;
+//    yv[2] = -4;
+    for(size_t i = 0; i < size; i++) {
+      if (i % 3 == 0) {
+        xv[i] = doubleToMyType(1.25);
+        yv[i] = doubleToMyType(1.0);
+      } else if (i % 3 == 1) {
+        xv[i] = doubleToMyType(2.5);
+        yv[i] = doubleToMyType(1.0);
+      } else {
+        xv[i] = doubleToMyType(3.14);
+        yv[i] = doubleToMyType(2.0);
+      }
 
-    yv[0] = 1;
-    yv[1] = 2;
-    yv[2] = -4;
+    }
 
     mpc.SwitchSeed(1);
     mpc.RandVec(maskxv);
@@ -124,9 +139,12 @@ bool unit_test(MPCEnv& mpc, int pid) {
     xv -= maskxv;
     yv -= maskyv;
 
+//    mpc.ModShare(xv, maskxv);
+//    mpc.ModShare(yv, maskxv);
+
     tcout() << "::: pid = 2 ::: " << endl;
-    mpc.Print(maskxv);
-    mpc.Print(xv);
+//    mpc.Print(maskxv);
+//    mpc.Print(xv);
     tcout() << "::: pid = 2 ::: " << endl;
   } else if (pid == 1) {
     mpc.SwitchSeed(2);
@@ -138,8 +156,8 @@ bool unit_test(MPCEnv& mpc, int pid) {
       yv[i] = maskyv[i];
     }
     tcout() << "::: pid = 1 ::: " << endl;
-    mpc.Print(xv);
-    mpc.Print(yv);
+//    mpc.Print(xv);
+//    mpc.Print(yv);
     tcout() << "::: pid = 1 ::: " << endl;
   }
 
@@ -151,32 +169,32 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  mpc.Print(xv); // 2 0 6
 //
 //  for (int i = 0; i < zv.size(); i++) {
-//    xdv[i] = myTypeToDouble(xv[i], 0);
+//    xdv[i] = myTypeToDouble(xv[i]);
 //  }
 //
 //  mpc.Print(xdv);
 
 //  TEST START
-  mpc.MultElem(zv, xv, yv);  // (1 2 3) * (1 2 -4) -> (1 4 -12)
-
-
-  mpc.RevealSym(zv);
-  mpc.Print(zv);
-
-  for (int i = 0; i < zv.size(); i++) {
-    zdv[i] = myTypeToDouble(zv[i], 0);
-  }
-  mpc.Print(zdv);
-
-
-//  tcout() << "before trunc" << endl;
-//  mpc.Trunc(zv);
-//  tcout() << "after trunc" << endl;
 //
-//  mpc.RevealSym(zv);
-//  mpc.Print(zv);
-//  TEST END
 
+//  Time
+  time_t start, end;
+  double total_time;
+  if (pid == 2) {
+    tic();
+
+  }
+  mpc.MultElem(zv, xv, yv);  // (1 2 3) * (1 2 -4) -> (1 4 -12)
+  mpc.Trunc(zv);
+
+  if (pid == 2) {
+    toc();
+  }
+//
+//
+//  if (pid > 0) {
+//    mpc.PrintFP(zv);
+//  }
 
 //
 //  FPToDouble(zdv, zv, Param::NBIT_K, Param::NBIT_F);
@@ -190,14 +208,86 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //    tcout() << "Success";
 //  }
 //  tcout() << endl;
-//
+
 //  tcout() << "[PrivateCompare]" << endl;
-//  Init(pc, 3);
-//  mpc.PrintFP(xv);
-//  mpc.PrintFP(yv);
-//  mpc.LessThan(pc, xv, yv);
-//  tcout() << "pc: " << pc << endl;
+//
+//  bitset<INT_FIELD> x_bit = bitset<INT_FIELD> (13);
+//  ublas::vector<myType> x_bit_v(INT_FIELD);
+//  ublas::vector<myType> mask_x_bit(INT_FIELD);
+//  bitset_to_vector(x_bit_v, x_bit);
+//
+//  if (pid == 2) {
+//    mpc.SwitchSeed(1);
+//    mpc.RandVec(mask_x_bit, INT_FIELD);
+//    mpc.RestoreSeed();
+//
+//    mpc.ModShare(x_bit_v, mask_x_bit);
+////    x_bit_v -= mask_x_bit;
+//
+//    tcout() << "::: pid = 2 mask_x_bit ::: " << endl;
+//    mpc.Print(mask_x_bit);
+//    tcout() << "::: pid = 2 x_bit_v ::: " << endl;
+//    mpc.Print(x_bit_v);
+//    tcout() << "::: pid = 2 ::: " << endl;
+//  } else if (pid == 1) {
+//    mpc.SwitchSeed(2);
+//    tcout() << "::: pid = 1 mask_x_bit ::: " << endl;
+//    mpc.RandVec(mask_x_bit, INT_FIELD);
+//    mpc.RestoreSeed();
+//
+//    x_bit_v = mask_x_bit;
+//    tcout() << "::: pid = 1 ::: " << endl;
+//    mpc.Print(x_bit_v);
+//    tcout() << "::: pid = 1 ::: " << endl;
+//  }
+//
+//  //  x > r ?
+//  myType beta_prime = mpc.PrivateCompare(x_bit_v, 12, 0);
+//  tcout() << " beta_prime : " << beta_prime << endl;
+//
+//  if (pid > 0) {
+//    mpc.Print(zv);
+//  }
+
+//
+//
+//  if (pid > 0) {
+////    tcout() << " xv : " << beta_prime << endl;
+//    mpc.PrintFP(xv);
+//  }
+//
+//  ublas::vector<myType> sc_xv(xv.size(), 0);
+//  ublas::vector<myType> relu_deriv(xv.size(), 0);
+//
+//  sc_xv = xv * 2;
+//  yv = yv * 2;
+//
+////  mpc.ShareConvert(sc_xv, xv);
+//
+////  sc_xv = sc_xv * 2;
+//
+//  mpc.ComputeMsb(sc_xv, relu_deriv);
+////  mpc.ComputeMsb(sc_xv, relu_deriv);
+//
+//
+
+
+
+
+//  if (pid > 0) {
+//    mpc.Print(sc_xv);
+//  }
+
+//  if (pid > 0) {
+//    tcout() << "sc xv : " << endl;
+//    mpc.PrintFP(sc_xv);
+//  }
+//
+
+//  mpc.GreaterThan(pc, xv, yv);
 //  mpc.PrintFP(pc);
+//  mpc.RevealSym(pc);
+//  mpc.Print(pc);
 //
 //  tcout() << "[Powers]" << endl;;
 //  Init(xv, 5);

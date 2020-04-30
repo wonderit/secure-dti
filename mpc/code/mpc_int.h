@@ -54,7 +54,15 @@ public:
     LessThanPublic(c, a, bpub);
     FlipBit(c);
   }
+
+  void sharesOfLSB(vector<myType> &share_1, vector<myType> &share_2,
+                   const vector<myType> &r, size_t size);
+  myType PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType beta);
+  void ShareConvert(ublas::vector<myType>& y_sh, ublas::vector<myType>& a_sh);
+  void ComputeMsb(ublas::vector<myType>& y_sh, ublas::vector<myType>& b);
   void LessThan(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b);
+  void LessThan(ublas::vector<myType>& c, ublas::vector<myType>& a, ublas::vector<myType>& b);
+  void GreaterThan(ublas::vector<myType>& c, ublas::vector<myType>& a, ublas::vector<myType>& b);
   void NotLessThan(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b) {
     LessThan(c, a, b);
     FlipBit(c);
@@ -62,13 +70,18 @@ public:
 
   // Test if a number is less than BASE_P / 2
   void IsPositive(Vec<ZZ_p>& b, Vec<ZZ_p>& a);
+  void IsPositive(ublas::vector<myType>& b, ublas::vector<myType>& a);
   void IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a);
 
   // Assumes a is secretly shared binary numbers (0 or 1)
   void FlipBit(Vec<ZZ_p>& a) {
     FlipBit(a, a);
   }
+  void FlipBit(ublas::vector<myType>& a) {
+    FlipBit(a, a);
+  }
   void FlipBit(Vec<ZZ_p>& b, Vec<ZZ_p>& a);
+  void FlipBit(ublas::vector<myType>& b, ublas::vector<myType>& a);
 
   // Assumes a is strictly positive and NBIT_K - NBIT_F is even
   void FPSqrt(Vec<ZZ_p>& b, Vec<ZZ_p>& b_inv, Vec<ZZ_p>& a);
@@ -94,13 +107,12 @@ public:
     Trunc(am, k, m);
     a = am[0][0];
   }
-  void Trunc(ublas::vector<myType>& a, int f);
+  void Trunc(ublas::vector<myType>& a);
   // in most cases, Trunc gets called after a multiplication
   // set default parameters for this case
   void Trunc(Mat<ZZ_p>& a) { Trunc(a, Param::NBIT_K + Param::NBIT_F, Param::NBIT_F); }
   void Trunc(Vec<ZZ_p>& a) { Trunc(a, Param::NBIT_K + Param::NBIT_F, Param::NBIT_F); }
   void Trunc(ZZ_p& a) { Trunc(a, Param::NBIT_K + Param::NBIT_F, Param::NBIT_F); }
-  void Trunc(ublas::vector<myType>& a) { Trunc(a, Param::NBIT_F); }
 
   // Returns shares of 2^(2t) where (2t or 2t+1) = NBIT_K - (bit-length of a number in a)
   // b_sqrt contains 2^t
@@ -129,18 +141,25 @@ public:
     int n = a.length();
 
     if (pow == 1) {
-//      Init(b, 2, n);
+      Init(b, 2, n);
       if (pid > 0) {
         if (pid == 1) {
-//          AddScalar(b[0], T(1));
+          AddScalar(b[0], T(1));
         }
         b[1] = a;
       }
+      if (pid == 1) tcout() << " Powers : test log 0 " << endl;
     } else { // pow > 1
       Vec<T> ar, am;
       BeaverPartition(ar, am, a, fid);
 
+
+      if (pid == 1) tcout() << " Powers : test log 1 " << endl;
+
+
       if (pid == 0) {
+
+        if (pid == 1) tcout() << " Powers : test log 2 " << endl;
         Mat<T> ampow;
         ampow.SetDims(pow - 1, n);
         mul_elem(ampow[0], am, am);
@@ -182,10 +201,12 @@ public:
         Mat<T> t;
         GetPascalMatrix(t, pow, fid);
 
-//        Init(b, pow + 1, n);
+        if (pid == 1) tcout() << " Powers : test log 3 " << endl;
+
+        Init(b, pow + 1, n);
 
         if (pid == 1) {
-//          AddScalar(b[0], T(1));
+          AddScalar(b[0], T(1));
         }
         b[1] = a;
 
@@ -213,7 +234,7 @@ public:
 
           b[p] += ampow[p - 2];
         }
-
+        if (pid == 1) tcout() << " Powers : test log 4 " << endl;
         Mod(b, fid);
       }
     }
@@ -230,15 +251,18 @@ public:
 
     Mat<T> apow;
     //TODO Check SecureNN
-    Powers(apow, a, deg, fid);
+    if (pid == 1) tcout() << " pid 1 : EvaluatePoly 1" << endl;
 
+    Powers(apow, a, deg, fid);
+    if (pid == 1) tcout() << " pid 1 : EvaluatePoly 2" << endl;
     if (pid > 0) {
       b = coeff * apow;
       Mod(b, fid);
-
+      if (pid == 1) tcout() << " pid 1 : EvaluatePoly 3" << endl;
 
     } else {
       b.SetDims(npoly, n);
+      if (pid == 1) tcout() << " pid 1 : EvaluatePoly 4" << endl;
     }
   }
 
@@ -249,38 +273,34 @@ public:
   // Each row of output b is prefix-OR of the corresponding row of a
   void PrefixOr(Mat<ZZ>& b, Mat<ZZ>& a, int fid);
 
+//  template<class T>
+//  void RevealSym(T& a, int fid = 0) {
+//    if (pid == 0) {
+//      return;
+//    }
+//
+//    T b;
+//    if (pid == 1) {
+//      SendElem(a, 3 - pid, fid);
+//      ReceiveElem(b, 3 - pid, fid);
+//    } else {
+//      ReceiveElem(b, 3 - pid, fid);
+//      SendElem(a, 3 - pid, fid);
+//    }
+//
+//    a += b;
+//    Mod(a, fid);
+//  }
+
   template<class T>
-  void RevealSym(T& a, int fid = 0) {
-    if (pid == 0) {
-      return;
-    }
-
-    T b;
-    if (pid == 1) {
-      SendElem(a, 3 - pid, fid);
-      ReceiveElem(b, 3 - pid, fid);
-    } else {
-      ReceiveElem(b, 3 - pid, fid);
-      SendElem(a, 3 - pid, fid);
-    }
-
-    a += b;
-    Mod(a, fid);
-  }
-
-  template<class T>
-  void
-
-
-
-  RevealSym(ublas::vector<T>& a, int fid = 0) {
+  void RevealSymOdd(ublas::vector<T>& a, int fid = 0) {
     if (true) cout << "RevealSym: " << a.size() << endl;
 
     if (pid == 0) {
       return;
     }
 
-    ublas::vector<T> b(a.size());
+    ublas::vector<T> b(a.size(), 0);
     if (pid == 1) {
       SendVec(a, 3 - pid, fid);
       ReceiveVec(b, 3 - pid, fid);
@@ -289,20 +309,110 @@ public:
       SendVec(a, 3 - pid, fid);
     }
 
-    for (int i = 0; i < a.size(); i++) {
-      cout << "a[i]/b[i] :: " << a[i] << "/" << b[i] << endl;
+//    for (int i = 0; i < a.size(); i++) {
+    ////      cout << "a[i]/b[i] :: " << a[i] << "/" << b[i] << endl;
+    ////    }
+    addModuloOdd(a, b, a, a.size());
+//    a += b;
+
+
+//    for (int i = 0; i < a.size(); i++) {
+//      cout << "a[i] before :: " << a[i] << endl;
+//    }
+  }
+
+  template<class T>
+  void RevealSym(ublas::vector<T>& a, int fid = 0) {
+    if (true) cout << "RevealSym: " << a.size() << endl;
+
+    if (pid == 0) {
+      return;
     }
+
+    ublas::vector<T> b(a.size(), 0);
+    if (pid == 1) {
+      SendVec(a, 3 - pid, fid);
+      ReceiveVec(b, 3 - pid, fid);
+    } else {
+      ReceiveVec(b, 3 - pid, fid);
+      SendVec(a, 3 - pid, fid);
+    }
+
+//    for (int i = 0; i < a.size(); i++) {
+    ////      cout << "a[i]/b[i] :: " << a[i] << "/" << b[i] << endl;
+    ////    }
     a += b;
 
 
-    for (int i = 0; i < a.size(); i++) {
+//    for (int i = 0; i < a.size(); i++) {
+//      cout << "a[i] before :: " << a[i] << endl;
+//    }
+  }
 
-      cout << "a[i] before :: " << a[i] << endl;
-//      a[i] %= FIELD;
-//      cout << "a[i] after :: " << a[i] << endl;
+  template<class T>
+  void shuffle(ublas::vector<T>& a, int fid = 0) {
+    if (pid == 0)
+      return;
+    T random_index;
+    size_t n = a.size();
 
+    SwitchSeed(3 - pid);
+
+    for (size_t i = n-1; i > 0; --i) {
+      using std::swap;
+      random_index = RandElemBnd(i+1);
+//      RandElemBnd(random_index, i + 1);
+      tcout() << "pid : " << pid << ", rand : " << random_index << "\t";
+      swap(a[i], a[random_index]);
+//      swap(first[i], first[r(i+1)]);
+    }
+    cout << endl;
+
+    RestoreSeed();
+
+
+  }
+
+  template<class T>
+  void RevealPC(ublas::vector<T>& a, int fid = 0) {
+    if (true) cout << "RevealPC: " << a.size() << endl;
+
+//    if (pid == 0) {
+//      return;
+//    }
+
+    ublas::vector<T> b(a.size(), 0);
+    ublas::vector<T> b2(a.size(), 0);
+    if (pid == 0) {
+      SendVec(a, 1, fid);
+      ReceiveVec(b, 1, fid);
+
+      SendVec(a, 2, fid);
+      ReceiveVec(b2, 2, fid);
+    } else {
+      ReceiveVec(b, 0, fid);
+      SendVec(a, 0, fid);
     }
 
+    if (pid == 0) {
+
+//      for (int i = 0; i < b.size(); i++) {
+//        cout << "b[i]/b2[i] :: " << b[i] << "/" << b2[i] << endl;
+//      }
+      b += b2;
+    }
+    a = b;
+
+//    for (int i = 0; i < a.size(); i++) {
+//      cout << "a[i] before :: " << a[i] << endl;
+//    }
+//
+//
+//    if (pid == 0) {
+//      mpc.ReceiveBool(2);
+//    } else if (pid == 2) {
+//      mpc.SendBool(true, 0);
+//    }
   }
 
   template<class T>
@@ -312,10 +422,11 @@ public:
     if (pid == 0) {
       return;
     }
-
     Vec<T> b;
     if (pid == 1) {
+
       SendVec(a, 3 - pid, fid);
+
       ReceiveVec(b, 3 - pid, a.length(), fid);
     } else {
       ReceiveVec(b, 3 - pid, a.length(), fid);
@@ -401,21 +512,6 @@ public:
     Print(a_copy, cout);
   }
 
-  void PrintBeaver(Vec<ZZ_p>& a, Vec<ZZ_p>& am, int maxlen, int fid = 0) {
-    Vec<ZZ_p> a_copy = a;
-    Vec<ZZ_p> am_copy = am;
-    if (maxlen < a.length()) {
-      a_copy.SetLength(maxlen);
-      am_copy.SetLength(maxlen);
-    }
-    if (pid == 1) {
-      a_copy = am_copy;
-    } else if (pid == 2) {
-      a_copy = a_copy + am_copy;
-    }
-//    Print(a_copy, cout, fid);
-  }
-
   template<class T>
   void Print(Vec<T>& a, ostream& os) {
     Vec<T> a_copy(a);
@@ -439,24 +535,26 @@ public:
 //    }
   }
 
+
   template<class T>
   void PrintFP(ublas::vector<T>& a, ostream& os) {
     ublas::vector<T> a_copy(a);
-    ublas::vector<double> ad(3);
-
-//    RevealSym(a_copy);
+    ublas::vector<double> ad(a.size(), 0);
+    RevealSym(a_copy);
+//    ad.SetLength(a.length());
 //    Param::myTypeToDouble();
 //    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
-    myTypeToDouble(ad, a_copy, Param::NBIT_F);
+//    myTypeToDouble(ad, a_copy, Param::NBIT_F);
+    myTypeToDouble(ad, a_copy);
 
-    cout<< "pid : " << pid << endl;
 //    if (pid == 2) {
-    for (int i = 0; i < a.size(); i++) {
-      os << ad[i];
-      if (i == a.size() - 1) {
-        os << endl;
+
+    for (int i = 0; i < ad.size(); i++) {
+      cout << ad[i];
+      if (i == ad.size() - 1) {
+        cout << endl;
       } else {
-        os << '\t';
+        cout << '\t';
       }
     }
 //    }
@@ -465,13 +563,15 @@ public:
   template<class T>
   void PrintFP(Vec<T>& a, ostream& os) {
     Vec<T> a_copy(a);
-//    RevealSym(a_copy);
     Vec<double> ad;
-    ad.SetLength(a.length());
+    Init(ad, a_copy.length());
+
+    RevealSym(a_copy);
 //    Param::myTypeToDouble();
 //    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
-    myTypeToDouble(ad, a_copy, Param::NBIT_F);
+    myTypeToDouble(ad, a_copy);
 
+    cout<< "pid : " << pid << endl;
 //    if (pid == 2) {
     for (int i = 0; i < a.length(); i++) {
       os << ad[i];
@@ -483,6 +583,7 @@ public:
     }
 //    }
   }
+
 //
 //  void PrintFP(Mat<ZZ_p>& a, int maxrow, int maxcol) {
 //    PrintFP(a, maxrow, maxcol, cout);
@@ -562,16 +663,39 @@ public:
 
   template<class T>
   void Print(ublas::vector<T>& a, ostream& os, int fid = 0) {
-    ublas::vector<T> a_copy(a);
+
+//    ublas::vector<T> a_copy(a);
 //    RevealSym(a_copy, fid);
-    if (pid > 0) {
-      for (int i = 0; i < a_copy.size(); i++) {
-        os << a_copy[i];
-        if (i == a_copy.size() - 1) {
+    if (pid > -1) {
+      os << "Print : ";
+      for (int i = 0; i < a.size(); i++) {
+        os << a[i];
+        if (i == a.size() - 1) {
           os << endl;
         } else {
           os << '\t';
         }
+      }
+    }
+  }
+
+  template<class T>
+  void Print(ublas::vector<ublas::vector<T>>& a, ostream& os, int fid = 0) {
+
+//    ublas::vector<T> a_copy(a);
+//    RevealSym(a_copy, fid);
+    if (pid > -1) {
+      os << "Print : ";
+      for (int i = 0; i < a.size(); i++) {
+        for (int j = 0; j < a[i].size(); j++) {
+          os << a[i][j];
+          if (j == a[i].size() - 1) {
+            os << endl;
+          } else {
+            os << '\t';
+          }
+        }
+
       }
     }
   }
@@ -626,7 +750,7 @@ public:
   template<class T>
   void BeaverReconstruct(ublas::vector<T>& ab, int fid = 0) {
     if (pid == 0) {
-      ublas::vector<T> mask(ab.size());
+      ublas::vector<T> mask(ab.size(), 0);
       SwitchSeed(1);
       RandVec(mask, fid);
       RestoreSeed();
@@ -635,7 +759,7 @@ public:
 
       SendVec(ab, 2, fid);
     } else {
-      ublas::vector<T> ambm(ab.size());
+      ublas::vector<T> ambm(ab.size(), 0);
       if (pid == 2) {
         ReceiveVec(ambm, 0, fid);
       } else {
@@ -657,7 +781,7 @@ public:
       RestoreSeed();
 
       ab -= mask;
-      Mod(ab, fid);
+//      Mod(ab, fid);
 
       SendVec(ab, 2, fid);
     } else {
@@ -671,7 +795,7 @@ public:
       }
 
       ab += ambm;
-      Mod(ab, fid);
+//      Mod(ab, fid);
     }
   }
 
@@ -950,7 +1074,7 @@ public:
       RestoreSeed();
 
       am = x1 + x2;
-      Mod(am, fid);
+//      Mod(am, fid);
       ar.SetLength(n);
     } else {
       SwitchSeed(0);
@@ -958,7 +1082,7 @@ public:
       RestoreSeed();
 
       ar = a - am;
-      Mod(ar, fid);
+//      Mod(ar, fid);
       RevealSym(ar, fid);
     }
   }
@@ -968,31 +1092,37 @@ public:
     int n = a.size();
     tcout() << "bp 1" << endl;
     if (pid == 0) {
-      tcout() << "bp 1 - pid = 0 s" << endl;
-      ublas::vector<T> x1(n);
+//      tcout() << "bp 1 - pid = 0 s" << endl;
+      ublas::vector<T> x1(n, 0);
+      ublas::vector<T> x2(n, 0);
+//      Init(x1);
+//      Init(x2);
+
       SwitchSeed(1);
       RandVec(x1, fid);
       RestoreSeed();
 
-      ublas::vector<T> x2(n);
       SwitchSeed(2);
       RandVec(x2, fid);
       RestoreSeed();
 
       am = x1 + x2;
-      tcout() << "bp 1 - sizes : " << ar.size() << "/" << am.size() << "/" << a.size() << endl;
-      tcout() << "bp 1 - pid = 0 e" << endl;
+      tcout() << "am[0] from pid "<< pid << " : " << am[0] << endl;
+//      tcout() << "bp 1 - sizes : " << ar.size() << "/" << am.size() << "/" << a.size() << endl;
+//      tcout() << "bp 1 - pid = 0 e" << endl;
     } else {
 
-      tcout() << "bp 1 - pid = 1 or 2 s" << endl;
+      tcout() << "a[0] from pid "<< pid << " : " << a[0] << endl;
       SwitchSeed(0);
       RandVec(am, fid);
       RestoreSeed();
-
+      tcout() << "am[0] from pid "<< pid << " : " << am[0] << "/" << am[1] << "/" << am[2] << endl;
       ar = a - am;
+
+      tcout() << "ar[0] from pid  before revealsym "<< pid << " : " << ar[0] << endl;
       RevealSym(ar, fid);
 
-      tcout() << "bp 1 - pid = 1 or 2 e" << endl;
+      tcout() << "ar[0] from pid "<< pid << " : " << ar[0] << endl;
     }
   }
 
@@ -1240,7 +1370,7 @@ public:
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
-//    Init(c, a.length());
+    Init(c, a.length());
     BeaverMultElem(c, ar, am, br, bm, fid);
 
     BeaverReconstruct(c, fid);
@@ -1248,13 +1378,11 @@ public:
 
   template<class T>
   void MultElem(ublas::vector<T>& c, ublas::vector<T>& a, ublas::vector<T>& b, int fid = 0) {
-    ublas::vector<T> ar(a.size()), am(a.size()), br(a.size()), bm(a.size());
+    ublas::vector<T> ar(a.size(), 0), am(a.size(), 0), br(a.size(), 0), bm(a.size(), 0);
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
-    // check a, b
-    // check initializing.
-
+//    Init(c, a.size());
     BeaverMultElem(c, ar, am, br, bm, fid);
 
     BeaverReconstruct(c, fid);
@@ -1290,25 +1418,25 @@ public:
     }
   }
 
-//  template<class T>
-//  void Reshape(Mat<T>& a, int nrows, int ncols) {
-//    if (pid == 0) {
-//      assert(a.NumRows() * a.NumCols() == nrows * ncols);
-//      a.SetDims(nrows, ncols);
-//    } else {
-//      ReshapeMat(a, nrows, ncols);
-//    }
-//  }
-//
-//  template<class T>
-//  void Reshape(Mat<T>& b, Vec<T>& a, int nrows, int ncols) {
-//    if (pid == 0) {
-//      assert(a.length() == nrows * ncols);
-//      b.SetDims(nrows, ncols);
-//    } else {
-//      ReshapeMat(b, a, nrows, ncols);
-//    }
-//  }
+  template<class T>
+  void Reshape(Mat<T>& a, int nrows, int ncols) {
+    if (pid == 0) {
+      assert(a.NumRows() * a.NumCols() == nrows * ncols);
+      a.SetDims(nrows, ncols);
+    } else {
+      ReshapeMat(a, nrows, ncols);
+    }
+  }
+
+  template<class T>
+  void Reshape(Mat<T>& b, Vec<T>& a, int nrows, int ncols) {
+    if (pid == 0) {
+      assert(a.length() == nrows * ncols);
+      b.SetDims(nrows, ncols);
+    } else {
+      ReshapeMat(b, a, nrows, ncols);
+    }
+  }
 
   template<class T>
   void Transpose(Mat<T>& a) {
@@ -1367,7 +1495,39 @@ public:
   void ReceiveElem(T& a, int from_pid, int fid = 0) {
     unsigned char *buf_ptr = buf;
     sockets.find(from_pid)->second.ReceiveSecure(buf, ZZ_bytes[fid]);
-    ConvertBytes(a, buf_ptr, fid);
+//    ConvertBytes(a, buf_ptr, fid);
+    memcpy((char *)&a, buf_ptr, ZZ_bytes[fid]);
+  }
+
+  template<class T>
+  void ReceiveVec(ublas::vector<ublas::vector<T>>& a, int from_pid, int fid = 0) {
+
+    unsigned char *buf_ptr = buf;
+    uint64_t stored_in_buf = 0;
+    uint64_t remaining = a.size() * a[0].size();
+
+    for (uint64_t i = 0; i < a.size(); i++) {
+      for (int j = 0; j < a[i].size(); j++) {
+
+        if (stored_in_buf == 0) {
+          uint64_t count;
+          if (remaining < ZZ_per_buf[fid]) {
+            count = remaining;
+          } else {
+            count = ZZ_per_buf[fid];
+          }
+          sockets.find(from_pid)->second.ReceiveSecure(buf, count * ZZ_bytes[fid]);
+          stored_in_buf += count;
+          remaining -= count;
+          buf_ptr = buf;
+        }
+
+        memcpy((char *)&a[i][j], buf_ptr, ZZ_bytes[fid]);
+      }
+
+      buf_ptr += ZZ_bytes[fid];
+      stored_in_buf--;
+    }
   }
 
   template<class T>
@@ -1391,20 +1551,74 @@ public:
       }
 
 //      a[i] = *(myType *)buf_ptr; // worked in uint16_t
-      memcpy((unsigned char *)&a[i], buf_ptr, ZZ_bytes[fid]);
+      memcpy((char *)&a[i], buf_ptr, ZZ_bytes[fid]);
 
-      printf("receive buffer : %02X %02X %02X %02X",buf_ptr[0],buf_ptr[1], buf_ptr[2], buf_ptr[3]);
-      printf(" %02X %02X %02X %02X",buf_ptr[4],buf_ptr[5], buf_ptr[6], buf_ptr[7]);
-      printf(" %02X %02X %02X %02X \n",buf_ptr[8],buf_ptr[9], buf_ptr[10], buf_ptr[11]);
-
-      tcout() << " receive from_pid " << from_pid << " : ";
-      for (int i = 0; i < a.size(); i++) {
-        cout << "i = " << to_string(i) << " : " << a[i] << "\t";
-      }
-      cout <<endl;
+//      printf("receive buffer : %02X %02X %02X %02X",buf_ptr[0],buf_ptr[1], buf_ptr[2], buf_ptr[3]);
+//      printf(" %02X %02X %02X %02X",buf_ptr[4],buf_ptr[5], buf_ptr[6], buf_ptr[7]);
+//      printf(" %02X %02X %02X %02X \n",buf_ptr[8],buf_ptr[9], buf_ptr[10], buf_ptr[11]);
+//    Log Receive Vec
+//      tcout() << " receive from_pid " << from_pid << " : ";
+//      for (int i = 0; i < a.size(); i++) {
+//        cout << "i = " << to_string(i) << " : " << a[i] << "\t";
+//      }
+//      cout <<endl;
 
       buf_ptr += ZZ_bytes[fid];
       stored_in_buf--;
+    }
+  }
+
+
+
+  template<class T>
+  void GetShare(ublas::vector<T>& a, ublas::vector<T>& a_sh, myType L) {
+
+    if (pid == 0) {
+      ublas::vector<T> a_sh_2(a_sh.size());
+//      RandVecBnd(a, FIELD_L_1);
+      RandVecBnd(a_sh, L);
+
+
+      for(size_t i = 0; i < a.size(); i++) {
+        a_sh_2[i] = (a[i] - a_sh[i]) % L;
+      }
+      SendVec(a_sh, 1);
+      SendVec(a_sh_2, 2);
+      tcout() << "::: pid = " << pid << " GetShare a  ::: "<< a[0]  << endl;
+//      tcout() << "::: pid = " << pid << " compute msb a1  ::: "<< a[1]  << endl;
+//      tcout() << "::: pid = " << pid << " compute msb a2  ::: "<< a[2]  << endl;
+      tcout() << "::: pid = " << pid << " GetShare a_sh  ::: "<< a_sh[0]  << endl;
+      tcout() << "::: pid = " << pid << " GetShare a_sh  ::: "<< a_sh_2[0]  << endl;
+//      tcout() << "::: pid = " << pid << " compute msb a2  ::: "<< a[2]  << endl;
+//      tcout() << "::: pid = " << pid << " compute msb a2  ::: "<< a[2]  << endl;
+    } else {
+      ReceiveVec(a_sh, 0);
+      tcout() << "::: pid = " << pid << " GetShare a_sh 0  ::: "<< a_sh[0]  << endl;
+      tcout() << "::: pid = " << pid << " GetShare a_sh 1  ::: "<< a_sh[1]  << endl;
+      tcout() << "::: pid = " << pid << " GetShare a_sh 2  ::: "<< a_sh[2]  << endl;
+    }
+  }
+
+  template<class T>
+  void GetShare(ublas::vector<ublas::vector<T>>& a, ublas::vector<ublas::vector<T>>& a_sh, myType L) {
+
+    if (pid == 0) {
+
+      ublas::vector<ublas::vector<T>> a_sh_2(a_sh.size(), ublas::vector<T>(INT_TYPE, 0));
+
+      RandVecBnd(a_sh, L);
+
+      for(size_t i = 0; i < a.size(); i++) {
+        for(size_t j = 0; j < a[i].size(); j++) {
+          a_sh_2[i][j] = (a[i][j] - a_sh[i][j]) % L;
+        }
+      }
+
+
+      SendVec(a_sh, 1);
+      SendVec(a_sh_2, 2);
+    } else {
+      ReceiveVec(a_sh, 0);
     }
   }
 
@@ -1427,7 +1641,7 @@ public:
         remaining -= count;
         buf_ptr = buf;
       }
-
+//      memcpy((char *)&a[i], buf_ptr, ZZ_bytes[fid]);
       ConvertBytes(a[i], buf_ptr, fid);
       buf_ptr += ZZ_bytes[fid];
       stored_in_buf--;
@@ -1465,7 +1679,9 @@ public:
   template<class T>
   void SendElem(T& a, int to_pid, int fid = 0) {
     unsigned char *buf_ptr = buf;
-    BytesFromZZ(buf_ptr, AsZZ(a), ZZ_bytes[fid]);
+//    BytesFromZZ(buf_ptr, AsZZ(a), ZZ_bytes[fid]);
+
+    memcpy(buf_ptr, (char*) &a, ZZ_bytes[fid]);
     sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid]);
   }
 
@@ -1475,7 +1691,7 @@ public:
 
     tcout() << " send ELEMMMMM " << to_pid << " : ";
 
-    // TODO change to_ZZ to native longtoByte
+    // TODO change to_ZZ to native longtoByte - finished
 //    BytesFromZZ(buf_ptr, to_ZZ((unsigned long)a), ZZ_bytes[fid]);
 
     memcpy(buf_ptr, (char*) &a, ZZ_bytes[fid]);
@@ -1494,9 +1710,35 @@ public:
         buf_ptr = buf;
       }
 
+//      memcpy(buf_ptr, (char*) &a, ZZ_bytes[fid]);
       BytesFromZZ(buf_ptr, AsZZ(a[i]), ZZ_bytes[fid]);
       stored_in_buf++;
       buf_ptr += ZZ_bytes[fid];
+    }
+
+    if (stored_in_buf > 0) {
+      sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid] * stored_in_buf);
+    }
+  }
+
+  template<class T>
+  void SendVec(ublas::vector<ublas::vector<T>>& a, int to_pid, int fid = 0) {
+    unsigned char *buf_ptr = buf;
+    uint64_t stored_in_buf = 0;
+    for (int i = 0; i < a.size(); i++) {
+
+      for (int j = 0; j < a[i].size(); j++) {
+
+        if (stored_in_buf == ZZ_per_buf[fid]) {
+          sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid] * stored_in_buf);
+          stored_in_buf = 0;
+          buf_ptr = buf;
+        }
+
+        memcpy(buf_ptr, (char*)&a[i][j], ZZ_bytes[fid]);
+        stored_in_buf++;
+        buf_ptr += ZZ_bytes[fid];
+      }
     }
 
     if (stored_in_buf > 0) {
@@ -1509,31 +1751,33 @@ public:
     unsigned char *buf_ptr = buf;
     uint64_t stored_in_buf = 0;
     for (int i = 0; i < a.size(); i++) {
+
       if (stored_in_buf == ZZ_per_buf[fid]) {
         sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid] * stored_in_buf);
         stored_in_buf = 0;
         buf_ptr = buf;
       }
 
-      tcout() << " send to_pid " << to_pid << " : ";
-      for (int i = 0; i < a.size(); i++) {
-        cout << "i = " << to_string(i) << " : " << a[i] << "\t";
-      }
-      cout << endl;
+//      Log Send Vec
+//      tcout() << " send to_pid " << to_pid << " : ";
+//      for (int i = 0; i < a.size(); i++) {
+//        cout << "i = " << to_string(i) << " : " << a[i] << "\t";
+//      }
+//      cout << endl;
 
-      // TODO get rid of ZZ
-      memcpy(buf_ptr, (unsigned char*)&a[i], ZZ_bytes[fid]);
+      // TODO get rid of ZZ - finished
+      memcpy(buf_ptr, (char*)&a[i], ZZ_bytes[fid]);
 //      BytesFromZZ(buf_ptr, to_ZZ((unsigned long)a[i]), ZZ_bytes[fid]);
 
 
-      printf("buffer : %02X %02X %02X %02X",buf_ptr[0],buf_ptr[1], buf_ptr[2], buf_ptr[3]);
-      printf(" %02X %02X %02X %02X",buf_ptr[4],buf_ptr[5], buf_ptr[6], buf_ptr[7]);
-      printf(" %02X %02X %02X %02X \n",buf_ptr[8],buf_ptr[9], buf_ptr[10], buf_ptr[11]);
+//      printf("buffer : %02X %02X %02X %02X",buf_ptr[0],buf_ptr[1], buf_ptr[2], buf_ptr[3]);
+//      printf(" %02X %02X %02X %02X",buf_ptr[4],buf_ptr[5], buf_ptr[6], buf_ptr[7]);
+//      printf(" %02X %02X %02X %02X \n",buf_ptr[8],buf_ptr[9], buf_ptr[10], buf_ptr[11]);
 
       stored_in_buf++;
       buf_ptr += ZZ_bytes[fid];
 
-      // TODO CHECK BUFFERS
+      // TODO CHECK BUFFERS - finished
     }
 
     if (stored_in_buf > 0) {
@@ -1655,8 +1899,51 @@ public:
     random(a);
   }
 
-  static void RandElem(myType& a, int fid = 0) {
-    a = RandomWord();
+  static myType RandElem() {
+    return RandomWord();
+  }
+
+  inline smallType wrapAround(myType a, myType b)
+  {return (a > MINUS_ONE - b);}
+  void wrapAround(const ublas::vector<myType> &a, const ublas::vector<myType> &b,
+                  ublas::vector<myType> &c, size_t size)
+  {
+    for (size_t i = 0; i < size; ++i)
+      c[i] = wrapAround(a[i], b[i]);
+  }
+
+
+
+  template<typename T1, typename T2>
+  void addModuloOdd(const ublas::vector<T1> &a, const ublas::vector<T2> &b, ublas::vector<myType> &c, size_t size)
+  {
+    assert((sizeof(T1) == sizeof(myType) or sizeof(T2) == sizeof(myType)) && "At least one type should be myType for typecast to work");
+
+    for (size_t i = 0; i < size; ++i)
+    {
+      if (a[i] == MINUS_ONE and b[i] == MINUS_ONE)
+        c[i] = 0;
+      else
+        c[i] = (a[i] + b[i] + wrapAround(a[i], b[i])) % MINUS_ONE;
+    }
+  }
+
+  template<typename T1, typename T2>
+  void subtractModuloOdd(const ublas::vector<T1> &a, const ublas::vector<T2> &b, ublas::vector<myType> &c, size_t size)
+  {
+    ublas::vector<myType> temp(size);
+    for (size_t i = 0; i < size; ++i)
+      temp[i] = MINUS_ONE - b[i];
+
+    addModuloOdd<T1, myType>(a, temp, c, size);
+  }
+
+//  static void RandElemBnd(myType a, long l) {
+//    a = RandomBnd(l);
+//  }
+
+  static myType RandElemBnd(long l) {
+    return RandomWord() % l;
   }
 
   void RandVec(Vec<ZZ>& a, int n, int fid) {
@@ -1671,12 +1958,70 @@ public:
       random(a[i]);
   }
 
+  static void RandVecBits_long(ublas::vector<myType>& a, long l) {
+
+    for (int i = 0; i < a.size(); i++)
+      a[i] = RandomWord();
+//      a[i] = RandomBits_long(l);
+  }
+
   static void RandVec(ublas::vector<myType>& a, int fid = 0) {
 
     for (int i = 0; i < a.size(); i++)
       a[i] = RandomWord();
-//      a[i] = RandomWord();
+//      a[i] = RandomBits_long(INT_FIELD);
+//      a[i] = RandomBits_long(l);
   }
+
+  static void RandVecBnd(ublas::vector<myType>& a, long l) {
+
+    for (size_t i = 0; i < a.size(); i++)
+      if (l == FIELD_L_1)
+        a[i] = RandomWord() % FIELD_L_1;
+      else if (l == FIELD_L)
+        a[i] = RandomWord();
+      else
+        a[i] = RandomBnd(l);
+  }
+
+  static void RandVecBnd(ublas::vector<ublas::vector<myType>>& a, long l) {
+
+    for (int i = 0; i < a.size(); i++) {
+      for (int j = 0; j < a[i].size(); j++) {
+        a[i][j] = RandomBnd(l);
+//        cout << a[i][j] << " ";
+      }
+    }
+//    cout << endl;
+  }
+
+
+
+//  static void RandVec(Vec<myType>& a, int fid = 0) {
+//
+//    for (int i = 0; i < a.length(); i++) {
+////      a[i] = RandomBits_ulong(BIT_SIZE);
+//      a[i] = RandomWord();
+//    }
+//
+////      RandomBnd(a[i]);
+//  }
+
+//  static void RandVec(ublas::vector<myType>& a) {
+//
+//    for (int i = 0; i < a.size(); i++)
+//      a[i] = RandomWord();
+//  }
+
+//  static void RandVec(Vec<myType>& a, int fid = 0) {
+//
+//    for (int i = 0; i < a.length(); i++) {
+////      a[i] = RandomBits_ulong(BIT_SIZE);
+//      a[i] = RandomWord();
+//    }
+//
+////      RandomBnd(a[i]);
+//  }
 
   static void RandVec(Vec<myType>& a, int fid = 0) {
 
@@ -1709,7 +2054,36 @@ public:
   void TableLookup(Mat<ZZ_p>& b, Vec<ZZ_p>& a, int cache_id);
   void TableLookup(Mat<ZZ_p>& b, Vec<ZZ>& a, int cache_id, int fid);
 
+  myType ModShare(myType a, myType mask, myType L = FIELD) {
+    cout << "MODSHARE T " << a << mask << endl;
+    if (a < mask) {
+      a = a + (L - mask);
+    } else {
+      a = a - mask;
+    }
+    return a;
+  }
 
+  template<class T>
+  void ModShare(ublas::vector<T>& a, ublas::vector<T>& mask, myType L = FIELD) {
+    for (int i = 0; i < a.size(); i++) {
+      a[i] = (a[i] - mask[i]) % L;
+    }
+  }
+
+  template<class T>
+  void ModShare(ublas::vector<ublas::vector<T>>& a, ublas::vector<ublas::vector<T>>& mask, myType L = FIELD) {
+    for (int i = 0; i < a.size(); i++) {
+      for (int j = 0; j < a[i].size(); j++) {
+        if (a[i][j] < mask[i][j]) {
+          a[i][j] = a[i][j] + L - mask[i][j];
+        } else {
+          a[i][j] = a[i][j] - mask[i][j];
+        }
+
+      }
+    }
+  }
 private:
   map<int, CSocket> sockets;
   map<int, RandomStream> prg;
@@ -1808,7 +2182,7 @@ private:
 
     c.SetLength(nmat);
     for (int k = 0; k < nmat; k++) {
-//      Init(c[k], out_rows[k], out_cols[k]);
+      Init(c[k], out_rows[k], out_cols[k]);
       BeaverMult(c[k], ar[k], am[k], br[k], bm[k], elem_wise, fid);
     }
 
@@ -1852,11 +2226,11 @@ private:
     }
   }
 
-  void Mod(ublas::vector<myType>& a, int fid) {
-    tcout() << "p : " << primes_mytype[fid] << endl;
+    void Mod(ublas::vector<myType>& a, long L) {
+//    tcout() << "p : " << primes_mytype[fid] << endl;
     for (int i = 0; i < a.size(); i++) {
-      a[i] %= primes_mytype[fid];
-//      a[i] %= FIELD;
+//      a[i] %= primes_mytype[fid];
+      a[i] %= L;
     }
   }
 
@@ -1880,20 +2254,10 @@ private:
 
   void mul_elem(ublas::vector<myType>& c, ublas::vector<myType>& a, ublas::vector<myType>& b) {
     cout << a.size() << " a//b " << b.size() << endl;
-//    assert(a.size() == b.size());
-
-//    ZZ_pContext context;
-//    context.save();
-//
-//    NTL_GEXEC_RANGE(c.length() > Param::PAR_THRES, c.size(), first, last)
-//
-//          context.restore();
 
     for (int i = 0; i < c.size(); i++) {
       c[i] = a[i] * b[i];
     }
-
-//    NTL_GEXEC_RANGE_END
   }
 
   void mul_elem(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b) {

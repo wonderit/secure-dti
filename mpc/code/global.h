@@ -5,7 +5,7 @@
 using namespace boost::multiprecision;
 using namespace std;
 
-#define INT_TYPE 32
+#define INT_TYPE 64
 
 #if INT_TYPE == 128
   typedef uint128_t myType;
@@ -13,12 +13,20 @@ using namespace std;
 #elif INT_TYPE == 64
   typedef uint64_t myType;
   #define IS_INT true
+  const string BASE_PRIME_NUMBER = "18446744073709551557";
+  #define FIXED_POINT_FRACTIONAL_BITS 20
+
 #elif INT_TYPE == 32
   typedef uint32_t myType;
   #define IS_INT true
+  const string BASE_PRIME_NUMBER = "4294967291";
+  #define FIXED_POINT_FRACTIONAL_BITS 13
+
 #elif INT_TYPE == 16
   typedef uint16_t myType;
   #define IS_INT true
+  const string BASE_PRIME_NUMBER = "65521";
+  #define FIXED_POINT_FRACTIONAL_BITS 8
 #elif INT_TYPE == 8
   typedef uint8_t myType;
   #define IS_INT true
@@ -32,7 +40,11 @@ const myType MINUS_ONE = (myType)-1;
 const int BIT_SIZE = (sizeof(myType) * CHAR_BIT);
 const myType LARGEST_NEG = ((myType)1 << (BIT_SIZE - 1));
 const myType FIELD = ((myType)1 << (BIT_SIZE - 2));
+const myType FIELD_L_1 = (myType)(1 << INT_TYPE) - 1;
+const myType FIELD_L = (myType)(1 << INT_TYPE);
 #define PRIME_NUMBER 67
+//#define INT_FIELD INT_TYPE-2
+#define INT_FIELD INT_TYPE
 
 #define getrandom(min, max) ((rand()%(int)(((max) + 1)-(min)))+ (min))
 
