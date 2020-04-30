@@ -119,8 +119,28 @@ bool unit_test(MPCEnv& mpc, int pid) {
   tcout() << "[FP multiplcation] ";
 //  TODO MUCH BIGGER
 
-  Init(xv, 3); Init(yv, 3);
+//  Init(xv, 3); Init(yv, 3);
+//  if (pid == 2) {
+//    xv[0] = DoubleToFP(1.34, Param::NBIT_K, Param::NBIT_F);
+//    xv[1] = DoubleToFP(100.3, Param::NBIT_K, Param::NBIT_F);
+//    xv[2] = DoubleToFP(-0.304, Param::NBIT_K, Param::NBIT_F);
+//    yv[0] = DoubleToFP(-0.001, Param::NBIT_K, Param::NBIT_F);
+//    yv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
+//    yv[2] = DoubleToFP(-539, Param::NBIT_K, Param::NBIT_F);
+//  }
+//
+//  if (pid == 2)
+//    tic();
+//  mpc.MultElem(zv, xv, yv);
+//  tcout() << "before trunc" << endl;
+//  mpc.PrintFP(zv);
+//  mpc.Trunc(zv);
+//  tcout() << "after trunc" << endl;
+
+  size_t size = 10000000;
+  Init(xv, size); Init(yv, size);
   if (pid == 2) {
+
     xv[0] = DoubleToFP(1.34, Param::NBIT_K, Param::NBIT_F);
     xv[1] = DoubleToFP(100.3, Param::NBIT_K, Param::NBIT_F);
     xv[2] = DoubleToFP(-0.304, Param::NBIT_K, Param::NBIT_F);
@@ -128,11 +148,20 @@ bool unit_test(MPCEnv& mpc, int pid) {
     yv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
     yv[2] = DoubleToFP(-539, Param::NBIT_K, Param::NBIT_F);
   }
+
+  if (pid == 2)
+    tic();
   mpc.MultElem(zv, xv, yv);
-  tcout() << "before trunc" << endl;
-  mpc.PrintFP(zv);
+//  tcout() << "before trunc" << endl;
+//  mpc.PrintFP(zv);
   mpc.Trunc(zv);
-  tcout() << "after trunc" << endl;
+//  tcout() << "after trunc" << endl;
+
+  if (pid == 2)
+    toc();
+
+  return true;
+
   mpc.PrintFP(zv);
   mpc.RevealSym(zv);
 
