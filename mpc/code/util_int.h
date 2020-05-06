@@ -126,7 +126,7 @@ inline myType doubleToMyType(double a) {
 //  tcout() << "2 : " << static_cast<myType>(a * (1 << FIXED_POINT_FRACTIONAL_BITS)) << endl;
 //  tcout() << "doubleToMyType : " << (1 << FIXED_POINT_FRACTIONAL_BITS) << "/" << (myType)(a * (1 << FIXED_POINT_FRACTIONAL_BITS)) << endl;
   myType result =  static_cast<myType>(a * (1 << FIXED_POINT_FRACTIONAL_BITS));
-//  tcout() << result << endl;
+  tcout() << result << endl;
   return result;
 //  return  static_cast<myType>(a * (1 << FIXED_POINT_FRACTIONAL_BITS));
 //  return (myType)(a * (1 << FIXED_POINT_FRACTIONAL_BITS));
@@ -269,36 +269,36 @@ inline ublas::vector<myType>& operator*(ublas::vector<myType>& x, ublas::vector<
 
 
 template<class T>
-static inline void multvec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a)
+static inline void multvec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a, myType L = FIELD_L)
 {
   cout<< "* start:";
   for (int i = 0; i < x.size(); i++) {
-    result[i] = x[i] * a[i];
+    result[i] =  ( x[i] * a[i] ) % L;
     cout << result[i] << "\t";
   }
   cout << endl;
 }
 
 template<class T>
-static inline void addVec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a)
+static inline void addVec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a, myType L = FIELD_L)
 {
   for (int i = 0; i < x.size(); i++) {
-    result[i] = x[i] + a[i];
+    result[i] = (x[i] + a[i]) % L;
   }
 }
 
 
 template<class T>
-static inline void addScalar(ublas::vector<T>& result, ublas::vector<T>& x, T a)
+static inline void addScalar(ublas::vector<T>& result, ublas::vector<T>& x, T a, myType L = FIELD_L)
 {
   for (int i = 0; i < x.size(); i++) {
-    result[i] = x[i] + a;
+    result[i] = ( x[i] + a) % L;
   }
 }
 
 
 template<class T>
-static inline void cumsum(ublas::vector<T>& x){
+static inline void cumsum(ublas::vector<T>& x, myType L = FIELD_L){
   // initialize an accumulator variable
   myType acc = 0;
 
@@ -307,7 +307,8 @@ static inline void cumsum(ublas::vector<T>& x){
   ublas::vector<T> res(x.size(), 0);
 
   for(int i = 0; i < x.size(); i++){
-    acc += x[i];
+    acc = (acc + x[i]) % L;
+//    acc += x[i];
     res[i] = acc;
   }
   x = res;
@@ -315,17 +316,26 @@ static inline void cumsum(ublas::vector<T>& x){
 }
 
 template<class T>
-static inline void subtractVec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a)
-{
-  for (int i = 0; i < x.size(); i++) {
-    result[i] = x[i] - a[i];
+static T mod_c(T x, T m) {
+  if (x > LARGEST_NEG) {
+    return (x+m) % m;
+  } else {
+    return x % m;
   }
 }
 
 template<class T>
-void multScalar(ublas::vector<T>& result, ublas::vector<T>& a, T b) {
+static inline void subtractVec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a, myType L = FIELD_L)
+{
+  for (int i = 0; i < x.size(); i++) {
+    result[i] = mod_c(x[i] - a[i], L);
+  }
+}
+
+template<class T>
+void multScalar(ublas::vector<T>& result, ublas::vector<T>& a, T b, myType L = FIELD_L) {
   for (int i = 0; i < a.size(); i++) {
-    result[i] = a[i] * b;
+    result[i] = (a[i] * b) % L;
   }
 }
 

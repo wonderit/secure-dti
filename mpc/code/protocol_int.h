@@ -63,7 +63,7 @@ string outname(string desc) {
 
 bool unit_test(MPCEnv& mpc, int pid) {
   myType x, y, z;
-  size_t size = 10000000;
+  size_t size = 10;
   ublas::vector<myType> xv(size, 0), yv(size, 0);
   boost::numeric::ublas::vector<myType> xv1(size, 0), yv1(size, 0), zv(size, 0), wv, pc(size, 0);
   boost::numeric::ublas::vector<double> xdv(size, 0), ydv, zdv(size, 0), wdv;
@@ -110,27 +110,30 @@ bool unit_test(MPCEnv& mpc, int pid) {
 
   ublas::vector<myType> maskxv(size, 0), maskyv(size, 0);
   if (pid == 2) {
-//    xv[0] = 1;
-//    xv[1] = 2;
-//    xv[2] = 3;
+//    xv[0] = 10;
+//    xv[1] = -1;
+//    xv[2] = -3;
+//
+//    xv[0] = doubleToMyType(-135);
+//    xv[1] = doubleToMyType(77);
+//    xv[2] = doubleToMyType(-55);
 //
 //    yv[0] = 1;
 //    yv[1] = 2;
 //    yv[2] = -4;
     for(size_t i = 0; i < size; i++) {
       if (i % 3 == 0) {
-        xv[i] = doubleToMyType(1.25);
-        yv[i] = doubleToMyType(1.0);
+        xv[i] = doubleToMyType(-1.25);
+        yv[i] = doubleToMyType(10.0);
       } else if (i % 3 == 1) {
         xv[i] = doubleToMyType(2.5);
-        yv[i] = doubleToMyType(1.0);
+        yv[i] = doubleToMyType(-1.0);
       } else {
         xv[i] = doubleToMyType(3.14);
-        yv[i] = doubleToMyType(2.0);
+        yv[i] = doubleToMyType(-3.0);
       }
 
     }
-
     mpc.SwitchSeed(1);
     mpc.RandVec(maskxv);
     mpc.RandVec(maskyv);
@@ -139,13 +142,6 @@ bool unit_test(MPCEnv& mpc, int pid) {
     xv -= maskxv;
     yv -= maskyv;
 
-//    mpc.ModShare(xv, maskxv);
-//    mpc.ModShare(yv, maskxv);
-
-    tcout() << "::: pid = 2 ::: " << endl;
-//    mpc.Print(maskxv);
-//    mpc.Print(xv);
-    tcout() << "::: pid = 2 ::: " << endl;
   } else if (pid == 1) {
     mpc.SwitchSeed(2);
     mpc.RandVec(maskxv);
@@ -155,10 +151,6 @@ bool unit_test(MPCEnv& mpc, int pid) {
       xv[i] = maskxv[i];
       yv[i] = maskyv[i];
     }
-    tcout() << "::: pid = 1 ::: " << endl;
-//    mpc.Print(xv);
-//    mpc.Print(yv);
-    tcout() << "::: pid = 1 ::: " << endl;
   }
 
 //  use int to test multiply
@@ -177,20 +169,20 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  TEST START
 //
 
-//  Time
+//  Time MULT START
   time_t start, end;
   double total_time;
   if (pid == 2) {
     tic();
 
   }
-  mpc.MultElem(zv, xv, yv);  // (1 2 3) * (1 2 -4) -> (1 4 -12)
-  mpc.Trunc(zv);
-
-  if (pid == 2) {
-    toc();
-  }
+//  mpc.MultElem(zv, xv, yv);  // (1 2 3) * (1 2 -4) -> (1 4 -12)
+//  mpc.Trunc(zv);
 //
+//  if (pid == 2) {
+//    toc();
+//  }
+//  Time MULT END
 //
 //  if (pid > 0) {
 //    mpc.PrintFP(zv);
@@ -208,20 +200,20 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //    tcout() << "Success";
 //  }
 //  tcout() << endl;
-
+//
 //  tcout() << "[PrivateCompare]" << endl;
 //
-//  bitset<INT_FIELD> x_bit = bitset<INT_FIELD> (13);
+//  bitset<INT_FIELD> x_bit = bitset<INT_FIELD> (doubleToMyType(13));
 //  ublas::vector<myType> x_bit_v(INT_FIELD);
 //  ublas::vector<myType> mask_x_bit(INT_FIELD);
 //  bitset_to_vector(x_bit_v, x_bit);
 //
 //  if (pid == 2) {
 //    mpc.SwitchSeed(1);
-//    mpc.RandVec(mask_x_bit, INT_FIELD);
+//    mpc.RandVecBnd(mask_x_bit, PRIME_NUMBER);
 //    mpc.RestoreSeed();
 //
-//    mpc.ModShare(x_bit_v, mask_x_bit);
+//    mpc.ModShare(x_bit_v, mask_x_bit, PRIME_NUMBER);
 ////    x_bit_v -= mask_x_bit;
 //
 //    tcout() << "::: pid = 2 mask_x_bit ::: " << endl;
@@ -232,7 +224,7 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  } else if (pid == 1) {
 //    mpc.SwitchSeed(2);
 //    tcout() << "::: pid = 1 mask_x_bit ::: " << endl;
-//    mpc.RandVec(mask_x_bit, INT_FIELD);
+//    mpc.RandVecBnd(mask_x_bit, PRIME_NUMBER);
 //    mpc.RestoreSeed();
 //
 //    x_bit_v = mask_x_bit;
@@ -241,38 +233,43 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //    tcout() << "::: pid = 1 ::: " << endl;
 //  }
 //
-//  //  x > r ?
-//  myType beta_prime = mpc.PrivateCompare(x_bit_v, 12, 0);
-//  tcout() << " beta_prime : " << beta_prime << endl;
+//  //  beta=0 : x > r ? or beta = 1 : x < r?
+//  myType beta_prime = mpc.PrivateCompare(x_bit_v, doubleToMyType(12.9), 0);
+//  if (pid == 0) tcout() << " beta_prime 0 : " << beta_prime << endl;
 //
+//  myType beta_prime1 = mpc.PrivateCompare(x_bit_v, doubleToMyType(12.9), 1);
+//  if (pid == 0) tcout() << " beta_prime 1 : " << beta_prime1 << endl;
+
 //  if (pid > 0) {
 //    mpc.Print(zv);
 //  }
-
 //
+
 //
 //  if (pid > 0) {
 ////    tcout() << " xv : " << beta_prime << endl;
 //    mpc.PrintFP(xv);
 //  }
-//
-//  ublas::vector<myType> sc_xv(xv.size(), 0);
-//  ublas::vector<myType> relu_deriv(xv.size(), 0);
-//
-//  sc_xv = xv * 2;
+
+  ublas::vector<myType> sc_xv(xv.size(), 0);
+  ublas::vector<myType> relu_deriv(xv.size(), 0);
+
+//  xv = xv * 2;
 //  yv = yv * 2;
-//
-////  mpc.ShareConvert(sc_xv, xv);
-//
-////  sc_xv = sc_xv * 2;
-//
-//  mpc.ComputeMsb(sc_xv, relu_deriv);
-////  mpc.ComputeMsb(sc_xv, relu_deriv);
-//
-//
 
+//  mpc.ShareConvert(sc_xv, xv);
 
+//  sc_xv = sc_xv * 2;
+  mpc.ComputeMsb(xv, relu_deriv);
 
+  if (pid > 0) {
+    mpc.Print(relu_deriv);
+  }
+
+  if (pid == 2) {
+    toc();
+  }
+//  Time MULT END
 
 //  if (pid > 0) {
 //    mpc.Print(sc_xv);

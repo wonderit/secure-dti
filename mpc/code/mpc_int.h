@@ -361,12 +361,10 @@ public:
     for (size_t i = n-1; i > 0; --i) {
       using std::swap;
       random_index = RandElemBnd(i+1);
-//      RandElemBnd(random_index, i + 1);
-      tcout() << "pid : " << pid << ", rand : " << random_index << "\t";
+//      tcout() << "pid : " << pid << ", rand : " << random_index << "\t";
       swap(a[i], a[random_index]);
-//      swap(first[i], first[r(i+1)]);
     }
-    cout << endl;
+//    cout << endl;
 
     RestoreSeed();
 
@@ -399,7 +397,12 @@ public:
 //      for (int i = 0; i < b.size(); i++) {
 //        cout << "b[i]/b2[i] :: " << b[i] << "/" << b2[i] << endl;
 //      }
-      b += b2;
+      for (int i = 0; i < b.size(); i++) {
+        b[i] = mod_c(b[i] + b2[i], (myType)PRIME_NUMBER);
+//        b[i] = ( b[i] + b2[i] ) % PRIME_NUMBER;
+      }
+      
+//      b += b2;
     }
     a = b;
 
@@ -669,6 +672,8 @@ public:
     if (pid > -1) {
       os << "Print : ";
       for (int i = 0; i < a.size(); i++) {
+        if (i > 5)
+          break;
         os << a[i];
         if (i == a.size() - 1) {
           os << endl;
@@ -688,6 +693,8 @@ public:
       os << "Print : ";
       for (int i = 0; i < a.size(); i++) {
         for (int j = 0; j < a[i].size(); j++) {
+          if (i > 5)
+            break;
           os << a[i][j];
           if (j == a[i].size() - 1) {
             os << endl;
@@ -1506,8 +1513,8 @@ public:
     uint64_t stored_in_buf = 0;
     uint64_t remaining = a.size() * a[0].size();
 
-    for (uint64_t i = 0; i < a.size(); i++) {
-      for (int j = 0; j < a[i].size(); j++) {
+    for (size_t i = 0; i < a.size(); i++) {
+      for (size_t j = 0; j < a[i].size(); j++) {
 
         if (stored_in_buf == 0) {
           uint64_t count;
@@ -1523,8 +1530,10 @@ public:
         }
 
         memcpy((char *)&a[i][j], buf_ptr, ZZ_bytes[fid]);
-      }
 
+        cout << "i/j = " << i << "/" << j << ":" << a[i][j] << "\t";
+      }
+      cout << endl;
       buf_ptr += ZZ_bytes[fid];
       stored_in_buf--;
     }
@@ -1536,7 +1545,7 @@ public:
     uint64_t stored_in_buf = 0;
     uint64_t remaining = a.size();
 
-    for (uint64_t i = 0; i < a.size(); i++) {
+    for (size_t i = 0; i < a.size(); i++) {
       if (stored_in_buf == 0) {
         uint64_t count;
         if (remaining < ZZ_per_buf[fid]) {
@@ -1669,7 +1678,9 @@ public:
           buf_ptr = buf;
         }
 
-        ConvertBytes(a[i][j], buf_ptr, fid);
+
+        memcpy((char *)&a[i][j], buf_ptr, ZZ_bytes[fid]);
+//        ConvertBytes(a[i][j], buf_ptr, fid);
         buf_ptr += ZZ_bytes[fid];
         stored_in_buf--;
       }
@@ -1725,9 +1736,9 @@ public:
   void SendVec(ublas::vector<ublas::vector<T>>& a, int to_pid, int fid = 0) {
     unsigned char *buf_ptr = buf;
     uint64_t stored_in_buf = 0;
-    for (int i = 0; i < a.size(); i++) {
+    for (size_t i = 0; i < a.size(); i++) {
 
-      for (int j = 0; j < a[i].size(); j++) {
+      for (size_t j = 0; j < a[i].size(); j++) {
 
         if (stored_in_buf == ZZ_per_buf[fid]) {
           sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid] * stored_in_buf);
@@ -1797,7 +1808,8 @@ public:
           buf_ptr = buf;
         }
 
-        BytesFromZZ(buf_ptr, AsZZ(a[i][j]), ZZ_bytes[fid]);
+        memcpy(buf_ptr, (char*)&a[i][j], ZZ_bytes[fid]);
+//        BytesFromZZ(buf_ptr, AsZZ(a[i][j]), ZZ_bytes[fid]);
         stored_in_buf++;
         buf_ptr += ZZ_bytes[fid];
       }
@@ -1942,7 +1954,7 @@ public:
 //    a = RandomBnd(l);
 //  }
 
-  static myType RandElemBnd(long l) {
+  static myType RandElemBnd(myType l) {
     return RandomWord() % l;
   }
 
@@ -1968,31 +1980,33 @@ public:
   static void RandVec(ublas::vector<myType>& a, int fid = 0) {
 
     for (int i = 0; i < a.size(); i++)
-      a[i] = RandomWord();
-//      a[i] = RandomBits_long(INT_FIELD);
+//      a[i] = RandomBnd(max_field_L_1);
+      a[i] = RandomBits_long(INT_FIELD-1);
 //      a[i] = RandomBits_long(l);
   }
 
-  static void RandVecBnd(ublas::vector<myType>& a, long l) {
+  static void RandVecBnd(ublas::vector<myType>& a, myType l) {
 
     for (size_t i = 0; i < a.size(); i++)
       if (l == FIELD_L_1)
-        a[i] = RandomWord() % FIELD_L_1;
+        a[i] = RandomBnd(max_field_L_1);
       else if (l == FIELD_L)
-        a[i] = RandomWord();
+        a[i] = RandomBits_long(INT_FIELD-1);
+      else if (l == PRIME_NUMBER)
+        a[i] = RandomBnd(l-1)+1;
       else
         a[i] = RandomBnd(l);
   }
 
   static void RandVecBnd(ublas::vector<ublas::vector<myType>>& a, long l) {
 
-    for (int i = 0; i < a.size(); i++) {
-      for (int j = 0; j < a[i].size(); j++) {
+    for (size_t i = 0; i < a.size(); i++) {
+      for (size_t j = 0; j < a[i].size(); j++) {
         a[i][j] = RandomBnd(l);
-//        cout << a[i][j] << " ";
+        cout << a[i][j] << " ";
       }
     }
-//    cout << endl;
+    cout << endl;
   }
 
 
@@ -2067,7 +2081,12 @@ public:
   template<class T>
   void ModShare(ublas::vector<T>& a, ublas::vector<T>& mask, myType L = FIELD) {
     for (int i = 0; i < a.size(); i++) {
-      a[i] = (a[i] - mask[i]) % L;
+      if (a[i] < mask[i]) {
+        a[i] = a[i] + (L - mask[i]);
+      } else {
+        a[i] = a[i] - mask[i];
+      }
+//      a[i] = (a[i] - mask[i]) % L;
     }
   }
 
@@ -2076,7 +2095,7 @@ public:
     for (int i = 0; i < a.size(); i++) {
       for (int j = 0; j < a[i].size(); j++) {
         if (a[i][j] < mask[i][j]) {
-          a[i][j] = a[i][j] + L - mask[i][j];
+          a[i][j] = a[i][j] + (L - mask[i][j]);
         } else {
           a[i][j] = a[i][j] - mask[i][j];
         }

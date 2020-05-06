@@ -872,27 +872,26 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
   size_t size = a_sh.size();
   ublas::vector<myType> y_sh(a_sh.size(), 0);
   ublas::vector<myType> r_sh(a_sh.size(), 0);
+  ublas::vector<myType> r_0(a_sh.size(), 0);
   ublas::vector<myType> result(a_sh.size(), 0);
   ublas::vector<myType> x(a_sh.size(), 0);
   ublas::vector<myType> x1(a_sh.size(), 0);
   ublas::vector<myType> x2(a_sh.size(), 0);
   ublas::vector<myType> x_sh(a_sh.size(), 0);
   ublas::vector<myType> x_bit_0(a_sh.size(), 0);
-  ublas::vector<myType> u_v(1, 0);
-  ublas::vector<myType> u_v_sh(1, 0);
+  ublas::vector<myType> u_v(a_sh.size(), 0);
+  ublas::vector<myType> u_v_sh(a_sh.size(), 0);
   ublas::vector<ublas::vector<myType>> x_bit(a_sh.size(), ublas::vector<myType>(INT_TYPE, 0));
   ublas::vector<myType> x_bit_sh_0(a_sh.size(), 0);
   ublas::vector<ublas::vector<myType>> x_bit_sh(a_sh.size(), ublas::vector<myType>(INT_TYPE, 0));
-
   ublas::vector<myType> beta_prime_v(a_sh.size(), 0);
   myType L = FIELD;
   myType beta = 0;
   myType u = 0;
 
-
 //  # 1
-
   if (pid == 0) {
+    // TODO   Test with FIXed X
     SwitchSeed(1);
     RandVecBnd(x1, FIELD_L_1);
     RestoreSeed();
@@ -900,69 +899,76 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
     SwitchSeed(2);
     RandVecBnd(x2, FIELD_L_1);
     RestoreSeed();
+// TEST x1, x2
+//    x1[0] = 15906016132161401040;
+//    x1[1] = 5887706027515061822;
+//    x1[2] = 1810938462885886064;
+//
+//
+//    x2[0] = 2732917154255144412;
+//    x2[1] = 1460990085748991318;
+//    x2[2] = 17482953705565970117;
+    x = x1 + x2;
 
-    addModuloOdd(x1, x2, x, a_sh.size());
+    // Log x1 and x2
+    if (Param::DEBUG) {
+      tcout() << "::: pid = 0 x1 ::: " << endl;
+      Print(x1);
 
-//    x = x1 + x2;
-//    Mod(x, FIELD_L_1);
-
+      tcout() << "::: pid = 0 x2 ::: " << endl;
+      Print(x2);
+      tcout() << "::: pid = 0 x ::: " << endl;
+      Print(x);
+    }
     for (int i = 0; i < x_bit.size(); i++) {
-
       bitset<INT_TYPE> x_bitset = bitset<INT_TYPE> (x[i]);
       bitset_to_vector(x_bit[i], x_bitset);
-
-      x_bit_0[i] = doubleToMyType(x[i] % 2);
+      x_bit_0[i] = x[i] % 2; //x[i][0]
     }
-
-    tcout() << "::: pid = 0 x_bit ::: prime : "  << PRIME_NUMBER<< endl;
-    Print(x_bit);
 
     SwitchSeed(1);
     beta = RandElemBnd(2);
     RandVecBnd(x_bit_sh, PRIME_NUMBER);
     RandVecBnd(x_bit_sh_0, FIELD_L);
     RandVecBnd(u_v_sh, FIELD_L);
-
-    cout << "RAND ELEM : " << u_v[0] << endl;
-    cout << "PID = 0 : RAND BETA : " << beta << endl;
     RestoreSeed();
 
     ModShare(x_bit, x_bit_sh, PRIME_NUMBER);
-    ModShare(x_bit_0, x_bit_sh_0, FIELD_L);
-    ModShare(u_v, u_v_sh, FIELD_L);
-    u = u_v_sh[0];
-
+    x_bit_0 -= x_bit_sh_0;
+    u_v -= u_v_sh;
 
     SendElem(beta, 2);
-    SendVec(x_bit, 2);
+    for (size_t i = 0; i < x_bit.size(); i++) {
+      SendVec(x_bit[i], 2);
+    }
     SendVec(x_bit_0, 2);
     SendVec(u_v, 2);
 
-    tcout() << "::: pid = 0 x_bit_share for pid 2 ::: " << endl;
-    Print(x_bit);
-
-    tcout() << "::: pid = 0 x ::: " << endl;
-    Print(x);
-
-    tcout() << "::: pid = 0 x_bit_sh ::: " << endl;
-    Print(x_bit_sh);
-
-    tcout() << "::: pid = 0 x_bit_0 ::: " << endl;
-    Print(x_bit_0);
-
-    tcout() << "::: pid = 0 x_bit_sh_0 ::: " << endl;
-    Print(x_bit_sh_0);
-    tcout() << "::: pid = 0 ::: " << endl;
-
-    tcout() << "::: pid = " << pid << ", u:" << u << endl;
+//    tcout() << "::: pid = 0 x_bit_share for pid 2 ::: " << endl;
+//    Print(x_bit);
+//
+//    tcout() << "::: pid = 0 x ::: " << endl;
+//    Print(x);
+//
+//    tcout() << "::: pid = 0 x_bit_sh ::: " << endl;
+//    Print(x_bit_sh);
+//
+//    tcout() << "::: pid = 0 x_bit_0 ::: " << endl;
+//    Print(x_bit_0);
+//
+//    tcout() << "::: pid = 0 x_bit_sh_0 ::: " << endl;
+//    Print(x_bit_sh_0);
+//    tcout() << "::: pid = 0 ::: " << endl;
+//
+//    tcout() << "::: pid = " << pid << ", u:" << u << endl;
 
   } else {
     SwitchSeed(0);
     RandVecBnd(x_sh, FIELD_L_1);
     RestoreSeed();
 
-    if (pid == 1) {
 
+    if (pid == 1) {
       SwitchSeed(0);
 
       beta = RandElemBnd(2);
@@ -973,289 +979,198 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
 
       cout << "PID = 1 : RAND BETA : " << beta << endl;
 
+// Test x1
+//      x_sh[0] = 15906016132161401040;
+//      x_sh[1] = 5887706027515061822;
+//      x_sh[2] = 1810938462885886064;
+//
+//      a_sh[0] = 3301642439786188061;
+//      a_sh[1] = 17512431917092638234;
+//      a_sh[2] = 4775622574658037613;
+
+//      x_bit_sh_0[0] = 13687049858679895113;
+//      x_bit_sh_0[1] = 3743708110399952701;
+//      x_bit_sh_0[2] = 10015271850254124814;
+//      u_v_sh[0] = 11793800868134066068;
+//      u_v_sh[1] = 11793800868134066068;
+//      u_v_sh[2] = 11793800868134066068;
+
     } else {
+
       ReceiveElem(beta, 0);
-      ReceiveVec(x_bit_sh, 0);
+      for (size_t i = 0; i < x_bit.size(); i++) {
+        ReceiveVec(x_bit_sh[i], 0);
+      }
       ReceiveVec(x_bit_sh_0, 0);
       ReceiveVec(u_v_sh, 0);
 
       cout << "PID = 2 : RAND BETA : " << beta << endl;
-    }
-    u = u_v_sh[0];
 
-    tcout() << "::: pid = " << pid << ", u:" << u << endl;
+//      Test x2
+//      x_sh[0] = 2732917154255144412;
+//      x_sh[1] = 1460990085748991318;
+//      x_sh[2] = 17482953705565970117;
+//      a_sh[0] = 15145101633923363565;
+//      a_sh[1] = 934312156616913381;
+//      a_sh[2] = 13671121499051514000;
+//      x_bit_sh_0[0] = 4759694215029656503;
+//      x_bit_sh_0[1] = 14703035963309598915;
+//      x_bit_sh_0[2] = 8431472223455426803;
+//      u_v_sh[0] = 6652943205575485548;
+//      u_v_sh[1] = 6652943205575485548;
+//      u_v_sh[2] = 6652943205575485548;
+    }
 
     // # 2)
-//    y_sh = a_sh * 2;
-    addModuloOdd(a_sh, a_sh, y_sh, a_sh.size());
-    addModuloOdd(y_sh, x_sh, r_sh, a_sh.size());
-//    r_sh = y_sh + x_sh;
-//    Mod(r_sh, FIELD_L_1);
+    y_sh = a_sh * 2;
+    r_sh = y_sh + x_sh;
 
-    tcout() << "::: pid = " << pid << ", a_sh:" << a_sh[0] << endl;
-    tcout() << "::: pid = " << pid << ", x_sh:" << x_sh[0] << endl;
-    tcout() << "::: pid = " << pid << ", y_sh:" << y_sh[0] << endl;
-    tcout() << "::: pid = " << pid << ", r_sh:" << r_sh[0] << endl;
+    Print(x_bit_sh);
 
-    RevealSymOdd(r_sh);
-//    Mod(r_sh, FIELD_L_1);
-    tcout() << "::: pid = " << pid << ", r_0:" << r_sh[0] << endl;
+    RevealSym(r_sh);
+
+    for (size_t i = 0; i < r_sh.size(); i++) {
+      r_0[i] = r_sh[i] % 2;
+    }
+    tcout() << "::: pid = " << pid << ", reconstruct r:" << r_sh[0] << endl;
   }
 
-//  # 4)
+  //  # 4)
+  // test
+  // beta = 0;
 
   for (int i = 0; i < beta_prime_v.size(); i++) {
     myType beta_prime = PrivateCompare(x_bit_sh[i], r_sh[i], beta);
     beta_prime_v[i] = beta_prime;
-
   }
 
   tcout() << "::: pid = " << pid << ", beta_P:" << beta_prime_v[0] << endl;
   tcout() << "::: pid = " << pid << ", beta_P:" << beta_prime_v[1] << endl;
   tcout() << "::: pid = " << pid << ", beta_P:" << beta_prime_v[2] << endl;
-  ublas::vector<myType> theta_shares(size,0);
-  ublas::vector<myType> theta_shares_1(size,0);
-  ublas::vector<myType> theta_shares_2(size,0);
-
-  ublas::vector<myType> prod(size, 0), temp(size, 0);
-  if (pid == 0)
-  {
+  ublas::vector<myType> gamma(size,0);
+  ublas::vector<myType> delta(size,0);
+  ublas::vector<myType> theta(size,0);
+  ublas::vector<myType> beta_prime_sh(size, 0);
+  if (pid == 0) {
     SwitchSeed(1);
-    RandVecBnd(theta_shares_1, FIELD_L);
+    RandVec(beta_prime_sh);
     RestoreSeed();
 
-    ModShare(beta_prime_v, theta_shares_1, FIELD_L);
+    beta_prime_v -= beta_prime_sh;
     SendVec(beta_prime_v, 2);
-//    sharesOfBitVector(theta_shares_1, theta_shares_2, betaP, size, "INDEP");
-//    sendVector<myType>(theta_shares_1, PARTY_A, size);
-//    sendVector<myType>(theta_shares_2, PARTY_B, size);
   } else {
-
     if (pid == 1) {
-
       SwitchSeed(0);
-      RandVecBnd(theta_shares, FIELD_L);
+      RandVec(beta_prime_sh);
       RestoreSeed();
-
-      cout << "PID = 1 : theta_shares : " << theta_shares[0] << endl;
-
+//      beta_prime_sh[0] = 6566451982797139146;
+//      beta_prime_sh[1] = 5424039985765058565;
+//      beta_prime_sh[2] = 1856519445254747096;
     } else {
-      ReceiveVec(theta_shares, 0);
-
-      cout << "PID = 2 : theta_shares : " << theta_shares[0] << endl;
+      ReceiveVec(beta_prime_sh, 0);
+//      beta_prime_sh[0] = 11880292090912412471;
+//      beta_prime_sh[1] = 13022704087944493051;
+//      beta_prime_sh[2] = 16590224628454804520;
     }
   }
   myType j = 0;
   if (pid > 0)
   {
-
-//    myType j = 0;
     if (pid == 1)
-      j = doubleToMyType(1);
+      j = 1;
 
     for (size_t i = 0; i < size; ++i)
-      theta_shares[i] = (1 - 2*beta)*theta_shares[i] + j*beta;
+      gamma[i] = beta_prime_sh[i] + (j * beta) - (2 * beta * beta_prime_sh[i]);
 
     for (size_t i = 0; i < size; ++i)
-      x_bit_sh_0[i] = (1 - 2*(r_sh[i] & 1))*x_bit_sh_0[i] + j*(r_sh[i] & 1);
+      delta[i] = x_bit_sh_0[i] + (j * r_0[i]) - (2 * r_0[i] * x_bit_sh_0[i]);
   }
 
-  MultElem(prod, theta_shares, x_bit_sh_0);
-//  funcDotProductMPC(theta_shares, x_bit_sh_0, prod, size);
+  MultElem(theta, gamma, delta);
 
-  if (pid > 0)
-  {
-//    populateRandomVector<myType>(temp, size, "COMMON", "NEGATIVE");
-    for (size_t i = 0; i < size; ++i)
-      b[i] = theta_shares[i] + x_bit_sh_0[i] - 2*prod[i] + u;
+  if (pid == 2 && Param::DEBUG) {
 
-    tcout() << "::: pid = " << pid << ", before b:" << b[0] << endl;
-    tcout() << "::: pid = " << pid << ", before b:" << b[1] << endl;
-    tcout() << "::: pid = " << pid << ", before b:" << b[2] << endl;
-    PrintFP(b);
-
-    for (size_t i = 0; i < size; ++i)
-      b[i] = j - b[i];
-
-    tcout() << "::: pid = " << pid << ", b:" << b[0] << endl;
-    tcout() << "::: pid = " << pid << ", b:" << b[1] << endl;
-    tcout() << "::: pid = " << pid << ", b:" << b[2] << endl;
-    PrintFP(b);
+    tcout() << "::: pid = " << pid << ", gamma:" << gamma[0] << endl;
+    tcout() << "::: pid = " << pid << ", gamma:" << gamma[1] << endl;
+    tcout() << "::: pid = " << pid << ", gamma:" << gamma[2] << endl;
+    tcout() << "::: pid = " << pid << ", r_0:" << r_0[0] << endl;
+    tcout() << "::: pid = " << pid << ", r_0:" << r_0[1] << endl;
+    tcout() << "::: pid = " << pid << ", r_0:" << r_0[2] << endl;
+    tcout() << "::: pid = " << pid << ", delta:" << delta[0] << endl;
+    tcout() << "::: pid = " << pid << ", delta:" << delta[1] << endl;
+    tcout() << "::: pid = " << pid << ", delta:" << delta[2] << endl;
+    tcout() << "::: pid = " << pid << ", theta:" << theta[0] << endl;
+    tcout() << "::: pid = " << pid << ", theta:" << theta[1] << endl;
+    tcout() << "::: pid = " << pid << ", theta:" << theta[2] << endl;
   }
 
-
-
-
-//  if (pid == 0) {
-//    RandVecBnd(x, FIELD_L_1);
-//    for (int i = 0; i < x_bit.size(); i++) {
-//
-//      bitset<INT_TYPE> x_bitset = bitset<INT_TYPE> (x[i]);
-//      bitset_to_vector(x_bit[i], x_bitset);
-//
-//    }
-//
-////    RandVecBnd(x_bit_mask, PRIME_NUMBER);
-////    ModShare(x_bit, x_bit_mask, PRIME_NUMBER);
-////
-////    tcout() << "::: pid = 0 mask_x_bit ::: " << endl;
-////    Print(x_bit_mask);
-////    tcout() << "::: pid = 0 x_bit_v ::: " << endl;
-////    Print(x_bit);
-////    tcout() << "::: pid = 0 ::: " << endl;
-//
-////    bitset<INT_TYPE> r_bitset = bitset<INT_TYPE>(x);
+//  if (pid == 1) {
+//    theta[0] = 16144287489555608819;
+//    theta[1] = 17192860135554178861;
+//    theta[2] = 5403310834546839842;
 //  }
-
-
-// TODO
-//  if (pid > 0) tcout() << "::: x, x_sh ::: " << endl;
-//  GetShare(x, x_sh, FIELD_L_1);
-//  if (pid > 0) tcout() << "::: x_bit_0 ::: " << endl;
-//  GetShare(x_bit_0, x_bit_sh_0, FIELD_L);
 //
-//  if (pid > 0) tcout() << "::: x_bit_sh ::: " << endl;
-//  GetShare(x_bit, x_bit_sh, PRIME_NUMBER);
-
-
 //  if (pid == 2) {
-//    SwitchSeed(1);
-//    RandVecBnd(x_bit_mask, PRIME_NUMBER);
-//    RestoreSeed();
 //
-//    ModShare(x_bit, x_bit_mask);
-//
-//    tcout() << "::: pid = 2 mask_x_bit ::: " << endl;
-//    Print(x_bit_mask);
-//    tcout() << "::: pid = 2 x_bit_v ::: " << endl;
-//    Print(x_bit);
-//    tcout() << "::: pid = 2 ::: " << endl;
-//  } else if (pid == 1) {
-//    SwitchSeed(2);
-//    tcout() << "::: pid = 1 mask_x_bit ::: " << endl;
-//    RandVecBnd(x_bit_mask, PRIME_NUMBER);
-//    RestoreSeed();
-//
-//    x_bit = x_bit_mask;
-//    tcout() << "::: pid = 1 ::: x_bit" << endl;
-//    Print(x_bit);
-//    tcout() << "::: pid = 1 ::: x_bit" << endl;
+//    theta[0] = 2302456584153942797;
+//    theta[1] = 1253883938155372755;
+//    theta[2] = 13043433239162711774;
 //  }
+  for (size_t i = 0; i < size; ++i)
+    b = gamma + delta - (theta * 2) + u_v_sh;
 
-//  GetShare(x_bit, x_bit_sh, PRIME_NUMBER);
+  RevealSym(b);
 
-//  if (pid == 0) {
-//
-//    RandVecBnd(x, FIELD_L_1);
-////    RandVecBnd(x_sh, FIELD_L_1);
-//
-//    SendVec(x_sh, 1);
-////    ReceiveVec(x_sh_r, 1);
-//
-////    if (x_sh < x) {
-////
-////    }
-//
-//    x_sh = x - x_sh;
-//
-//    SendVec(x_sh, 2);
-////    ReceiveVec(x_sh_r, 2, fid);
-//    tcout() << "::: pid = " << pid << " compute msb x  ::: "<< x[0]  << endl;
-//  } else {
-//    ReceiveVec(x_sh, 0);
-////    SendVec(x_sh_r, 0, fid);
-//
-//    tcout() << "::: pid =  " << pid << " compute msb u ::: " << u << endl;
-//    tcout() << "::: pid = " << pid << " compute msb x 0  ::: "<< x_sh[0]  << endl;
-//    tcout() << "::: pid = " << pid << " compute msb x 1  ::: "<< x_sh[1]  << endl;
-//    tcout() << "::: pid = " << pid << " compute msb x 2  ::: "<< x_sh[2]  << endl;
-//  }
-
-
-//  if (pid == 2) {
-//    beta = 1;
-//    SwitchSeed(1);
-//    RandElemBnd(u, FIELD_L);
-//    RandVecBnd(x, FIELD_L_1);
-//    RandVecBnd(x_sh, FIELD_L_1);
-//
-//    RestoreSeed();
-//
-//
-//    tcout() << "::: pid = 2 compute msb u ::: " << u << endl;
-//    tcout() << "::: pid = 2 compute msb x 0  ::: "<< x[0]  << endl;
-//    tcout() << "::: pid = 2 compute msb x 0  ::: "<< x[1]  << endl;
-//    tcout() << "::: pid = 2 compute msb x 0  ::: "<< x[2]  << endl;
-//  } else if (pid == 1) {
-//    SwitchSeed(2);
-//    RandElemBnd(u, FIELD_L);
-//
-//    RandVecBnd(x, FIELD_L_1);
-//    RandVecBnd(x_sh, FIELD_L_1);
-//
-//    RestoreSeed();
-//
-//    x_sh = x - x_sh;
-//    u = 0 - u;
-//
-//
-//    tcout() << "::: pid = 1 compute msb u ::: "<< u   << endl;
-//    tcout() << "::: pid = 1 compute msb x 0  ::: "<< x[0]  << endl;
-//    tcout() << "::: pid = 1 compute msb x 1  ::: "<< x[1]  << endl;
-//    tcout() << "::: pid = 1 compute msb x 2  ::: "<< x[2]  << endl;
-//  }
-
-  // # 1)
-
-
-  if (pid == 1) tcout() << " pid 1 : ComputeMsb" << endl;
-  if (pid == 2) tcout() << " pid 2 : ComputeMsb" << endl;
-
-//  return a_sh;
-
-//  if (pid > 0) {
-//    for (int i = 0; i < a_sh.size(); i++) {
-//      cout << a_sh[i] << "->" ;
-//      y_sh[i] = a_sh[i] % (FIELD_L);
-//      cout << y_sh[i] << "\t" ;
-//    }
-//  }
-//  cout << endl;
-//
-//  if (pid == 1) tcout() << " pid 1 : Share Convert end" << endl;
-//  if (pid == 2) tcout() << " pid 2 : Share Convert end" << endl;
-//
-//
-//  return beta_prime;
-
+  if (pid == 2 && Param::DEBUG) {
+    tcout() << "::: pid = " << pid << ", a:" << b[0] << endl;
+    tcout() << "::: pid = " << pid << ", a:" << b[1] << endl;
+    tcout() << "::: pid = " << pid << ", a:" << b[2] << endl;
+  }
 }
 
 
 myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType beta) {
 
-//  myType p = INT_FIELD;
   myType L = FIELD;
-//  myType L = FIELD_L;
-
   ublas::vector<myType> s(INT_FIELD, 0);
   ublas::vector<myType> u(INT_FIELD, 0);
+
+  tcout() << "::: BETAAAAAA = 2 s ::: " << beta << endl;
 
   // j = 0 for pid = 1, j = 1 for pid = 2
   myType j = 0;
   if (pid == 2) {
+//    x_bit_sh[0] = 22;
+//    x_bit_sh[1] = 12;
+//    x_bit_sh[2] = 62;
+//    x_bit_sh[3] = 28;
+
     j = 1;
     SwitchSeed(1);
-    RandVecBits_long(s, INT_FIELD);
-    RandVecBits_long(u, INT_FIELD);
+
+    RandVecBnd(s, PRIME_NUMBER);
+    RandVecBnd(u, PRIME_NUMBER);
+//    RandVecBits_long(s, INT_FIELD);
+//    RandVecBits_long(u, INT_FIELD);
     RestoreSeed();
 
     tcout() << "::: pid = 2 s ::: " << endl;
     Print(s);
     tcout() << "::: pid = 2 s ::: " << endl;
   } else if (pid == 1) {
+
+//    TODO
+//    x_bit_sh[0] = 46;
+//    x_bit_sh[1] = 55;
+//    x_bit_sh[2] = 6;
+//    x_bit_sh[3] = 40;
+
     SwitchSeed(2);
-    RandVecBits_long(s, INT_FIELD);
-    RandVecBits_long(u, INT_FIELD);
+
+    RandVecBnd(s, PRIME_NUMBER);
+    RandVecBnd(u, PRIME_NUMBER);
+//    RandVecBits_long(s, INT_FIELD);
+//    RandVecBits_long(u, INT_FIELD);
     RestoreSeed();
     tcout() << "::: pid = 1 s ::: " << endl;
     Print(s);
@@ -1295,38 +1210,52 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
   bitset_to_vector(t_bit, t_bitset);
   bitset_to_vector(r_bit, r_bitset);
 
+  if (pid > 0) {
 
-  // if beta == 0
-  // 5)
-  //  w = x_bit_sh + (j * r_bit) - 2 * (r_bit * x_bit_sh);
-  multScalar(jxr_bit, r_bit, j);
-  multvec(w2, r_bit, x_bit_sh);
-  multScalar(w2, w2, (myType)2);
+    // if beta == 0
+    // 5)
+    //  w = x_bit_sh + (j * r_bit) - 2 * (r_bit * x_bit_sh);
+    multScalar(jxr_bit, r_bit, j, PRIME_NUMBER);
+    multvec(w2, r_bit, x_bit_sh, PRIME_NUMBER);
+    if (pid == 2) {
+      Print(w2);
+    }
+    multScalar(w2, w2, (myType)2, PRIME_NUMBER);
+    if (pid == 2) {
+      Print(jxr_bit);
+      Print(w2);
+    }
 //  tcout() << "::: pid = 0or1 w ::: " << endl;
 //  Print(jxr_bit);
 //  Print(w2);
 //  tcout() << "::: pid = 0or1 w ::: " << endl;
 //  w = x_bit_sh + jxr_bit - w2;
-  addVec(w, x_bit_sh, jxr_bit);
-  subtractVec(w, w, w2);
+    addVec(w, x_bit_sh, jxr_bit, PRIME_NUMBER);
+    if (pid == 2) {
+      Print(w);
+    }
+    subtractVec(w, w, w2, PRIME_NUMBER);
 
-  if (pid == 1) {
+//    tcout() << "::: pid = " << pid << " w ::: " << endl;
+//    Print(w);
 
-    tcout() << " w : ";
-    Print(w);
-    cout << endl;
-    tcout() << " x sh : ";
-    Print(x_bit_sh);
-    cout << endl;
-  }
+    if (pid > 0) {
 
-  // 6)
-  wc = w;
-  boost::range::reverse(w);
-  cumsum(w);
-  boost::range::reverse(w);
-  //  wc = w - wc;
-  subtractVec(wc, w, wc);
+      tcout() << "pid : " << pid <<  " w : ";
+      Print(w);
+      cout << endl;
+      tcout() << " x sh : ";
+      Print(x_bit_sh);
+      cout << endl;
+    }
+
+    // 6)
+    wc = w;
+    boost::range::reverse(w);
+    cumsum(w, PRIME_NUMBER);
+    boost::range::reverse(w);
+    //  wc = w - wc;
+    subtractVec(wc, w, wc, PRIME_NUMBER);
 
 //  if (pid == 1) {
 //
@@ -1334,146 +1263,150 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
 //    Print(wc);
 //    cout << endl;
 //  }
-  //  c_beta0 = -x_bit_sh + (jxr_bit + j) + wc;
-  subtractVec(c_beta0, jxr_bit, x_bit_sh);
-  addScalar(c_beta0, c_beta0, j);
-  addVec(c_beta0, c_beta0, wc);
-  if (pid == 1) {
+    //  c_beta0 = -x_bit_sh + (jxr_bit + j) + wc;
+    subtractVec(c_beta0, jxr_bit, x_bit_sh, PRIME_NUMBER);
+    addScalar(c_beta0, c_beta0, j, PRIME_NUMBER);
+    addVec(c_beta0, c_beta0, wc, PRIME_NUMBER);
+    if (pid == 1) {
 
-    tcout() << " cb0 : ";
-    Print(c_beta0);
+      tcout() << " cb0 : ";
+      Print(c_beta0);
+      cout << endl;
+    }
+
+    //# elif beta == 1 AND r != 2^l- 1
+    //# 8)
+    //  w = x_bit_sh + (j * t_bit) - (2 * t_bit * x_bit_sh)
+    multScalar(jxt_bit, t_bit, j, PRIME_NUMBER);
+    multvec(w2, t_bit, x_bit_sh, PRIME_NUMBER);
+    multScalar(w2, w2, (myType)2, PRIME_NUMBER);
+
+
+    addVec(w, x_bit_sh, jxt_bit, PRIME_NUMBER);
+    subtractVec(w, w, w2, PRIME_NUMBER);
+
+    // # 9)
+    //  wc = w.flip(-1).cumsum(-1).flip(-1) - w
+    wc = w;
+    boost::range::reverse(w);
+    cumsum(w, PRIME_NUMBER);
+    boost::range::reverse(w);
+    //  wc = w - wc;
+    subtractVec(wc, w, wc, PRIME_NUMBER);
+
+    //  c_beta1 = x_bit_sh + (-j * t_bit) + j + wc
+    subtractVec(c_beta1, x_bit_sh, jxt_bit, PRIME_NUMBER);
+    addScalar(c_beta1, c_beta1, j, PRIME_NUMBER);
+    addVec(c_beta1, c_beta1, wc, PRIME_NUMBER);
+    if (pid == 1) {
+
+      tcout() << " cb1 : ";
+      Print(c_beta1);
+      cout << endl;
+    }
+
+
+    //  # else
+    //  # 11)
+    //    c_igt1 = (1 - j) * (u + 1) - (j * u)
+    //    c_ie1 = (1 - 2 * j) * u
+    addScalar(tmp1, u, (myType)1, PRIME_NUMBER);
+    multScalar(tmp1, tmp1,(1-j), PRIME_NUMBER);
+    multScalar(tmp2, u, j, PRIME_NUMBER);
+    subtractVec(c_igt1, tmp1, tmp2, PRIME_NUMBER);
+    multScalar(c_ie1, u, (1-2*j), PRIME_NUMBER);
+    if (pid == 1) {
+
+      tcout() << " c_igt1 : ";
+      Print(c_igt1);
+      cout << endl;
+
+      tcout() << " c_ie1 : ";
+      Print(c_ie1);
+      cout << endl;
+    }
+
+    l1_mask[0] = 1;
+    l1_mask_inv[0] = 0;
+
+    // # c_else = if i == 1 c_ie1 else c_igt1
+    // c_else = (l1_mask * c_ie1) + ((1 - l1_mask) * c_igt1)
+    multvec(c_else, l1_mask, c_ie1, PRIME_NUMBER);
+    multvec(tmp1, l1_mask_inv, c_igt1, PRIME_NUMBER);
+    addVec(c_else, c_else, tmp1, PRIME_NUMBER);
+
+    if (pid == 1) {
+
+      tcout() << " l1_mask : ";
+      Print(l1_mask);
+      cout << endl;
+
+      tcout() << " l1_mask_inv : ";
+      Print(l1_mask_inv);
+      cout << endl;
+
+      tcout() << " c_else : ";
+      Print(c_else);
+      cout << endl;
+    }
+
+
+    //  # Mask for the case r == 2^l −1
+    //  r_mask = (r == (L - 1)).long()
+    //  r_mask = r_mask.unsqueeze(-1)
+    myType r_mask = (r == (L - 1));
+
+    //  # Mask combination to execute the if / else statements of 4), 7), 10)
+    //  c = (1 - beta) * c_beta0 + (beta * (1 - r_mask)) * c_beta1 + (beta * r_mask) * c_else
+    multScalar(tmp1, c_beta0, (1-beta), PRIME_NUMBER);
+    multScalar(tmp2, c_beta1, (beta * (1 - r_mask)), PRIME_NUMBER);
+    addVec(c, tmp1, tmp2, PRIME_NUMBER);
+    multScalar(tmp1, c_else, (beta * r_mask), PRIME_NUMBER);
+    addVec(c, c, tmp1, PRIME_NUMBER);
+
+    if (pid == 1) {
+      tcout() << " c : ";
+      Print(c);
+      cout << endl;
+    }
+
+
+    //# 14)
+    //# Hide c values
+    //  mask = s * c
+    multvec(mask, s, c, PRIME_NUMBER);
+
+    tcout() << " mask : ";
+    Print(mask);
     cout << endl;
+
   }
-
-  //# elif beta == 1 AND r != 2^l- 1
-  //# 8)
-  //  w = x_bit_sh + (j * t_bit) - (2 * t_bit * x_bit_sh)
-  multScalar(jxt_bit, t_bit, j);
-  multvec(w2, t_bit, x_bit_sh);
-  multScalar(w2, w2, (myType)2);
-
-
-  addVec(w, x_bit_sh, jxt_bit);
-  subtractVec(w, w, w2);
-
-  // # 9)
-  //  wc = w.flip(-1).cumsum(-1).flip(-1) - w
-  wc = w;
-  boost::range::reverse(w);
-  cumsum(w);
-  boost::range::reverse(w);
-  //  wc = w - wc;
-  subtractVec(wc, w, wc);
-
-  //  c_beta1 = x_bit_sh + (-j * t_bit) + j + wc
-  subtractVec(c_beta1, x_bit_sh, jxt_bit);
-  addScalar(c_beta1, c_beta1, j);
-  addVec(c_beta1, c_beta1, wc);
-  if (pid == 1) {
-
-    tcout() << " cb1 : ";
-    Print(c_beta1);
-    cout << endl;
-  }
-
-
-  //  # else
-  //  # 11)
-  //    c_igt1 = (1 - j) * (u + 1) - (j * u)
-  //    c_ie1 = (1 - 2 * j) * u
-  addScalar(tmp1, u, (myType)1);
-  multScalar(tmp1, tmp1,(1-j));
-  multScalar(tmp2, u, j);
-  subtractVec(c_igt1, tmp1, tmp2);
-  multScalar(c_ie1, u, (1-2*j));
-  if (pid == 1) {
-
-    tcout() << " c_igt1 : ";
-    Print(c_igt1);
-    cout << endl;
-
-    tcout() << " c_ie1 : ";
-    Print(c_ie1);
-    cout << endl;
-  }
-
-  l1_mask[0] = 1;
-  l1_mask_inv[0] = 0;
-
-  // # c_else = if i == 1 c_ie1 else c_igt1
-  // c_else = (l1_mask * c_ie1) + ((1 - l1_mask) * c_igt1)
-  multvec(c_else, l1_mask, c_ie1);
-  multvec(tmp1, l1_mask_inv, c_igt1);
-  addVec(c_else, c_else, tmp1);
-
-  if (pid == 1) {
-
-    tcout() << " l1_mask : ";
-    Print(l1_mask);
-    cout << endl;
-
-    tcout() << " l1_mask_inv : ";
-    Print(l1_mask_inv);
-    cout << endl;
-
-    tcout() << " c_else : ";
-    Print(c_else);
-    cout << endl;
-  }
-
-
-  //  # Mask for the case r == 2^l −1
-  //  r_mask = (r == (L - 1)).long()
-  //  r_mask = r_mask.unsqueeze(-1)
-  myType r_mask = (r == (L - 1));
-
-  //  # Mask combination to execute the if / else statements of 4), 7), 10)
-  //  c = (1 - beta) * c_beta0 + (beta * (1 - r_mask)) * c_beta1 + (beta * r_mask) * c_else
-  multScalar(tmp1, c_beta0, (1-beta));
-  multScalar(tmp2, c_beta1, (beta * (1 - r_mask)));
-  addVec(c, tmp1, tmp2);
-  multScalar(tmp1, c_else, (beta * r_mask));
-  addVec(c, c, tmp1);
-
-  if (pid == 1) {
-    tcout() << " c : ";
-    Print(c);
-    cout << endl;
-  }
-
-
-  //# 14)
-  //# Hide c values
-  //  mask = s * c
-  multvec(mask, s, c);
-
-
-  if (pid == 1) {
+  // 15)
+  // TODO RANDOM SHUFFLE with same index between CP1 and CP2
+  shuffle(mask);
+//
+  RevealPC(mask);
+//  RevealSym(mask);
+  if (pid == 0){
     tcout() << " mask : ";
     Print(mask);
     cout << endl;
   }
-
-  // 15)
-  // TODO RANDOM SHUFFLE with same index between CP1 and CP2
-  shuffle(mask);
-
-  RevealPC(mask);
   if (pid == 0) {
     beta_prime = sumifzero(mask);
   }
 
-  myType b;
-  if (pid == 0) {
-    SendElem(beta_prime, 1, 0);
-    ReceiveElem(b, 1, 0);
-
-    SendElem(beta_prime, 2, 0);
-    ReceiveElem(b, 2, 0);
-  } else {
-    ReceiveElem(beta_prime, 0, 0);
-    SendElem(b, 0, 0);
-  }
+//  myType b;
+//  if (pid == 0) {
+//    SendElem(beta_prime, 1, 0);
+//    ReceiveElem(b, 1, 0);
+//
+//    SendElem(beta_prime, 2, 0);
+//    ReceiveElem(b, 2, 0);
+//  } else {
+//    ReceiveElem(beta_prime, 0, 0);
+//    SendElem(b, 0, 0);
+//  }
 
   return beta_prime;
 }

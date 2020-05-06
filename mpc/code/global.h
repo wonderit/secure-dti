@@ -41,6 +41,7 @@ const int BIT_SIZE = (sizeof(myType) * CHAR_BIT);
 const myType LARGEST_NEG = ((myType)1 << (BIT_SIZE - 1));
 const myType FIELD = ((myType)1 << (BIT_SIZE - 2));
 const myType FIELD_L_1 = (myType)(1 << INT_TYPE) - 1;
+const long max_field_L_1 = (1 << (INT_TYPE-1)) - 1;
 const myType FIELD_L = (myType)(1 << INT_TYPE);
 #define PRIME_NUMBER 67
 //#define INT_FIELD INT_TYPE-2
