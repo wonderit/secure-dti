@@ -137,7 +137,7 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  mpc.Trunc(zv);
 //  tcout() << "after trunc" << endl;
 
-  size_t size = 10000000;
+  size_t size = 100;
   Init(xv, size); Init(yv, size);
   if (pid == 2) {
 
@@ -151,39 +151,44 @@ bool unit_test(MPCEnv& mpc, int pid) {
 
   if (pid == 2)
     tic();
-  mpc.MultElem(zv, xv, yv);
+//  mpc.MultElem(zv, xv, yv);
 //  tcout() << "before trunc" << endl;
 //  mpc.PrintFP(zv);
-  mpc.Trunc(zv);
+//  mpc.Trunc(zv);
 //  tcout() << "after trunc" << endl;
+//
+//  if (pid == 2)
+//    toc();
+//
+//  return true;
+
+//  mpc.PrintFP(zv);
+//  mpc.RevealSym(zv);
+
+//  FPToDouble(zdv, zv, Param::NBIT_K, Param::NBIT_F);
+//  if (pid > 0) {
+//    tcout() << "1 : " << zdv[0] - (-0.00134) << endl;
+//    tcout() << "2 : " << zdv[1] - (30390.9) << endl;
+//    tcout() << "3 : " << zdv[2] - (163.856) << endl;
+//    assert(ABS(zdv[0] - (-0.00134)) < eps);
+//    assert(ABS(zdv[1] - (30390.9)) < eps);
+//    assert(ABS(zdv[2] - (163.856)) < eps);
+//    tcout() << "Success";
+//  }
+//  tcout() << endl;
+
+  tcout() << "[PrivateCompare]" << endl;
+  Init(pc, 3);
+//  mpc.PrintFP(xv);
+//  mpc.PrintFP(yv);
+  mpc.LessThan(pc, xv, yv);
+  tcout() << "pc: " << pc << endl;
+//  mpc.Print(pc);
 
   if (pid == 2)
     toc();
 
   return true;
-
-  mpc.PrintFP(zv);
-  mpc.RevealSym(zv);
-
-  FPToDouble(zdv, zv, Param::NBIT_K, Param::NBIT_F);
-  if (pid > 0) {
-    tcout() << "1 : " << zdv[0] - (-0.00134) << endl;
-    tcout() << "2 : " << zdv[1] - (30390.9) << endl;
-    tcout() << "3 : " << zdv[2] - (163.856) << endl;
-    assert(ABS(zdv[0] - (-0.00134)) < eps);
-    assert(ABS(zdv[1] - (30390.9)) < eps);
-    assert(ABS(zdv[2] - (163.856)) < eps);
-    tcout() << "Success";
-  }
-  tcout() << endl;
-
-  tcout() << "[PrivateCompare]" << endl;
-  Init(pc, 3);
-  mpc.PrintFP(xv);
-  mpc.PrintFP(yv);
-  mpc.LessThan(pc, xv, yv);
-  tcout() << "pc: " << pc << endl;
-  mpc.PrintFP(pc);
 
   tcout() << "[Powers]" << endl;;
   Init(xv, 5);
