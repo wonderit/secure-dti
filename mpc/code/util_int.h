@@ -258,12 +258,12 @@ static inline T sumifzero(ublas::vector<T>& x)
 inline ublas::vector<myType>& operator*(ublas::vector<myType>& x, ublas::vector<myType>& a)
 {
   ublas::vector<myType> result(x.size(), 0);
-  cout<< "* start:";
+//  cout<< "* start:";
   for (int i = 0; i < x.size(); i++) {
     result[i] = x[i] * a[i];
-    cout << result[i];
+//    cout << result[i];
   }
-  cout << endl;
+//  cout << endl;
   return result;
 }
 
@@ -271,12 +271,12 @@ inline ublas::vector<myType>& operator*(ublas::vector<myType>& x, ublas::vector<
 template<class T>
 static inline void multvec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a, myType L = FIELD_L)
 {
-  cout<< "* start:";
+//  cout<< "* start:";
   for (int i = 0; i < x.size(); i++) {
     result[i] =  ( x[i] * a[i] ) % L;
-    cout << result[i] << "\t";
+//    cout << result[i] << "\t";
   }
-  cout << endl;
+//  cout << endl;
 }
 
 template<class T>
@@ -335,7 +335,7 @@ static inline void subtractVec(ublas::vector<T>& result, ublas::vector<T>& x, ub
 template<class T>
 void multScalar(ublas::vector<T>& result, ublas::vector<T>& a, T b, myType L = FIELD_L) {
   for (int i = 0; i < a.size(); i++) {
-    result[i] = (a[i] * b) % L;
+    result[i] =  (a[i] * b) % L;
   }
 }
 
@@ -343,7 +343,7 @@ void multScalar(ublas::vector<T>& result, ublas::vector<T>& a, T b, myType L = F
 inline ublas::vector<myType>& operator*(int x, ublas::vector<myType>& a)
 {
   ublas::vector<myType> result(a.size(), 0);
-  cout<<"mytype & vector : ";
+//  cout<<"mytype & vector : ";
   for (int i = 0; i < a.size(); i++) {
     result[i] = x * a[i];
   }
@@ -378,9 +378,9 @@ static inline void bitset_to_vector(ublas::vector<T>&x, bitset<INT_FIELD>& a)
 {
   for (int i = 0; i < x.size(); i++) {
     x[i] = a[i];
-    cout << x[i];
+//    cout << x[i];
   }
-  cout << endl;
+//  cout << endl;
 }
 
 

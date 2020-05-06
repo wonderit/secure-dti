@@ -1217,11 +1217,11 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     //  w = x_bit_sh + (j * r_bit) - 2 * (r_bit * x_bit_sh);
     multScalar(jxr_bit, r_bit, j, PRIME_NUMBER);
     multvec(w2, r_bit, x_bit_sh, PRIME_NUMBER);
-    if (pid == 2) {
+    if (pid == 2 && Param::DEBUG) {
       Print(w2);
     }
     multScalar(w2, w2, (myType)2, PRIME_NUMBER);
-    if (pid == 2) {
+    if (pid == 2 && Param::DEBUG) {
       Print(jxr_bit);
       Print(w2);
     }
@@ -1231,23 +1231,23 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
 //  tcout() << "::: pid = 0or1 w ::: " << endl;
 //  w = x_bit_sh + jxr_bit - w2;
     addVec(w, x_bit_sh, jxr_bit, PRIME_NUMBER);
-    if (pid == 2) {
-      Print(w);
-    }
+//    if (pid == 2) {
+//      Print(w);
+//    }
     subtractVec(w, w, w2, PRIME_NUMBER);
 
 //    tcout() << "::: pid = " << pid << " w ::: " << endl;
 //    Print(w);
 
-    if (pid > 0) {
-
-      tcout() << "pid : " << pid <<  " w : ";
-      Print(w);
-      cout << endl;
-      tcout() << " x sh : ";
-      Print(x_bit_sh);
-      cout << endl;
-    }
+//    if (pid > 0) {
+//
+//      tcout() << "pid : " << pid <<  " w : ";
+//      Print(w);
+//      cout << endl;
+//      tcout() << " x sh : ";
+//      Print(x_bit_sh);
+//      cout << endl;
+//    }
 
     // 6)
     wc = w;
@@ -1267,7 +1267,7 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     subtractVec(c_beta0, jxr_bit, x_bit_sh, PRIME_NUMBER);
     addScalar(c_beta0, c_beta0, j, PRIME_NUMBER);
     addVec(c_beta0, c_beta0, wc, PRIME_NUMBER);
-    if (pid == 1) {
+    if (pid == 1 && Param::DEBUG) {
 
       tcout() << " cb0 : ";
       Print(c_beta0);
@@ -1298,7 +1298,7 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     subtractVec(c_beta1, x_bit_sh, jxt_bit, PRIME_NUMBER);
     addScalar(c_beta1, c_beta1, j, PRIME_NUMBER);
     addVec(c_beta1, c_beta1, wc, PRIME_NUMBER);
-    if (pid == 1) {
+    if (pid == 1 && Param::DEBUG) {
 
       tcout() << " cb1 : ";
       Print(c_beta1);
@@ -1315,7 +1315,7 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     multScalar(tmp2, u, j, PRIME_NUMBER);
     subtractVec(c_igt1, tmp1, tmp2, PRIME_NUMBER);
     multScalar(c_ie1, u, (1-2*j), PRIME_NUMBER);
-    if (pid == 1) {
+    if (pid == 1 && Param::DEBUG) {
 
       tcout() << " c_igt1 : ";
       Print(c_igt1);
@@ -1335,7 +1335,7 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     multvec(tmp1, l1_mask_inv, c_igt1, PRIME_NUMBER);
     addVec(c_else, c_else, tmp1, PRIME_NUMBER);
 
-    if (pid == 1) {
+    if (pid == 1 && Param::DEBUG) {
 
       tcout() << " l1_mask : ";
       Print(l1_mask);
@@ -1364,7 +1364,7 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     multScalar(tmp1, c_else, (beta * r_mask), PRIME_NUMBER);
     addVec(c, c, tmp1, PRIME_NUMBER);
 
-    if (pid == 1) {
+    if (pid == 1 && Param::DEBUG) {
       tcout() << " c : ";
       Print(c);
       cout << endl;
@@ -1376,9 +1376,12 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     //  mask = s * c
     multvec(mask, s, c, PRIME_NUMBER);
 
-    tcout() << " mask : ";
-    Print(mask);
-    cout << endl;
+    if (Param::DEBUG) {
+
+      tcout() << " mask : ";
+      Print(mask);
+      cout << endl;
+    }
 
   }
   // 15)
@@ -1387,7 +1390,7 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
 //
   RevealPC(mask);
 //  RevealSym(mask);
-  if (pid == 0){
+  if (pid == 0 && Param::DEBUG){
     tcout() << " mask : ";
     Print(mask);
     cout << endl;

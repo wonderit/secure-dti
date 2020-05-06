@@ -63,7 +63,7 @@ string outname(string desc) {
 
 bool unit_test(MPCEnv& mpc, int pid) {
   myType x, y, z;
-  size_t size = 10;
+  size_t size = 100;
   ublas::vector<myType> xv(size, 0), yv(size, 0);
   boost::numeric::ublas::vector<myType> xv1(size, 0), yv1(size, 0), zv(size, 0), wv, pc(size, 0);
   boost::numeric::ublas::vector<double> xdv(size, 0), ydv, zdv(size, 0), wdv;

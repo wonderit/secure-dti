@@ -1099,11 +1099,8 @@ public:
     int n = a.size();
     tcout() << "bp 1" << endl;
     if (pid == 0) {
-//      tcout() << "bp 1 - pid = 0 s" << endl;
       ublas::vector<T> x1(n, 0);
       ublas::vector<T> x2(n, 0);
-//      Init(x1);
-//      Init(x2);
 
       SwitchSeed(1);
       RandVec(x1, fid);
@@ -1114,22 +1111,22 @@ public:
       RestoreSeed();
 
       am = x1 + x2;
-      tcout() << "am[0] from pid "<< pid << " : " << am[0] << endl;
+//      tcout() << "am[0] from pid "<< pid << " : " << am[0] << endl;
 //      tcout() << "bp 1 - sizes : " << ar.size() << "/" << am.size() << "/" << a.size() << endl;
 //      tcout() << "bp 1 - pid = 0 e" << endl;
     } else {
 
-      tcout() << "a[0] from pid "<< pid << " : " << a[0] << endl;
+//      tcout() << "a[0] from pid "<< pid << " : " << a[0] << endl;
       SwitchSeed(0);
       RandVec(am, fid);
       RestoreSeed();
-      tcout() << "am[0] from pid "<< pid << " : " << am[0] << "/" << am[1] << "/" << am[2] << endl;
+//      tcout() << "am[0] from pid "<< pid << " : " << am[0] << "/" << am[1] << "/" << am[2] << endl;
       ar = a - am;
 
-      tcout() << "ar[0] from pid  before revealsym "<< pid << " : " << ar[0] << endl;
+//      tcout() << "ar[0] from pid  before revealsym "<< pid << " : " << ar[0] << endl;
       RevealSym(ar, fid);
 
-      tcout() << "ar[0] from pid "<< pid << " : " << ar[0] << endl;
+//      tcout() << "ar[0] from pid "<< pid << " : " << ar[0] << endl;
     }
   }
 
