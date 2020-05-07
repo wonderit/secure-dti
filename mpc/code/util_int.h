@@ -127,7 +127,7 @@ inline myType doubleToMyType(double a) {
 //  tcout() << "doubleToMyType : " << (1 << FIXED_POINT_FRACTIONAL_BITS) << "/" << (myType)(a * (1 << FIXED_POINT_FRACTIONAL_BITS)) << endl;
   myType result =  static_cast<myType>(a * (1 << FIXED_POINT_FRACTIONAL_BITS));
   tcout() << result << endl;
-  return result;
+  return (myType)result;
 //  return  static_cast<myType>(a * (1 << FIXED_POINT_FRACTIONAL_BITS));
 //  return (myType)(a * (1 << FIXED_POINT_FRACTIONAL_BITS));
 //  return (myType)(round(a * (1 << FIXED_POINT_FRACTIONAL_BITS)));

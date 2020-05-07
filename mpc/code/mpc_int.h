@@ -294,7 +294,7 @@ public:
 
   template<class T>
   void RevealSymOdd(ublas::vector<T>& a, int fid = 0) {
-    if (true) cout << "RevealSym: " << a.size() << endl;
+    if (debug) cout << "RevealSym: " << a.size() << endl;
 
     if (pid == 0) {
       return;
@@ -323,7 +323,7 @@ public:
 
   template<class T>
   void RevealSym(ublas::vector<T>& a, int fid = 0) {
-    if (true) cout << "RevealSym: " << a.size() << endl;
+    if (debug) cout << "RevealSym: " << a.size() << endl;
 
     if (pid == 0) {
       return;
@@ -354,11 +354,15 @@ public:
     if (pid == 0)
       return;
     T random_index;
+//    T limit;
     size_t n = a.size();
 
     SwitchSeed(3 - pid);
-
+//    limit = RandElemBnd(n-2);
     for (size_t i = n-1; i > 0; --i) {
+//      if (i < limit)
+//        break;
+
       using std::swap;
       random_index = RandElemBnd(i+1);
 //      tcout() << "pid : " << pid << ", rand : " << random_index << "\t";
@@ -373,7 +377,7 @@ public:
 
   template<class T>
   void RevealPC(ublas::vector<T>& a, int fid = 0) {
-    if (true) cout << "RevealPC: " << a.size() << endl;
+//    if (debug) cout << "RevealPC: " << a.size() << endl;
 
 //    if (pid == 0) {
 //      return;
@@ -1097,7 +1101,7 @@ public:
   template<class T>
   void BeaverPartition(ublas::vector<T>& ar, ublas::vector<T>& am, ublas::vector<T>& a, int fid = 0) {
     int n = a.size();
-    tcout() << "bp 1" << endl;
+//    tcout() << "bp 1" << endl;
     if (pid == 0) {
       ublas::vector<T> x1(n, 0);
       ublas::vector<T> x2(n, 0);
@@ -1908,9 +1912,9 @@ public:
     random(a);
   }
 
-  static myType RandElem() {
-    return RandomWord();
-  }
+//  static myType RandElem() {
+//    return RandomWord();
+//  }
 
   inline smallType wrapAround(myType a, myType b)
   {return (a > MINUS_ONE - b);}
@@ -1953,6 +1957,10 @@ public:
 
   static myType RandElemBnd(myType l) {
     return RandomWord() % l;
+  }
+
+  static myType RandElem() {
+    return RandomBits_long(INT_FIELD-1);
   }
 
   void RandVec(Vec<ZZ>& a, int n, int fid) {
@@ -2000,10 +2008,10 @@ public:
     for (size_t i = 0; i < a.size(); i++) {
       for (size_t j = 0; j < a[i].size(); j++) {
         a[i][j] = RandomBnd(l);
-        cout << a[i][j] << " ";
+//        cout << a[i][j] << " ";
       }
     }
-    cout << endl;
+//    cout << endl;
   }
 
 

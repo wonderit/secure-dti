@@ -63,7 +63,7 @@ string outname(string desc) {
 
 bool unit_test(MPCEnv& mpc, int pid) {
   myType x, y, z;
-  size_t size = 100;
+  size_t size = 100000;
   ublas::vector<myType> xv(size, 0), yv(size, 0);
   boost::numeric::ublas::vector<myType> xv1(size, 0), yv1(size, 0), zv(size, 0), wv, pc(size, 0);
   boost::numeric::ublas::vector<double> xdv(size, 0), ydv, zdv(size, 0), wdv;
@@ -250,25 +250,18 @@ bool unit_test(MPCEnv& mpc, int pid) {
 ////    tcout() << " xv : " << beta_prime << endl;
 //    mpc.PrintFP(xv);
 //  }
-
   ublas::vector<myType> sc_xv(xv.size(), 0);
   ublas::vector<myType> relu_deriv(xv.size(), 0);
-
-//  xv = xv * 2;
-//  yv = yv * 2;
-
-//  mpc.ShareConvert(sc_xv, xv);
-
-//  sc_xv = sc_xv * 2;
   mpc.ComputeMsb(xv, relu_deriv);
+
+  if (pid == 2) {
+    toc();
+  }
 
   if (pid > 0) {
     mpc.Print(relu_deriv);
   }
 
-  if (pid == 2) {
-    toc();
-  }
 //  Time MULT END
 
 //  if (pid > 0) {

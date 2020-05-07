@@ -30,7 +30,7 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
 
   this->pid = pid;
   this->clock_start = chrono::steady_clock::now();
-  debug = true;
+  debug = false;
 
   if (!SetupChannels(pairs)) {
     tcout() << "MPCEnv::Initialize: failed to initialize communication channels" << endl;
@@ -930,19 +930,22 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
     beta = RandElemBnd(2);
     RandVecBnd(x_bit_sh, PRIME_NUMBER);
     RandVecBnd(x_bit_sh_0, FIELD_L);
-    RandVecBnd(u_v_sh, FIELD_L);
+    u = RandElem();
+//    RandVecBnd(u_v_sh, FIELD_L);
     RestoreSeed();
 
     ModShare(x_bit, x_bit_sh, PRIME_NUMBER);
     x_bit_0 -= x_bit_sh_0;
-    u_v -= u_v_sh;
+//    u_v -= u_v_sh;
+    u = 0 - u;
 
     SendElem(beta, 2);
     for (size_t i = 0; i < x_bit.size(); i++) {
       SendVec(x_bit[i], 2);
     }
     SendVec(x_bit_0, 2);
-    SendVec(u_v, 2);
+//    SendVec(u_v, 2);
+    SendElem(u, 2);
 
 //    tcout() << "::: pid = 0 x_bit_share for pid 2 ::: " << endl;
 //    Print(x_bit);
@@ -974,10 +977,12 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
       beta = RandElemBnd(2);
       RandVecBnd(x_bit_sh, PRIME_NUMBER);
       RandVecBnd(x_bit_sh_0, FIELD_L);
-      RandVecBnd(u_v_sh, FIELD_L);
+      u = RandElem();
+//      RandVecBnd(u_v_sh, FIELD_L);
       RestoreSeed();
 
       cout << "PID = 1 : RAND BETA : " << beta << endl;
+//      cout << "PID = 2 : RAND u : " << u << endl;
 
 // Test x1
 //      x_sh[0] = 15906016132161401040;
@@ -1002,9 +1007,11 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
         ReceiveVec(x_bit_sh[i], 0);
       }
       ReceiveVec(x_bit_sh_0, 0);
-      ReceiveVec(u_v_sh, 0);
+      ReceiveElem(u, 0);
+//      ReceiveVec(u_v_sh, 0);
 
       cout << "PID = 2 : RAND BETA : " << beta << endl;
+      cout << "PID = 2 : RAND u : " << u << endl;
 
 //      Test x2
 //      x_sh[0] = 2732917154255144412;
@@ -1025,14 +1032,14 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
     y_sh = a_sh * 2;
     r_sh = y_sh + x_sh;
 
-    Print(x_bit_sh);
+//    Print(x_bit_sh);
 
     RevealSym(r_sh);
 
     for (size_t i = 0; i < r_sh.size(); i++) {
       r_0[i] = r_sh[i] % 2;
     }
-    tcout() << "::: pid = " << pid << ", reconstruct r:" << r_sh[0] << endl;
+//    tcout() << "::: pid = " << pid << ", reconstruct r:" << r_sh[0] << endl;
   }
 
   //  # 4)
@@ -1116,15 +1123,16 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
 //    theta[1] = 1253883938155372755;
 //    theta[2] = 13043433239162711774;
 //  }
+//  b = gamma + delta - (theta * 2) + u_v_sh;
   for (size_t i = 0; i < size; ++i)
-    b = gamma + delta - (theta * 2) + u_v_sh;
+    b[i] = gamma[i] + delta[i] - (theta[i] * 2) + u;
 
   RevealSym(b);
 
-  if (pid == 2 && Param::DEBUG) {
-    tcout() << "::: pid = " << pid << ", a:" << b[0] << endl;
-    tcout() << "::: pid = " << pid << ", a:" << b[1] << endl;
-    tcout() << "::: pid = " << pid << ", a:" << b[2] << endl;
+  if (pid == 2 && Param::DEBUG ) {
+    tcout() << "::: pid = " << pid << ", b:" << b[0] << endl;
+    tcout() << "::: pid = " << pid << ", b:" << b[1] << endl;
+    tcout() << "::: pid = " << pid << ", b:" << b[2] << endl;
   }
 }
 
@@ -1135,7 +1143,7 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
   ublas::vector<myType> s(INT_FIELD, 0);
   ublas::vector<myType> u(INT_FIELD, 0);
 
-  tcout() << "::: BETAAAAAA = 2 s ::: " << beta << endl;
+//  tcout() << "::: BETAAAAAA = 2 s ::: " << beta << endl;
 
   // j = 0 for pid = 1, j = 1 for pid = 2
   myType j = 0;
@@ -1154,9 +1162,9 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
 //    RandVecBits_long(u, INT_FIELD);
     RestoreSeed();
 
-    tcout() << "::: pid = 2 s ::: " << endl;
-    Print(s);
-    tcout() << "::: pid = 2 s ::: " << endl;
+//    tcout() << "::: pid = 2 s ::: " << endl;
+//    Print(s);
+//    tcout() << "::: pid = 2 s ::: " << endl;
   } else if (pid == 1) {
 
 //    TODO
@@ -1172,9 +1180,9 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
 //    RandVecBits_long(s, INT_FIELD);
 //    RandVecBits_long(u, INT_FIELD);
     RestoreSeed();
-    tcout() << "::: pid = 1 s ::: " << endl;
-    Print(s);
-    tcout() << "::: pid = 1 s ::: " << endl;
+//    tcout() << "::: pid = 1 s ::: " << endl;
+//    Print(s);
+//    tcout() << "::: pid = 1 s ::: " << endl;
   }
 
   myType t = (r+1) % L;
@@ -2786,14 +2794,14 @@ void MPCEnv::BeaverWriteToFile(Mat<ZZ_p>& ar, Mat<ZZ_p>& am, fstream& ofs) {
 
 void MPCEnv::BeaverMultElem(ublas::vector<myType>& ab, ublas::vector<myType>& ar, ublas::vector<myType>& am, ublas::vector<myType>& br, ublas::vector<myType>& bm, int fid) {
   if (pid == 0) {
-    tcout() << "BeaverMultElem 1 - pid = 0 s" << endl;
+//    tcout() << "BeaverMultElem 1 - pid = 0 s" << endl;
     ublas::vector<myType> ambm(am.size(), 0);
     mul_elem(ambm, am, bm);
     ab += ambm;
 
-    tcout() << "BeaverMultElem 1 - pid = 0 e" << endl;
+//    tcout() << "BeaverMultElem 1 - pid = 0 e" << endl;
   } else {
-    tcout() << "BeaverMultElem 1 - pid = 1/2 s" << endl;
+//    tcout() << "BeaverMultElem 1 - pid = 1/2 s" << endl;
 
     for (int i = 0; i < ab.size(); i++) {
       ab[i] += ar[i] * bm[i];
@@ -2803,7 +2811,7 @@ void MPCEnv::BeaverMultElem(ublas::vector<myType>& ab, ublas::vector<myType>& ar
       }
     }
 
-    tcout() << "BeaverMultElem 1 - pid = 1/2 e" << endl;
+//    tcout() << "BeaverMultElem 1 - pid = 1/2 e" << endl;
 
   }
 }
