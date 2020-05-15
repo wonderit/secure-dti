@@ -1,6 +1,6 @@
 #ifndef __UTIL_INIT_H__
 #define __UTIL_INIT_H__
-
+#pragma once
 #include "global.h"
 #include "param.h"
 #include "crypto.h"
@@ -77,7 +77,7 @@ static T Sum(ublas::matrix<T>& a) {
   val = 0;
   for (int i = 0; i < a.size1(); i++) {
     for (int j = 0; j < a.size2(); j++) {
-      val += a[i][j];
+      val += a(i, j);
     }
   }
   return val;
@@ -119,48 +119,20 @@ static inline RandomStream NewRandomStream(unsigned char *key) {
   return rs;
 }
 
-
-
-inline myType doubleToMyType(double a) {
-//  tcout() << "1 : " << (myType)(a * (1 << FIXED_POINT_FRACTIONAL_BITS)) << endl;
-//  tcout() << "2 : " << static_cast<myType>(a * (1 << FIXED_POINT_FRACTIONAL_BITS)) << endl;
-//  tcout() << "doubleToMyType : " << (1 << FIXED_POINT_FRACTIONAL_BITS) << "/" << (myType)(a * (1 << FIXED_POINT_FRACTIONAL_BITS)) << endl;
-  myType result =  static_cast<myType>(a * (1 << FIXED_POINT_FRACTIONAL_BITS));
-  tcout() << result << endl;
-  return (myType)result;
-//  return  static_cast<myType>(a * (1 << FIXED_POINT_FRACTIONAL_BITS));
-//  return (myType)(a * (1 << FIXED_POINT_FRACTIONAL_BITS));
-//  return (myType)(round(a * (1 << FIXED_POINT_FRACTIONAL_BITS)));
+static inline myType doubleToMyType(double a) {
+  return static_cast<myType>(static_cast<myTypeSigned>(a * (1 << FIXED_POINT_FRACTIONAL_BITS)));
 }
 
-//inline double myTypeToDouble(myType input)
-//{
-//
-//
-//  tcout() << "myTypeToDouble  a : " << input << " -> " << ((double)input / (double)(1 << FIXED_POINT_FRACTIONAL_BITS))<< endl;
-//  return ((double)input / (double)(1 << FIXED_POINT_FRACTIONAL_BITS));
-//}
-
-inline long double myTypeToDouble(myType a) {
+static inline long double myTypeToDouble(myType a) {
 
   long gate = 0;
-//  tcout() << "neg : " << LARGEST_NEG << endl;
   if (a > LARGEST_NEG) { // negative number
     gate = 1;
   }
 
-//  tcout() << "FIELD : " << FIELD << endl;
-
   long double value = a % FIELD;
-
-//  tcout() << "value : " << value << endl;
-
   //  negative + positive
   value = gate * (value - FIELD) + (1 - gate) * (value);
-
-
-//  tcout() << "myTypeToDouble  a : " << a << " -> " << (double)(value / (1 << FIXED_POINT_FRACTIONAL_BITS)) << endl;
-
   return ((long double)value / (double)(1 << FIXED_POINT_FRACTIONAL_BITS));
 }
 
@@ -168,6 +140,16 @@ template<class T>
 static inline void myTypeToDouble(ublas::vector<double>& b, ublas::vector<T>& a) {
   for (int i = 0; i < a.size(); i++) {
     b[i] = myTypeToDouble(a[i]);
+  }
+}
+
+template<class T>
+static inline void myTypeToDouble(ublas::matrix<double>& b, ublas::matrix<T>& a) {
+  b.resize(a.size1(), a.size2());
+  for (int i = 0; i < a.size1(); i++) {
+    for (int j = 0; j < a.size2(); j++) {
+      b(i, j) = myTypeToDouble(a(i, j));
+    }
   }
 }
 
@@ -188,6 +170,24 @@ template<class T>
 static inline void ReshapeMat(Mat<T>& b, T& a) {
   b.SetDims(1, 1);
   b[0][0] = a;
+}
+
+
+template<class T>
+static inline void ReshapeMat(ublas::matrix<T>& b, ublas::vector<T>& a, int nrows, int ncols) {
+  assert(a.size() == nrows * ncols);
+
+  b.resize(nrows, ncols);
+//  b.SetDims(nrows, ncols);
+
+  int ai = 0;
+  for (int i = 0; i < nrows; i++) {
+    for (int j = 0; j < ncols; j++) {
+      b(i, j) = a[ai];
+//      b[i][j] = a[ai];
+      ai++;
+    }
+  }
 }
 
 template<class T>
@@ -339,10 +339,10 @@ void multScalar(ublas::vector<T>& result, ublas::vector<T>& a, T b, myType L = F
   }
 }
 
-
-inline ublas::vector<myType>& operator*(int x, ublas::vector<myType>& a)
+template<class T>
+inline ublas::vector<T>& operator*(T x, ublas::vector<myType>& a)
 {
-  ublas::vector<myType> result(a.size(), 0);
+  ublas::vector<T> result(a.size(), 0);
 //  cout<<"mytype & vector : ";
   for (int i = 0; i < a.size(); i++) {
     result[i] = x * a[i];
@@ -435,4 +435,158 @@ static inline void bitset_to_vector(ublas::vector<T>&x, bitset<INT_FIELD>& a)
 //  }
 //}
 
+
+//for pre conversion
+
+static inline void initial_reshape(ublas::matrix<myType>& x_2d, ublas::matrix<myType>& x, int input_channel, int batch_size) {
+  int row = x.size2() / input_channel;
+  x_2d.resize(batch_size * row, input_channel);
+//  Init(x_2d, batch_size * row, input_channel);
+
+  for (int batch = 0; batch < batch_size; batch++) {
+    for (int index = 0; index < row; index++) {
+      for (int channel = 0; channel < input_channel; channel++) {
+        x_2d(batch * row + index, channel) = x(batch, row * channel + index);
+//        x_2d[batch * row + index][channel] = x[batch][row * channel + index];
+      }
+    }
+  }
+}
+//
+static inline void reshape_conv(ublas::matrix<myType>& conv1d, ublas::matrix<myType>& x, int kernel_size, int batch_size) {
+  int channels = x.size2();
+  int prev_row = x.size1() / batch_size;  // 488
+  int row = prev_row - kernel_size + 1;  // 482
+  conv1d.resize(batch_size * row, kernel_size * channels);
+//  Init(conv1d, batch_size * row, kernel_size * channels);
+  if(Param::DEBUG) cout << "reshape_conv: (" << conv1d.size1() << ", " << conv1d.size2() << "), (" << x.size1() << ", " << x.size2() << ")" << endl;
+
+  for (int batch = 0; batch < batch_size; batch++) {
+    for (int index = 0; index < row; index++) {
+      for (int channel = 0; channel < channels; channel++) {
+        for (int filter = 0; filter < kernel_size; filter++) {
+          conv1d(batch * row + index, kernel_size * channel + filter) = x(batch * prev_row + index + filter, channel);
+//          conv1d[batch * row + index][kernel_size * channel + filter] = x[batch * prev_row + index + filter][channel];
+        }
+      }
+    }
+  }
+}
+
+static inline void back_reshape_conv(ublas::matrix<myType>& x, ublas::matrix<myType>& conv1d, int kernel_size, int batch_size) {
+  int input_channel = conv1d.size2() / kernel_size;
+  int row = conv1d.size1() / batch_size; // 482
+  int prev_row = row + kernel_size - 1;  // 488
+  x.resize(batch_size * prev_row, input_channel);
+//  Init(x, batch_size * prev_row, input_channel);
+
+  for (int batch = 0; batch < batch_size; batch++) {
+    for (int index = 0; index < row; index++) {
+      for (int channel = 0; channel < input_channel; channel++) {
+        for (int filter = 0; filter < kernel_size; filter++) {
+          x(batch * prev_row + index + filter, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
+//          x[batch * prev_row + index + filter][channel] += conv1d[batch * row + index][kernel_size * channel + filter];
+        }
+      }
+    }
+  }
+}
+
+static inline void DoubleToFP(ZZ_p& b, double a, int k, int f) {
+  double x = a;
+  long sn = 1;
+  if (x < 0) {
+    x = -x;
+    sn = -sn;
+  }
+
+  long xi = (long) x; // integer part
+  ZZ az(xi);
+
+  ZZ az_shift;
+  LeftShift(az_shift, az, f);
+
+  ZZ az_trunc;
+  trunc(az_trunc, az_shift, k - 1);
+
+  double xf = x - xi; // remainder
+  for (int fbit = f - 1; fbit >= 0; fbit--) {
+    xf *= 2;
+    if (xf >= 1) {
+      xf -= (long) xf;
+      SetBit(az_trunc, fbit);
+    }
+  }
+
+  b = conv<ZZ_p>(az_trunc * sn);
+}
+static inline ZZ_p DoubleToFP(double a, int k, int f) {
+  ZZ_p b;
+  DoubleToFP(b, a, k, f);
+  return b;
+}
+
+static inline void DoubleToFP(Mat<ZZ_p>& b, Mat<double>& a, int k, int f) {
+  b.SetDims(a.NumRows(), a.NumCols());
+  for (int i = 0; i < a.NumRows(); i++) {
+    for (int j = 0; j < a.NumCols(); j++) {
+      DoubleToFP(b[i][j], a[i][j], k, f);
+    }
+  }
+}
+static inline void FPToDouble(Mat<double>& b, Mat<ZZ_p>& a, int k, int f) {
+  b.SetDims(a.NumRows(), a.NumCols());
+
+  ZZ one(1);
+  ZZ twokm1;
+  LeftShift(twokm1, one, k - 1);
+
+  for (int i = 0; i < a.NumRows(); i++) {
+    for (int j = 0; j < a.NumCols(); j++) {
+      ZZ x = rep(a[i][j]);
+      double sn = 1;
+      if (x > twokm1) { // negative number
+        x = ZZ_p::modulus() - x;
+        sn = -1;
+      }
+
+      ZZ x_trunc;
+      trunc(x_trunc, x, k - 1);
+      ZZ x_int;
+      RightShift(x_int, x_trunc, f);
+
+      // TODO: consider better ways of doing this?
+      double x_frac = 0;
+      for (int bi = 0; bi < f; bi++) {
+        if (bit(x_trunc, bi) > 0) {
+          x_frac += 1;
+        }
+        x_frac /= 2.0;
+      }
+
+      b[i][j] = sn * (conv<double>(x_int) + x_frac);
+    }
+  }
+}
+
+template<class T>
+static T Sum(Vec<T>& a) {
+  T val;
+  val = 0;
+  for (int i = 0; i < a.length(); i++) {
+    val += a[i];
+  }
+  return val;
+}
+template<class T>
+static T Sum(Mat<T>& a) {
+  T val;
+  val = 0;
+  for (int i = 0; i < a.NumRows(); i++) {
+    for (int j = 0; j < a.NumCols(); j++) {
+      val += a[i][j];
+    }
+  }
+  return val;
+}
 #endif

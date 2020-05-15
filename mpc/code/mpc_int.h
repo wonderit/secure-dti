@@ -72,6 +72,7 @@ public:
   void IsPositive(Vec<ZZ_p>& b, Vec<ZZ_p>& a);
   void IsPositive(ublas::vector<myType>& b, ublas::vector<myType>& a);
   void IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a);
+  void IsPositive(ublas::matrix<myType>& b, ublas::matrix<myType>& a);
 
   // Assumes a is secretly shared binary numbers (0 or 1)
   void FlipBit(Vec<ZZ_p>& a) {
@@ -108,6 +109,7 @@ public:
     a = am[0][0];
   }
   void Trunc(ublas::vector<myType>& a);
+  void Trunc(ublas::matrix<myType>& a);
   // in most cases, Trunc gets called after a multiplication
   // set default parameters for this case
   void Trunc(Mat<ZZ_p>& a) { Trunc(a, Param::NBIT_K + Param::NBIT_F, Param::NBIT_F); }
@@ -350,6 +352,27 @@ public:
   }
 
   template<class T>
+  void RevealSym(ublas::matrix<T>& a, int fid = 0) {
+    if (debug) cout << "RevealSym: " << a.size1() << endl;
+
+    if (pid == 0) {
+      return;
+    }
+
+    ublas::matrix<T> b(a.size1(), a.size2());
+//    ublas::vector<T> b(a.size(), 0);
+    if (pid == 1) {
+      SendMat(a, 3 - pid, fid);
+      ReceiveMat(b, 3 - pid, fid);
+    } else {
+      ReceiveMat(b, 3 - pid, fid);
+      SendMat(a, 3 - pid, fid);
+    }
+
+    a += b;
+  }
+
+  template<class T>
   void shuffle(ublas::vector<T>& a, int fid = 0) {
     if (pid == 0)
       return;
@@ -510,6 +533,29 @@ public:
     PrintFP(a, cout);
   }
 
+//  template<class T>
+//  void PrintFP(T a, ostream& os) {
+//    T a_copy = a;
+//    RevealSym(a_copy);
+//    os << myTypeToDouble(a_copy) << endl;
+//  }
+
+  template<class T>
+  void PrintFP(ublas::vector<T>& a, ostream& os) {
+    ublas::vector<T> a_copy(a);
+    ublas::vector<double> ad(a.size());
+    RevealSym(a_copy);
+    myTypeToDouble(ad, a_copy);
+    for (int i = 0; i < ad.size(); i++) {
+      os << ad[i];
+      if (i == ad.size() - 1) {
+        os << endl;
+      } else {
+        os << '\t';
+      }
+    }
+  }
+
   template<class T>
   void Print(Vec<T>& a, int maxlen, int fid = 0) {
     Vec<T> a_copy = a;
@@ -541,32 +587,6 @@ public:
     }
 //    }
   }
-
-
-  template<class T>
-  void PrintFP(ublas::vector<T>& a, ostream& os) {
-    ublas::vector<T> a_copy(a);
-    ublas::vector<double> ad(a.size(), 0);
-    RevealSym(a_copy);
-//    ad.SetLength(a.length());
-//    Param::myTypeToDouble();
-//    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
-//    myTypeToDouble(ad, a_copy, Param::NBIT_F);
-    myTypeToDouble(ad, a_copy);
-
-//    if (pid == 2) {
-
-    for (int i = 0; i < ad.size(); i++) {
-      cout << ad[i];
-      if (i == ad.size() - 1) {
-        cout << endl;
-      } else {
-        cout << '\t';
-      }
-    }
-//    }
-  }
-
   template<class T>
   void PrintFP(Vec<T>& a, ostream& os) {
     Vec<T> a_copy(a);
@@ -629,25 +649,30 @@ public:
 //    }
 //  }
 //
-//  void PrintFP(Mat<ZZ_p>& a, ostream& os) {
-//    Mat<ZZ_p> a_copy = a;
-//    RevealSym(a_copy);
-//    Mat<double> ad;
+  void PrintFP(ublas::matrix<myType>& a, ostream& os) {
+    ublas::matrix<myType> a_copy = a;
+    RevealSym(a_copy);
+    ublas::matrix<double> ad(a.size1(), a.size2());
+
+    myTypeToDouble(ad, a_copy);
 //    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
-//
-//    if (pid == 2) {
-//      for (int i = 0; i < ad.NumRows(); i++) {
-//        for (int j = 0; j < ad.NumCols(); j++) {
-//          os << ad[i][j];
-//          if (j == ad.NumCols() - 1) {
-//            os << endl;
-//          } else {
-//            os << '\t';
-//          }
-//        }
-//      }
-//    }
-//  }
+
+    if (pid == 2) {
+      for (int i = 0; i < ad.size1(); i++) {
+        for (int j = 0; j < ad.size2(); j++) {
+          if (i > 2 || j > 2)
+            break;
+
+          os << ad(i, j);
+          if (j == ad.size1() - 1) {
+            os << endl;
+          } else {
+            os << '\t';
+          }
+        }
+      }
+    }
+  }
 
   template<class T>
   void Print(Mat<T>& a, ostream& os, int fid = 0) {
@@ -673,7 +698,7 @@ public:
 
 //    ublas::vector<T> a_copy(a);
 //    RevealSym(a_copy, fid);
-    if (pid > -1) {
+    if (pid > 0) {
       os << "Print : ";
       for (int i = 0; i < a.size(); i++) {
         if (i > 5)
@@ -809,6 +834,32 @@ public:
 //      Mod(ab, fid);
     }
   }
+  template<class T>
+  void BeaverReconstruct(ublas::matrix<T>& ab, int fid = 0) {
+    if (Param::DEBUG) tcout() << "BeaverReconstruct" << ab.size1() << "," << ab.size2() << endl;
+    if (pid == 0) {
+      ublas::matrix<T> mask;
+      SwitchSeed(1);
+      RandMat(mask, ab.size1(), ab.size2(), fid);
+      RestoreSeed();
+
+      ab -= mask;
+
+      SendMat(ab, 2, fid);
+    } else {
+      ublas::matrix<T> ambm;
+      ambm.resize(ab.size1(), ab.size2());
+      if (pid == 2) {
+        ReceiveMat(ambm, 0, fid);
+      } else {
+        SwitchSeed(0);
+        RandMat(ambm, ab.size1(), ab.size2(), fid);
+        RestoreSeed();
+      }
+
+      ab += ambm;
+    }
+  }
 
   template<class T>
   void BeaverReconstruct(Mat<T>& ab, int fid = 0) {
@@ -836,6 +887,7 @@ public:
       Mod(ab, fid);
     }
   }
+
 
   template<class T>
   void BeaverReconstruct(Vec< Mat<T> >& ab, int fid = 0) {
@@ -885,20 +937,20 @@ public:
     }
   }
 
-  template<class T>
-  void BeaverMult(T& ab, T& ar, T& am, T& br, T& bm, int fid = 0) {
-    if (pid == 0) {
-      ab += am * bm;
-    } else {
-      ab += ar * bm;
-      ab += am * br;
-      if (pid == 1) {
-        ab += ar * br;
-      }
-    }
-
-    Mod(ab, fid);
-  }
+//  template<class T>
+//  void BeaverMult(T& ab, T& ar, T& am, T& br, T& bm, int fid = 0) {
+//    if (pid == 0) {
+//      ab += am * bm;
+//    } else {
+//      ab += ar * bm;
+//      ab += am * br;
+//      if (pid == 1) {
+//        ab += ar * br;
+//      }
+//    }
+//
+//    Mod(ab, fid);
+//  }
 
   template<class T>
   void BeaverMult(Vec<T>& ab, Vec<T>& ar, Vec<T>& am, T& br, T& bm, int fid = 0) {
@@ -965,8 +1017,11 @@ public:
     BeaverMult(ab, ar, am, br, bm, false, fid);
   }
 
+
   void BeaverMult(Mat<ZZ>& ab, Mat<ZZ>& ar, Mat<ZZ>& am, Mat<ZZ>& br, Mat<ZZ>& bm, bool elem_wise, int fid);
   void BeaverMult(Mat<ZZ_p>& ab, Mat<ZZ_p>& ar, Mat<ZZ_p>& am, Mat<ZZ_p>& br, Mat<ZZ_p>& bm, bool elem_wise, int fid = 0);
+  void BeaverMult(ublas::matrix<myType>& ab, ublas::matrix<myType>& ar, ublas::matrix<myType>& am,
+                  ublas::matrix<myType>& br, ublas::matrix<myType>& bm, bool elem_wise, int fid = 0);
 
   void BeaverMultElem(Vec<ZZ>& ab, Vec<ZZ>& ar, Vec<ZZ>& am, Vec<ZZ>& br, Vec<ZZ>& bm, int fid);
   void BeaverMultElem(Vec<ZZ_p>& ab, Vec<ZZ_p>& ar, Vec<ZZ_p>& am, Vec<ZZ_p>& br, Vec<ZZ_p>& bm, int fid = 0);
@@ -1115,6 +1170,7 @@ public:
       RestoreSeed();
 
       am = x1 + x2;
+      ar.resize(am.size());
 //      tcout() << "am[0] from pid "<< pid << " : " << am[0] << endl;
 //      tcout() << "bp 1 - sizes : " << ar.size() << "/" << am.size() << "/" << a.size() << endl;
 //      tcout() << "bp 1 - pid = 0 e" << endl;
@@ -1123,6 +1179,46 @@ public:
 //      tcout() << "a[0] from pid "<< pid << " : " << a[0] << endl;
       SwitchSeed(0);
       RandVec(am, fid);
+      RestoreSeed();
+//      tcout() << "am[0] from pid "<< pid << " : " << am[0] << "/" << am[1] << "/" << am[2] << endl;
+      ar = a - am;
+
+//      tcout() << "ar[0] from pid  before revealsym "<< pid << " : " << ar[0] << endl;
+      RevealSym(ar, fid);
+
+//      tcout() << "ar[0] from pid "<< pid << " : " << ar[0] << endl;
+    }
+  }
+
+  template<class T>
+  void BeaverPartition(ublas::matrix<T>& ar, ublas::matrix<T>& am, ublas::matrix<T>& a, int fid = 0) {
+
+    if (Param::DEBUG) tcout() << "BeaverPartition: " << a.size1() << ", " << a.size2() << endl;
+    int nrow = a.size1();
+    int ncol = a.size2();
+
+    if (pid == 0) {
+      ublas::matrix<T> x1;
+      ublas::matrix<T> x2;
+
+      SwitchSeed(1);
+      RandMat(x1, nrow, ncol, fid);
+      RestoreSeed();
+
+      SwitchSeed(2);
+      RandMat(x2, nrow, ncol, fid);
+      RestoreSeed();
+
+      am = x1 + x2;
+      ar.resize(am.size1(), am.size2());
+//      tcout() << "am[0] from pid "<< pid << " : " << am[0] << endl;
+//      tcout() << "bp 1 - sizes : " << ar.size() << "/" << am.size() << "/" << a.size() << endl;
+//      tcout() << "bp 1 - pid = 0 e" << endl;
+    } else {
+
+//      tcout() << "a[0] from pid "<< pid << " : " << a[0] << endl;
+      SwitchSeed(0);
+      RandMat(am, nrow, ncol, fid);
       RestoreSeed();
 //      tcout() << "am[0] from pid "<< pid << " : " << am[0] << "/" << am[1] << "/" << am[2] << endl;
       ar = a - am;
@@ -1271,64 +1367,89 @@ public:
   }
 
   template<class T>
-  void MultMatForConv(Mat<T>& c, Mat<T>& a, Mat<T>& b, int filter_size, int fid = 0) {
-    if(debug) cout << "MultMatForConv: (" << a.NumRows() << ", " << a.NumCols() << "), (" << b.NumRows() << ", " << b.NumCols() << ")" << endl;
+  void MultMat(ublas::matrix<T>& c, ublas::matrix<T>& a, ublas::matrix<T>& b, int fid = 0) {
+    ublas::matrix<T> ar, am;
+    ublas::matrix<T> br, bm;
+    BeaverPartition(ar, am, a, fid);
+    BeaverPartition(br, bm, b, fid);
 
-    Mat<T> ar, am, br, bm, ar_conv, am_conv;
+    c.resize(a.size1(), b.size2());
+
+    BeaverMult(c, ar, am, br, bm, fid);
+
+    BeaverReconstruct(c, fid);
+  }
+
+  template<class T>
+  void MultMatForConv(ublas::matrix<T>& c, ublas::matrix<T>& a, ublas::matrix<T>& b, int filter_size, int fid = 0) {
+    if(Param::DEBUG) cout << "MultMatForConv: (" << a.size1() << ", " << a.size2() << "), (" << b.size1() << ", " << b.size2() << ")" << endl;
+
+    ublas::matrix<T> ar, am, br, bm, ar_conv, am_conv;
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
     reshape_conv(ar_conv, ar, filter_size, Param::BATCH_SIZE);
     reshape_conv(am_conv, am, filter_size, Param::BATCH_SIZE);
 
-    int out_rows = ar_conv.NumRows();
-    int out_cols = b.NumCols();
-    assert(ar_conv.NumCols() == br.NumRows());
-    assert(am_conv.NumCols() == bm.NumRows());
+    int out_rows = am_conv.size1();
+    int out_cols = b.size2();
+    assert(ar_conv.size2() == br.size1());
+    assert(am_conv.size2() == bm.size1());
+
+//    int out_rows = ar_conv.NumRows();
+//    int out_cols = b.NumCols();
+//    assert(ar_conv.NumCols() == br.NumRows());
+//    assert(am_conv.NumCols() == bm.NumRows());
 
 //    Init(c, out_rows, out_cols);
+    c.resize(out_rows, out_cols);
     BeaverMult(c, ar_conv, am_conv, br, bm, false, fid);
 
     BeaverReconstruct(c, fid);
   }
 
   template<class T>
-  void MultMatForConvBack(Mat<T>& c, Mat<T>& a_t, Mat<T>& b, int filter_size, int fid = 0) {
-    Mat<T> a = transpose(a_t);
-    if(Param::DEBUG) cout << "MultMatForConv: (" << a.NumRows() << ", " << a.NumCols() << "), (" << b.NumRows() << ", " << b.NumCols() << ")" << endl;
+  void MultMatForConvBack(ublas::matrix<T>& c, ublas::matrix<T>& a_t, ublas::matrix<T>& b, int filter_size, int fid = 0) {
+    ublas::matrix<T> a = ublas::trans(a_t);
+    if(Param::DEBUG) cout << "MultMatForConvBack: (" << a.size1() << ", " << a.size2() << "), (" << b.size1() << ", " << b.size2() << ")" << endl;
 
-    Mat<T> ar, am, br, bm, ar_conv, am_conv;
+    ublas::matrix<T> ar, am, br, bm, ar_conv, am_conv;
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
     reshape_conv(ar_conv, ar, filter_size, Param::BATCH_SIZE);
     reshape_conv(am_conv, am, filter_size, Param::BATCH_SIZE);
 
-    Mat<T> ar_conv_t = transpose(ar_conv);
-    Mat<T> am_conv_t = transpose(am_conv);
+    ublas::matrix<T> ar_conv_t = ublas::trans(ar_conv);
+    ublas::matrix<T> am_conv_t = ublas::trans(am_conv);
 
-    int out_rows = ar_conv_t.NumRows();
-    int out_cols = b.NumCols();
+    int out_rows = am_conv_t.size1();
+    int out_cols = b.size2();
 
 //    Init(c, out_rows, out_cols);
+    c.resize(out_rows, out_cols);
 
     // dimension mismatch bc of pooling layers
-    if (ar_conv_t.NumCols() > br.NumRows()) {
+    if (am_conv_t.size2() > br.size1()) {
 
-      if(Param::DEBUG) cout << "ar_conv_t: (" << ar_conv_t.NumRows() << ", " << ar_conv_t.NumCols() << "), (" << br.NumRows() << ", " << br.NumCols() << ")" << endl;
-      Mat<T> new_ar_conv_t;
-      Mat<T> new_am_conv_t;
+      if(Param::DEBUG) cout << "am_conv_t: (" << am_conv_t.size1() << ", " << am_conv_t.size2() << "), (" << br.size1() << ", " << br.size2() << ")" << endl;
+      ublas::matrix<T> new_ar_conv_t;
+      ublas::matrix<T> new_am_conv_t;
+      new_ar_conv_t.resize(ar_conv_t.size1(), br.size1());
+      new_am_conv_t.resize(am_conv_t.size1(), bm.size1());
 //      Init(new_ar_conv_t, ar_conv_t.NumRows(), br.NumRows()); // 21, 4920
 //      Init(new_am_conv_t, am_conv_t.NumRows(), bm.NumRows()); // 21, 4920
 
-      int prev_row = ar_conv_t.NumCols() / Param::BATCH_SIZE; // 494
-      int row = br.NumRows() / Param::BATCH_SIZE; // 492
-      int channel = ar_conv_t.NumRows(); // 21
+      int prev_row = ar_conv_t.size2() / Param::BATCH_SIZE; // 494
+      int row = br.size1() / Param::BATCH_SIZE; // 492
+      int channel = ar_conv_t.size1(); // 21
       for (int b = 0; b < Param::BATCH_SIZE; b++) {
         for (int r = 0; r < row; r++) {
           for (int c = 0; c < channel; c++) {
-            new_ar_conv_t[c][b * row + r] = ar_conv_t[c][b * prev_row + r];
-            new_am_conv_t[c][b * row + r] = am_conv_t[c][b * prev_row + r];
+            new_ar_conv_t(c, b * row + r) = ar_conv_t(c, b * prev_row + r);
+            new_am_conv_t(c, b * row + r) = am_conv_t(c, b * prev_row + r);
+//            new_ar_conv_t[c][b * row + r] = ar_conv_t[c][b * prev_row + r];
+//            new_am_conv_t[c][b * row + r] = am_conv_t[c][b * prev_row + r];
           }
         }
       }
@@ -1355,6 +1476,20 @@ public:
 
 //    Init(c, a.length());
     BeaverMult(c, ar, am, br, bm, fid);
+
+    BeaverReconstruct(c, fid);
+  }
+
+  template<class T>
+  void MultElem(ublas::matrix<T>& c, ublas::matrix<T>& a, ublas::matrix<T>& b, int fid = 0) {
+    ublas::matrix<T> ar, am;
+    ublas::matrix<T> br, bm;
+    BeaverPartition(ar, am, a, fid);
+    BeaverPartition(br, bm, b, fid);
+
+    c.resize(a.size1(), b.size2());
+
+    BeaverMult(c, ar, am, br, bm, true, fid);
 
     BeaverReconstruct(c, fid);
   }
@@ -1386,11 +1521,12 @@ public:
 
   template<class T>
   void MultElem(ublas::vector<T>& c, ublas::vector<T>& a, ublas::vector<T>& b, int fid = 0) {
-    ublas::vector<T> ar(a.size(), 0), am(a.size(), 0), br(a.size(), 0), bm(a.size(), 0);
+    ublas::vector<T> ar(a.size()), am(a.size()), br(a.size()), bm(a.size());
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
 //    Init(c, a.size());
+    c.resize(a.size());
     BeaverMultElem(c, ar, am, br, bm, fid);
 
     BeaverReconstruct(c, fid);
@@ -1410,6 +1546,21 @@ public:
   void Reshape(Mat<T>& b, T& a) {
     b.SetDims(1, 1);
     b[0][0] = a;
+  }
+
+  template<class T>
+  void Reshape(ublas::vector<T>& b, ublas::matrix<T>& a) {
+    b.resize(a.size1() * a.size2());
+//    b.SetLength(a.NumRows() * a.NumCols());
+    if (pid > 0) {
+      int ind = 0;
+      for (int i = 0; i < a.size1(); i++) {
+        for (int j = 0; j < a.size2(); j++) {
+          b[ind] = a(i, j);
+          ind++;
+        }
+      }
+    }
   }
 
   template<class T>
@@ -1433,6 +1584,18 @@ public:
       a.SetDims(nrows, ncols);
     } else {
       ReshapeMat(a, nrows, ncols);
+    }
+  }
+
+
+  template<class T>
+  void Reshape(ublas::matrix<T>& b, ublas::vector<T>& a, int nrows, int ncols) {
+    if (pid == 0) {
+      assert(a.size() == nrows * ncols);
+      b.resize(nrows, ncols);
+//      b.SetDims(nrows, ncols);
+    } else {
+      ReshapeMat(b, a, nrows, ncols);
     }
   }
 
@@ -1491,9 +1654,11 @@ public:
   void ReadFromFile(ZZ_p& a, ifstream& ifs);
   void ReadFromFile(Vec<ZZ_p>& a, ifstream& ifs, int n);
   void ReadFromFile(Mat<ZZ_p>& a, ifstream& ifs, int nrow, int ncol);
+  void ReadFromFile(ublas::matrix<myType>& a, ifstream& ifs);
   void WriteToFile(ZZ_p& a, fstream& ofs);
   void WriteToFile(Vec<ZZ_p>& a, fstream& ofs);
   void WriteToFile(Mat<ZZ_p>& a, fstream& ofs);
+  void WriteToFile(ublas::matrix<myType>& a, fstream& ofs);
   void SkipData(ifstream& ifs, int n);
   void SkipData(ifstream& ifs, int nrows, int ncols);
 
@@ -1689,6 +1854,35 @@ public:
   }
 
   template<class T>
+  void ReceiveMat(ublas::matrix<T>& a, int from_pid, int fid = 0) {
+    unsigned char *buf_ptr = buf;
+    uint64_t stored_in_buf = 0;
+    uint64_t remaining = a.size1() * a.size2();
+    for (int i = 0; i < a.size1(); i++) {
+      for (int j = 0; j < a.size2(); j++) {
+        if (stored_in_buf == 0) {
+          uint64_t count;
+          if (remaining < ZZ_per_buf[fid]) {
+            count = remaining;
+          } else {
+            count = ZZ_per_buf[fid];
+          }
+          sockets.find(from_pid)->second.ReceiveSecure(buf, count * ZZ_bytes[fid]);
+          stored_in_buf += count;
+          remaining -= count;
+          buf_ptr = buf;
+        }
+
+
+        memcpy((char *)&a(i, j), buf_ptr, ZZ_bytes[fid]);
+//        ConvertBytes(a[i][j], buf_ptr, fid);
+        buf_ptr += ZZ_bytes[fid];
+        stored_in_buf--;
+      }
+    }
+  }
+
+  template<class T>
   void SendElem(T& a, int to_pid, int fid = 0) {
     unsigned char *buf_ptr = buf;
 //    BytesFromZZ(buf_ptr, AsZZ(a), ZZ_bytes[fid]);
@@ -1810,6 +2004,30 @@ public:
         }
 
         memcpy(buf_ptr, (char*)&a[i][j], ZZ_bytes[fid]);
+//        BytesFromZZ(buf_ptr, AsZZ(a[i][j]), ZZ_bytes[fid]);
+        stored_in_buf++;
+        buf_ptr += ZZ_bytes[fid];
+      }
+    }
+
+    if (stored_in_buf > 0) {
+      sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid] * stored_in_buf);
+    }
+  }
+
+  template<class T>
+  void SendMat(ublas::matrix<T>& a, int to_pid, int fid = 0) {
+    unsigned char *buf_ptr = buf;
+    uint64_t stored_in_buf = 0;
+    for (int i = 0; i < a.size1(); i++) {
+      for (int j = 0; j < a.size2(); j++) {
+        if (stored_in_buf == ZZ_per_buf[fid]) {
+          sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid] * stored_in_buf);
+          stored_in_buf = 0;
+          buf_ptr = buf;
+        }
+
+        memcpy(buf_ptr, (char*)&a(i, j), ZZ_bytes[fid]);
 //        BytesFromZZ(buf_ptr, AsZZ(a[i][j]), ZZ_bytes[fid]);
         stored_in_buf++;
         buf_ptr += ZZ_bytes[fid];
@@ -2048,6 +2266,13 @@ public:
       RandomBnd(a[i]);
   }
 
+  static void RandMat(ublas::matrix<myType>& a, int nrows, int ncols, int fid = 0) {
+    a.resize(nrows, ncols);
+    for (int i = 0; i < nrows; i++)
+      for (int j = 0; j < ncols; j++)
+        a(i, j) = RandomBits_long(INT_FIELD-1);
+  }
+
   void RandMat(Mat<ZZ>& a, int nrows, int ncols, int fid) {
     a.SetDims(nrows, ncols);
     for (int i = 0; i < nrows; i++)
@@ -2149,10 +2374,12 @@ private:
   /* File IO */
   void Write(Vec<ZZ_p>& a, fstream& ofs);
   void Write(Mat<ZZ_p>& a, fstream& ofs);
+  void Write(ublas::matrix<myType>& a, fstream& ofs);
 
   void Read(Vec<ZZ_p>& a, ifstream& ifs, int n);
   void ReadWithFilter(Vec<ZZ_p>& a, ifstream& ifs, Vec<ZZ_p>& filt);
   void Read(Mat<ZZ_p>& a, ifstream& ifs, int nrows, int ncols);
+  void Read(ublas::matrix<myType>& a, ifstream& ifs);
 
   template<class T>
   void MultAux(Mat<T>& c, Mat<T>& a, Mat<T>& b, bool elem_wise, int fid = 0) {
@@ -2278,10 +2505,10 @@ private:
 
   void mul_elem(ublas::vector<myType>& c, ublas::vector<myType>& a, ublas::vector<myType>& b) {
     cout << a.size() << " a//b " << b.size() << endl;
-
-    for (int i = 0; i < c.size(); i++) {
-      c[i] = a[i] * b[i];
-    }
+    c = ublas::element_prod(a, b);
+//    for (int i = 0; i < c.size(); i++) {
+//      c[i] = a[i] * b[i];
+//    }
   }
 
   void mul_elem(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b) {
@@ -2313,6 +2540,18 @@ private:
           }
 
     NTL_GEXEC_RANGE_END
+  }
+
+  void mul_elem(ublas::matrix<myType>& c, ublas::matrix<myType>& a, ublas::matrix<myType>& b) {
+    assert(a.size1() == b.size1() && a.size2() == b.size2());
+    c.resize(a.size1(), a.size2());
+    c = ublas::element_prod(a, b);
+//    for (int i = 0; i < c.size1(); i++) {
+//      for (int j = 0; j < c.size2(); j++) {
+//
+//        mul(c[i][j], a[i][j], b[i][j]);
+//      }
+//    }
   }
 
   void mul_elem(Mat<ZZ_p>& c, Mat<ZZ_p>& a, Mat<ZZ_p>& b) {

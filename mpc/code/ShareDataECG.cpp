@@ -1,14 +1,21 @@
-#include "connect.h"
-#include "mpc.h"
-#include "protocol.h"
-#include "util.h"
-#include "NTL/ZZ_p.h"
-
 #include <cstdlib>
 #include <fstream>
 #include <map>
 #include <iostream>
 #include <sstream>
+
+#include "connect.h"
+
+#if IS_INT
+#include "mpc_int.h"
+#include "util_int.h"
+#include "protocol_int.h"
+#else
+#include "protocol.h"
+#include "mpc.h"
+#include "util.h"
+#include "NTL/ZZ_p.h"
+#endif
 
 using namespace NTL;
 using namespace std;
@@ -24,8 +31,9 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
   }
 
   /* Read in matrix. */
-  Mat<ZZ_p> matrix;
-  Init(matrix, n_rows, n_cols);
+  ublas::matrix<myType> matrix (n_rows, n_cols);
+//  Mat<ZZ_p> matrix;
+//  Init(matrix, n_rows, n_cols);
   
   string line;
   int i = 0;
@@ -48,18 +56,20 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
       if (ss.peek() == ',')
         ss.ignore();
 
-      if(name.rfind("X") == 0) {
-        // Normalize
-        k -= 1.547;
-        k /= (156.820 + 1e-7);
-      }
+//      if(name.rfind("X") == 0) {
+//        // Normalize
+//        k -= 1.547;
+//        k /= (156.820 + 1e-7);
+//      }
 
       if (j % 500 == 0)
         tcout() << "Read Column k " << k << endl;
 
-      ZZ_p val_fp;
-      DoubleToFP(val_fp, k, Param::NBIT_K, Param::NBIT_F);
-      matrix[i][j] = val_fp;
+//      ZZ_p val_fp;
+//      DoubleToFP(val_fp, k, Param::NBIT_K, Param::NBIT_F);
+      myType val_mytype;
+      val_mytype = doubleToMyType(k);
+      matrix(i, j) = val_mytype;
 
       j++;
     }
@@ -73,7 +83,8 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
   fin.close();
 
   /* Mask matrix. */
-  Mat<ZZ_p> mask;
+  ublas::matrix<myType> mask(n_rows, n_cols);
+//  Mat<ZZ_p> mask;
   mpc.RandMat(mask, n_rows, n_cols);
   matrix -= mask; /* Masked `matrix' should be sent to CP2. */
 

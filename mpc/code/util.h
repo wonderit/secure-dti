@@ -213,34 +213,34 @@
 //  }
 //}
 //
-static inline void DoubleToFP(ZZ_p& b, double a, int k, int f) {
-  double x = a;
-  long sn = 1;
-  if (x < 0) {
-    x = -x;
-    sn = -sn;
-  }
-
-  long xi = (long) x; // integer part
-  ZZ az(xi);
-
-  ZZ az_shift;
-  LeftShift(az_shift, az, f);
-
-  ZZ az_trunc;
-  trunc(az_trunc, az_shift, k - 1);
-
-  double xf = x - xi; // remainder
-  for (int fbit = f - 1; fbit >= 0; fbit--) {
-    xf *= 2;
-    if (xf >= 1) {
-      xf -= (long) xf;
-      SetBit(az_trunc, fbit);
-    }
-  }
-
-  b = conv<ZZ_p>(az_trunc * sn);
-}
+//static inline void DoubleToFP(ZZ_p& b, double a, int k, int f) {
+//  double x = a;
+//  long sn = 1;
+//  if (x < 0) {
+//    x = -x;
+//    sn = -sn;
+//  }
+//
+//  long xi = (long) x; // integer part
+//  ZZ az(xi);
+//
+//  ZZ az_shift;
+//  LeftShift(az_shift, az, f);
+//
+//  ZZ az_trunc;
+//  trunc(az_trunc, az_shift, k - 1);
+//
+//  double xf = x - xi; // remainder
+//  for (int fbit = f - 1; fbit >= 0; fbit--) {
+//    xf *= 2;
+//    if (xf >= 1) {
+//      xf -= (long) xf;
+//      SetBit(az_trunc, fbit);
+//    }
+//  }
+//
+//  b = conv<ZZ_p>(az_trunc * sn);
+//}
 //
 //static inline ZZ_p DoubleToFP(double a, int k, int f) {
 //  ZZ_p b;
@@ -257,40 +257,40 @@ static inline void DoubleToFP(ZZ_p& b, double a, int k, int f) {
 //  }
 //}
 //
-static inline void FPToDouble(Mat<double>& b, Mat<ZZ_p>& a, int k, int f) {
-  b.SetDims(a.NumRows(), a.NumCols());
-
-  ZZ one(1);
-  ZZ twokm1;
-  LeftShift(twokm1, one, k - 1);
-
-  for (int i = 0; i < a.NumRows(); i++) {
-    for (int j = 0; j < a.NumCols(); j++) {
-      ZZ x = rep(a[i][j]);
-      double sn = 1;
-      if (x > twokm1) { // negative number
-        x = ZZ_p::modulus() - x;
-        sn = -1;
-      }
-
-      ZZ x_trunc;
-      trunc(x_trunc, x, k - 1);
-      ZZ x_int;
-      RightShift(x_int, x_trunc, f);
-
-      // TODO: consider better ways of doing this?
-      double x_frac = 0;
-      for (int bi = 0; bi < f; bi++) {
-        if (bit(x_trunc, bi) > 0) {
-          x_frac += 1;
-        }
-        x_frac /= 2.0;
-      }
-
-      b[i][j] = sn * (conv<double>(x_int) + x_frac);
-    }
-  }
-}
+//static inline void FPToDouble(Mat<double>& b, Mat<ZZ_p>& a, int k, int f) {
+//  b.SetDims(a.NumRows(), a.NumCols());
+//
+//  ZZ one(1);
+//  ZZ twokm1;
+//  LeftShift(twokm1, one, k - 1);
+//
+//  for (int i = 0; i < a.NumRows(); i++) {
+//    for (int j = 0; j < a.NumCols(); j++) {
+//      ZZ x = rep(a[i][j]);
+//      double sn = 1;
+//      if (x > twokm1) { // negative number
+//        x = ZZ_p::modulus() - x;
+//        sn = -1;
+//      }
+//
+//      ZZ x_trunc;
+//      trunc(x_trunc, x, k - 1);
+//      ZZ x_int;
+//      RightShift(x_int, x_trunc, f);
+//
+//      // TODO: consider better ways of doing this?
+//      double x_frac = 0;
+//      for (int bi = 0; bi < f; bi++) {
+//        if (bit(x_trunc, bi) > 0) {
+//          x_frac += 1;
+//        }
+//        x_frac /= 2.0;
+//      }
+//
+//      b[i][j] = sn * (conv<double>(x_int) + x_frac);
+//    }
+//  }
+//}
 //
 //static inline void IntToFP(Vec<ZZ_p>& b, Vec<long>& a, int k, int f) {
 //  b.SetLength(a.length());

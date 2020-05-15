@@ -1,6 +1,8 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
+#pragma once
+
 #include <boost/multiprecision/cpp_int.hpp>
 using namespace boost::multiprecision;
 using namespace std;
@@ -12,9 +14,10 @@ using namespace std;
   #define IS_INT true
 #elif INT_TYPE == 64
   typedef uint64_t myType;
+  typedef int64_t myTypeSigned;
   #define IS_INT true
   const string BASE_PRIME_NUMBER = "18446744073709551557";
-  #define FIXED_POINT_FRACTIONAL_BITS 20
+  #define FIXED_POINT_FRACTIONAL_BITS 30
 
 #elif INT_TYPE == 32
   typedef uint32_t myType;
