@@ -547,6 +547,8 @@ public:
     RevealSym(a_copy);
     myTypeToDouble(ad, a_copy);
     for (int i = 0; i < ad.size(); i++) {
+      if (i > 5)
+        break;
       os << ad[i];
       if (i == ad.size() - 1) {
         os << endl;
@@ -554,6 +556,7 @@ public:
         os << '\t';
       }
     }
+    os << endl;
   }
 
   template<class T>
@@ -650,7 +653,7 @@ public:
 //  }
 //
   void PrintFP(ublas::matrix<myType>& a, ostream& os) {
-    ublas::matrix<myType> a_copy = a;
+    ublas::matrix<myType> a_copy(a);
     RevealSym(a_copy);
     ublas::matrix<double> ad(a.size1(), a.size2());
 
@@ -659,8 +662,10 @@ public:
 
     if (pid == 2) {
       for (int i = 0; i < ad.size1(); i++) {
+        if (i > 4)
+          break;
         for (int j = 0; j < ad.size2(); j++) {
-          if (i > 2 || j > 2)
+          if (j > 4)
             break;
 
           os << ad(i, j);
@@ -670,7 +675,9 @@ public:
             os << '\t';
           }
         }
+        os << endl;
       }
+      os << endl;
     }
   }
 
@@ -708,6 +715,27 @@ public:
           os << endl;
         } else {
           os << '\t';
+        }
+      }
+    }
+  }
+  template<class T>
+  void Print(ublas::matrix<T>& a, ostream& os, int fid = 0) {
+
+    ublas::matrix<T> a_copy(a);
+//    RevealSym(a_copy, fid);
+    if (pid > 0) {
+      os << "Print matrix : ";
+      for (int i = 0; i < a_copy.size1(); i++) {
+        for (int j = 0; j < a_copy.size2(); j++) {
+          if (i > 5 || j > 5)
+            break;
+          os << a_copy(i, j);
+          if (i == a_copy.size2() - 1) {
+            os << endl;
+          } else {
+            os << '\t';
+          }
         }
       }
     }
@@ -1373,7 +1401,9 @@ public:
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
-    c.resize(a.size1(), b.size2());
+    Init(c, a.size1(), b.size2());
+//    c.resize(a.size1(), b.size2());
+//    c.clear();
 
     BeaverMult(c, ar, am, br, bm, fid);
 
@@ -1403,6 +1433,7 @@ public:
 
 //    Init(c, out_rows, out_cols);
     c.resize(out_rows, out_cols);
+    c.clear();
     BeaverMult(c, ar_conv, am_conv, br, bm, false, fid);
 
     BeaverReconstruct(c, fid);
@@ -1427,7 +1458,8 @@ public:
     int out_cols = b.size2();
 
 //    Init(c, out_rows, out_cols);
-    c.resize(out_rows, out_cols);
+    Init(c, out_rows, out_cols);
+//    c.resize(out_rows, out_cols);
 
     // dimension mismatch bc of pooling layers
     if (am_conv_t.size2() > br.size1()) {
@@ -1487,7 +1519,8 @@ public:
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
-    c.resize(a.size1(), b.size2());
+    Init(c, a.size1(), b.size2());
+//    c.resize(a.size1(), b.size2());
 
     BeaverMult(c, ar, am, br, bm, true, fid);
 
@@ -1525,8 +1558,8 @@ public:
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
-//    Init(c, a.size());
-    c.resize(a.size());
+    Init(c, a.size());
+//    c.resize(a.size());
     BeaverMultElem(c, ar, am, br, bm, fid);
 
     BeaverReconstruct(c, fid);
@@ -1550,7 +1583,8 @@ public:
 
   template<class T>
   void Reshape(ublas::vector<T>& b, ublas::matrix<T>& a) {
-    b.resize(a.size1() * a.size2());
+    Init(b, a.size1() * a.size2());
+//    b.resize(a.size1() * a.size2());
 //    b.SetLength(a.NumRows() * a.NumCols());
     if (pid > 0) {
       int ind = 0;
@@ -1592,7 +1626,8 @@ public:
   void Reshape(ublas::matrix<T>& b, ublas::vector<T>& a, int nrows, int ncols) {
     if (pid == 0) {
       assert(a.size() == nrows * ncols);
-      b.resize(nrows, ncols);
+      Init(b, nrows, ncols);
+//      b.resize(nrows, ncols);
 //      b.SetDims(nrows, ncols);
     } else {
       ReshapeMat(b, a, nrows, ncols);
@@ -2203,8 +2238,9 @@ public:
   static void RandVec(ublas::vector<myType>& a, int fid = 0) {
 
     for (int i = 0; i < a.size(); i++)
-//      a[i] = RandomBnd(max_field_L_1);
       a[i] = RandomBits_long(INT_FIELD-1);
+
+//      a[i] = RandomBnd(max_field_L_1);
 //      a[i] = RandomBits_long(l);
   }
 

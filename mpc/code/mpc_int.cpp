@@ -1225,14 +1225,14 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     //  w = x_bit_sh + (j * r_bit) - 2 * (r_bit * x_bit_sh);
     multScalar(jxr_bit, r_bit, j, PRIME_NUMBER);
     multvec(w2, r_bit, x_bit_sh, PRIME_NUMBER);
-    if (pid == 2 && Param::DEBUG) {
-      Print(w2);
-    }
+//    if (pid == 2 && Param::DEBUG) {
+//      Print(w2);
+//    }
     multScalar(w2, w2, (myType)2, PRIME_NUMBER);
-    if (pid == 2 && Param::DEBUG) {
-      Print(jxr_bit);
-      Print(w2);
-    }
+//    if (pid == 2 && Param::DEBUG) {
+//      Print(jxr_bit);
+//      Print(w2);
+//    }
 //  tcout() << "::: pid = 0or1 w ::: " << endl;
 //  Print(jxr_bit);
 //  Print(w2);
@@ -1495,7 +1495,15 @@ void MPCEnv::IsPositive(ublas::matrix<myType>& b, ublas::matrix<myType>& a) {
   av.resize(size);
   bv.resize(size);
   Reshape(av, a);
+  if (pid > 0) {
+    tcout() << "before ispositive: " << endl;
+    PrintFP(av);
+  }
   IsPositive(bv, av);
+  if (pid > 0) {
+    tcout() << "after ispositive: " << endl;
+    Print(bv);
+  }
   Reshape(b, bv, b.size1(), b.size2());
 }
 

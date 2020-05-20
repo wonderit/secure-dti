@@ -99,9 +99,9 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  for(int i = BIT_SIZE-1; i >= 0; i--) cout << bBits[i];
 //  cout << endl;
 //  cout << b << endl;
-  x = doubleToMyType(-3.5);
+  x = doubleToMyType(0.0221364);
   tcout() << "doubletomytype x : " << x << endl;
-  d = ABS(myTypeToDouble(x) - (-3.5));
+  d = ABS(myTypeToDouble(x) - (0.0221364));
   tcout() << "double: " << myTypeToDouble(x) << " d :: " << d << " / " << FIXED_POINT_FRACTIONAL_BITS << endl;
   assert(d < eps);
   tcout() << "Success" << endl;
@@ -122,13 +122,13 @@ bool unit_test(MPCEnv& mpc, int pid) {
     for(size_t i = 0; i < size; i++) {
       if (i % 3 == 0) {
         xv[i] = doubleToMyType(-1.25);
-        yv[i] = doubleToMyType(10.0);
+        yv[i] = doubleToMyType(100.0);
       } else if (i % 3 == 1) {
         xv[i] = doubleToMyType(2.5);
         yv[i] = doubleToMyType(-1.0);
       } else {
         xv[i] = doubleToMyType(3.14);
-        yv[i] = doubleToMyType(-3.0);
+        yv[i] = doubleToMyType(-0.0001);
       }
 
     }
@@ -153,9 +153,9 @@ bool unit_test(MPCEnv& mpc, int pid) {
 
 //  use int to test multiply
   xv += yv; // 2
-  mpc.RevealSym(xv);
-  myTypeToDouble(xdv, xv);
-  mpc.Print(xdv);
+//  mpc.RevealSym(xv);
+//  myTypeToDouble(xdv, xv);
+  mpc.PrintFP(xv);
 
 //  TEST START
 //
@@ -242,18 +242,25 @@ bool unit_test(MPCEnv& mpc, int pid) {
 ////    tcout() << " xv : " << beta_prime << endl;
 //    mpc.PrintFP(xv);
 //  }
-//  ublas::vector<myType> sc_xv(xv.size(), 0);
-//  ublas::vector<myType> relu_deriv(xv.size(), 0);
-////  mpc.ComputeMsb(xv, relu_deriv);
-//  mpc.IsPositive(relu_deriv, xv );
-//
-//  if (pid == 2) {
-//    toc();
-//  }
-//
-//  if (pid > 0) {
-//    mpc.Print(relu_deriv);
-//  }
+  ublas::vector<myType> sc_xv(xv.size(), 0);
+  ublas::vector<myType> relu_deriv(xv.size(), 0);
+//  mpc.ComputeMsb(xv, relu_deriv);
+  mpc.IsPositive(relu_deriv, zv );
+
+  if (pid == 2) {
+    toc();
+  }
+
+  if (pid > 0) {
+    mpc.Print(relu_deriv);
+  }
+
+  zv = ublas::element_prod(relu_deriv, zv);
+  if (pid > 0) {
+    tcout() << "Print after relu" << endl;
+    mpc.PrintFP(zv);
+  }
+
 
 //  Time MULT END
 

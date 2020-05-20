@@ -31,12 +31,13 @@ using namespace std;
 //}
 
 void reveal(ublas::vector<myType>& X, string fname, MPCEnv& mpc) {
-  mpc.RevealSym(X);
+  ublas::vector<myType> X_copy(X);
+  mpc.RevealSym(X_copy);
 //  Vec<double> X_double;
   ublas::vector<double> X_double(X.size(), 0);
   fstream fs;
   fs.open(fname.c_str(), ios::out);
-  myTypeToDouble(X_double, X);
+  myTypeToDouble(X_double, X_copy);
   //TODO
 
 //  FPToDouble(X_double, X, Param::NBIT_K, Param::NBIT_F);
@@ -48,12 +49,14 @@ void reveal(ublas::vector<myType>& X, string fname, MPCEnv& mpc) {
 }
 
 void reveal(ublas::matrix<myType>& X, string fname, MPCEnv& mpc) {
-  mpc.RevealSym(X);
-  ublas::matrix<double> X_double(X.size1(), X.size2(), 0);
+  ublas::matrix<myType> X_copy(X);
+  mpc.RevealSym(X_copy);
+//  mpc.RevealSym(X);
+  ublas::matrix<double> X_double(X_copy.size1(), X_copy.size2(), 0);
 //  Mat<double> X_double;
   fstream fs;
   fs.open(fname.c_str(), ios::out);
-  myTypeToDouble(X_double, X);
+  myTypeToDouble(X_double, X_copy);
   //TODO
 //  FPToDouble(X_double, X, Param::NBIT_K, Param::NBIT_F);
   for (int i = 0; i < X.size1(); i++) {
@@ -144,12 +147,18 @@ void AveragePool(ublas::matrix<myType>& avgpool, ublas::matrix<myType>& input, i
   int row = prev_row / stride;
   if (row % 2 == 1)
     row--;
+
   avgpool.resize(row * Param::BATCH_SIZE, input.size2());
+  avgpool.clear();
+
+  tcout() << "AveragePool input r c (" << input.size1() << ", " << input.size2() << ")" << endl;
+  tcout() << "AveragePool row, cols (" << avgpool.size1() << ", " << avgpool.size2() << ")" << endl;
 //  Init(avgpool, row * Param::BATCH_SIZE, input.size2());
   for (int b = 0; b < Param::BATCH_SIZE; b++) {
     for (int i = 0; i < row; i++) {
       for (int c = 0; c < input.size2(); c++) {
         for (int k = 0; k < kernel_size; k++) {
+//          avgpool(b * row + i, c) = avgpool(b * row + i, c) + input(b * prev_row + i * stride + k, c);
           avgpool(b * row + i, c) += input(b * prev_row + i * stride + k, c);
 //          avgpool[b * row + i][c] += input[b * prev_row + i * stride + k][c];
         }
@@ -169,8 +178,8 @@ void BackAveragePool(ublas::matrix<myType>& input, ublas::matrix<myType>& avgpoo
   if (Param::DEBUG) tcout() << "avgpool row, cols (" << avgpool.size1() << ", " << avgpool.size2() << ")" << endl;
   int prev_row = avgpool.size1() / Param::BATCH_SIZE;
   int row = prev_row * stride;
-  input.resize(row * Param::BATCH_SIZE, avgpool.size2());
-//  Init(input, row * Param::BATCH_SIZE, avgpool.size2());
+//  input.resize(row * Param::BATCH_SIZE, avgpool.size2());
+  Init(input, row * Param::BATCH_SIZE, avgpool.size2());
 
   for (int b = 0; b < Param::BATCH_SIZE; b++) {
     for (int i = 0; i < prev_row; i++) {
@@ -193,6 +202,7 @@ void BackAveragePool(ublas::matrix<myType>& input, ublas::matrix<myType>& avgpoo
 void initialize_parameters(ublas::matrix<myType>& W_layer, ublas::vector<myType>& b_layer) {
 
 //  Init(b_layer, b_layer.length());
+  W_layer.clear();
   b_layer.clear();
   std::default_random_engine random_generator (0);
   int fan_in = W_layer.size1();
@@ -201,7 +211,7 @@ void initialize_parameters(ublas::matrix<myType>& W_layer, ublas::vector<myType>
   double b_bound = 0.0;
   double w_bound = 0.0;
 
-  if (Param::DEBUG) tcout() << "W layer row, cols (" << W_layer.size1() << ", " << W_layer.size2() << ")" << endl;
+  tcout() << "W layer row, cols (" << W_layer.size1() << ", " << W_layer.size2() << ")" << endl;
   b_bound = 1.0 / std::sqrt(fan_in);
   w_bound = std::sqrt(3.0) * (gain / std::sqrt(fan_in));
   std::uniform_real_distribution<double> b_dist (-b_bound, b_bound);
@@ -211,14 +221,14 @@ void initialize_parameters(ublas::matrix<myType>& W_layer, ublas::vector<myType>
     for (int j = 0; j < W_layer.size2(); j++) {
       double weight = w_dist(random_generator);
       if (i == 0)
-        if (Param::DEBUG) tcout() << "weight  : " << weight << endl;
+        tcout() << "weight  : " << weight << endl;
 
       //TODO
       //      DoubleToFP(W_layer[i][j], weight, Param::NBIT_K, Param::NBIT_F);
       W_layer(i, j) = doubleToMyType(weight);
 
       if (i == 0)
-        if (Param::DEBUG) tcout() << "W_layer(i, j)  : " << W_layer(i, j) << endl;
+        tcout() << "W_layer(i, j)  : " << W_layer(i, j) << endl;
 
     }
   }
@@ -274,61 +284,84 @@ void initialize_model(
     if (Param::N_HIDDEN == 0 && l >= 1) {
       break;
     } else if (Param::N_HIDDEN == 0 && l == 0) {
-      W_layer.resize(Param::FEATURE_RANK, Param::N_CLASSES - 1);
-      b_layer.resize(Param::N_CLASSES - 1);
+      Init(W_layer, Param::FEATURE_RANK, Param::N_CLASSES - 1);
+      Init(b_layer, Param::N_CLASSES - 1);
+//      W_layer.resize(Param::FEATURE_RANK, Param::N_CLASSES - 1);
+//      b_layer.resize(Param::N_CLASSES - 1);
 //      W_layer.SetDims(Param::FEATURE_RANK, Param::N_CLASSES - 1);
 //      b_layer.SetLength(Param::N_CLASSES - 1);
     
     /* Set dimensions of the input layer. */
     } else if (l == 0) {
-      W_layer.resize(21, 6);
-      b_layer.resize(6);
+      Init(W_layer, 21, 6);
+      Init(b_layer, 6);
+//      W_layer.resize(21, 6);
+//      b_layer.resize(6);
 //      W_layer.SetDims(21, 6);
 //      b_layer.SetLength(6);
 
     /* Set dimensions of the hidden layers. */
     } else if (l == 1) {
-
-      W_layer.resize(42, 6);
-      b_layer.resize(6);
+      Init(W_layer, 42, 6);
+      Init(b_layer, 6);
+//      W_layer.resize(42, 6);
+//      b_layer.resize(6);
 //      W_layer.SetDims(42, 6);
 //      b_layer.SetLength(6);
     } else if (l == 2) {
+      Init(W_layer, 42, 6);
+      Init(b_layer, 6);
 
-      W_layer.resize(42, 6);
-      b_layer.resize(6);
+//      W_layer.resize(42, 6);
+//      b_layer.resize(6);
 //      W_layer.SetDims(42, 6);
 //      b_layer.SetLength(6);
     } else if (l == 3) {
+      Init(W_layer, 336, Param::N_NEURONS);
+      Init(b_layer, Param::N_NEURONS);
 
-      W_layer.resize(336, Param::N_NEURONS);
-      b_layer.resize(Param::N_NEURONS);
+//      W_layer.resize(336, Param::N_NEURONS);
+//      b_layer.resize(Param::N_NEURONS);
 //      W_layer.SetDims(336, Param::N_NEURONS); // 2892, 2928
 //      b_layer.SetLength(Param::N_NEURONS);
     } else if (l == 4) {
 
-      W_layer.resize(Param::N_NEURONS, Param::N_NEURONS_2);
-      b_layer.resize(Param::N_NEURONS_2);
+      Init(W_layer, Param::N_NEURONS, Param::N_NEURONS_2);
+      Init(b_layer, Param::N_NEURONS_2);
+//      W_layer.resize(Param::N_NEURONS, Param::N_NEURONS_2);
+//      b_layer.resize(Param::N_NEURONS_2);
 //      W_layer.SetDims(Param::N_NEURONS, Param::N_NEURONS_2);
 //      b_layer.SetLength(Param::N_NEURONS_2);
 
     /* Set dimensions of the output layer. */
     } else if (l == Param::N_HIDDEN) {
 
-      W_layer.resize(Param::N_NEURONS_2, Param::N_CLASSES - 1);
-      b_layer.resize(Param::N_CLASSES - 1);
+      Init(W_layer, Param::N_NEURONS_2, Param::N_CLASSES - 1);
+      Init(b_layer, Param::N_CLASSES - 1);
+//      W_layer.resize(Param::N_NEURONS_2, Param::N_CLASSES - 1);
+//      b_layer.resize(Param::N_CLASSES - 1);
 
 //      W_layer.SetDims(Param::N_NEURONS_2, Param::N_CLASSES - 1);
 //      b_layer.SetLength(Param::N_CLASSES - 1);
     }
 
-    dW_layer.resize(W_layer.size1(), W_layer.size2());
-    vW_layer.resize(W_layer.size1(), W_layer.size2());
-    mW_layer.resize(W_layer.size1(), W_layer.size2());
+//    dW_layer.resize(W_layer.size1(), W_layer.size2());
+//    vW_layer.resize(W_layer.size1(), W_layer.size2());
+//    mW_layer.resize(W_layer.size1(), W_layer.size2());
 
-    db_layer.resize(b_layer.size());
-    vb_layer.resize(b_layer.size());
-    mb_layer.resize(b_layer.size());
+//    db_layer.resize(b_layer.size());
+//    vb_layer.resize(b_layer.size());
+//    mb_layer.resize(b_layer.size());
+
+    Init(dW_layer, W_layer.size1(), W_layer.size2());
+    Init(vW_layer, W_layer.size1(), W_layer.size2());
+    Init(mW_layer, W_layer.size1(), W_layer.size2());
+
+
+    Init(db_layer, b_layer.size());
+    Init(vb_layer, b_layer.size());
+    Init(mb_layer, b_layer.size());
+
 //    dW_layer.SetDims(W_layer.NumRows(), W_layer.NumCols());
 //    Init(vW_layer, W_layer.NumRows(), W_layer.NumCols());
 //    Init(mW_layer, W_layer.NumRows(), W_layer.NumCols());
@@ -339,8 +372,10 @@ void initialize_model(
      
 //    Mat<ZZ_p> W_r;
 //    Vec<ZZ_p> b_r;
-    ublas::matrix<myType> W_r(W_layer.size1(), W_layer.size2());
-    ublas::vector<myType> b_r(b_layer.size());
+    ublas::matrix<myType> W_r;
+    Init(W_r, W_layer.size1(), W_layer.size2());
+    ublas::vector<myType> b_r;
+    Init(b_r, b_layer.size());
     if (pid == 2) {
 
       ifstream ifs;
@@ -403,6 +438,10 @@ void initialize_model(
       mpc.RestoreSeed();
       W_layer -= W_r;
       b_layer -= b_r;
+
+      tcout() << "2W_layer(0, 0)  : " << W_layer(0, 0) << endl;
+//      tcout() << "2W_layer(i, j)1  : " << W_layer.size1() << endl;
+//      tcout() << "2W_layer(i, j)2  : " << W_layer.size2() << endl;
       
     } else if (pid == 1) {
       /* CP1 will just have the random data. */
@@ -412,7 +451,17 @@ void initialize_model(
       mpc.RestoreSeed();
       W_layer = W_r;
       b_layer = b_r;
+
+
+      tcout() << "1W_layer(0, 0)  : " << W_layer(0, 0) << endl;
+//      tcout() << "1W_layer(i, j)1  : " << W_layer.size1() << endl;
+//      tcout() << "1W_layer(i, j)2  : " << W_layer.size2() << endl;
     }
+
+    //TEST
+    //TODO
+    mpc.PrintFP(W_layer);
+
 
 //    W[l] = W_layer;
 //    dW[l] = dW_layer;
@@ -476,8 +525,18 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     if (l == 0) {
 
       if (Param::DEBUG) tcout() << "before initial reshape" << endl;
+      if (pid > 0) {
+        tcout() << "x before reshape l = " << l << endl;
+        mpc.PrintFP(X);
+      }
+
       // Reshape (N, row * channel) -> (N * row, channel)
       initial_reshape(X_reshape, X, 3, Param::BATCH_SIZE);
+
+      if (pid > 0) {
+        tcout() << "x after reshape l = " << l << endl;
+        mpc.PrintFP(X_reshape);
+      }
       if (Param::DEBUG) tcout() << "Reshape X to X_reshape : (" << X.size1() << "," << X.size2()
                                 << "), X_reshape : (" << X_reshape.size1() << ", " << X_reshape.size2() << ")" << endl;
 
@@ -503,6 +562,7 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         int channels = act[l-1].size2();
         int row = act[l-1].size1() / Param::BATCH_SIZE;
         ann.resize(Param::BATCH_SIZE, row * channels);
+        ann.clear();
 //        ann.SetDims(Param::BATCH_SIZE, row * channels);
 
         for (int b = 0; b < Param::BATCH_SIZE; b++) {
@@ -518,20 +578,38 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
       // the rest of FC layers
       } else {
-
+        if (pid > 0) {
+          tcout() << "W l = " << l << endl;
+          mpc.PrintFP(W[l]);
+          tcout() << "act l-1 = " << l - 1 << endl;
+          mpc.PrintFP(act[l - 1]);
+        }
         mpc.MultMat(activation, act[l-1], W[l]);
       }
     }
     mpc.Trunc(activation);
     if (Param::DEBUG) tcout() << "activation[i, j] -> r, c (" << activation.size1() << ", " << activation.size2() << ")" << pid << endl;
     if (Param::DEBUG) tcout() << "b[l] -> col, rows (" << b[l].size() << ", " << b[l].size() << ")" << pid << endl;
+
+    if (pid > 0) {
+      tcout() << "before bias activation l = " << l << endl;
+      mpc.PrintFP(activation);
+      tcout() << "before bias b l = " << l << endl;
+      mpc.PrintFP(b[l]);
+    }
+
     /* Add bias term; */
-    for (int i = 0; i < activation.size1(); i++) {
-      for (int j = 0; j < activation.size2(); j++) {
-        // TODO CHECK!
-        activation(i, j) += b[l][j];
-//        activation[i] += b[l];
-      }
+//    for (int i = 0; i < activation.size1(); i++) {
+//      for (int j = 0; j < activation.size2(); j++) {
+//        // TODO CHECK!
+//        activation(i, j) += b[l][j];
+////        activation[i] += b[l];
+//      }
+//    }
+
+    if (pid > 0) {
+      tcout() << "activation l = " << l << endl;
+      mpc.PrintFP(activation);
     }
 
     if (l == 0) {
@@ -543,6 +621,11 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       avgpool *= inv2;
       mpc.Trunc(avgpool);
       if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
+
+      if (pid > 0) {
+        tcout() << "after avg pool l = " << l << endl;
+        mpc.PrintFP(avgpool);
+      }
 
 //      act[l] = avgpool;
       act.push_back(avgpool);
@@ -556,10 +639,11 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 //      mpc.ComputeMsb(activation, relu);
       mpc.IsPositive(relu, activation);
 //      Mat<ZZ_p> after_relu;
-      ublas::matrix<myType> after_relu;
+      ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
       assert(activation.size1() == relu.size1());
       assert(activation.size2() == relu.size2());
-      mpc.MultElem(after_relu, activation, relu);
+      after_relu = ublas::element_prod(activation, relu);
+//      mpc.MultElem(after_relu, activation, relu);
       /* Note: Do not call Trunc() here because IsPositive()
          returns a secret shared integer, not a fixed point.*/
       // TODO: Implement dropout.
@@ -567,6 +651,12 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       if (Param::DEBUG) tcout() << "ReLU -> col, rows (" << relu.size1() << ", " << relu.size2() << ")" << pid << endl;
       if (Param::DEBUG) tcout() << "after ReLU -> col, rows (" << after_relu.size1() << ", " << after_relu.size2() << ")" << pid << endl;
       if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
+      if (pid > 0) {
+        tcout() << "relu l = " << l << endl;
+        mpc.Print(relu);
+        tcout() << "activation after relu l = " << l << endl;
+        mpc.PrintFP(after_relu);
+      }
 
       if (l <= 2) {
         // Avg Pool
@@ -578,6 +668,12 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 //        act[l] = avgpool;
         act.push_back(avgpool);
         if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
+
+        if (pid > 0) {
+          tcout() << "activation after avg pool l = " << l << endl;
+          mpc.PrintFP(avgpool);
+        }
+
       } else {
 //        act[l] = after_relu;
         act.push_back(after_relu);
@@ -609,13 +705,25 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
   }
   mpc.Trunc(scores);
 
-  /* Add bias term; */
-  for (int i = 0; i < scores.size1(); i++) {
-    for (int j = 0; j < scores.size2(); j++) {
+  if (pid > 0) {
 
-//      scores[i] += b.back();
-      scores(i, j) += b.back()[j];
-    }
+    tcout() << "score 1 : " << endl;
+    mpc.PrintFP(scores);
+  }
+
+  /* Add bias term; */
+//  for (int i = 0; i < scores.size1(); i++) {
+//    for (int j = 0; j < scores.size2(); j++) {
+//
+////      scores[i] += b.back();
+//      scores(i, j) += b.back()[j];
+//    }
+//  }
+
+  if (pid > 0) {
+
+    tcout() << "score 2 : Add bias" << endl;
+    mpc.PrintFP(scores);
   }
 
 //  Mat<ZZ_p> dscores;
@@ -642,7 +750,7 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       for (int i = 0; i < mod_scores.size1(); i++) {
         for (int j = 0; j < mod_scores.size2(); j++) {
           //TODO
-          mod_scores(i, j) += doubleToMyType(1);
+          mod_scores(i, j) += doubleToMyType(1.0);
 //          mod_scores[i][j] += DoubleToFP(1, Param::NBIT_K, Param::NBIT_F);
         }
       }
@@ -654,19 +762,30 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     mpc.IsPositive(hinge, mod_scores);
     mpc.MultElem(dscores, y, hinge);
     /* Note: No need to not call Trunc(). */
-    
   } else {
     /* Compute derivative of the scores using MSE loss. */
     dscores = scores - y;
   }
+
+  if (pid > 0) {
+
+    tcout() << "dscores" << endl;
+    mpc.PrintFP(dscores);
+  }
   
 //  ZZ_p norm_examples;
   myType norm_examples;
-  norm_examples = doubleToMyType(1. / X.size1());
+  norm_examples = doubleToMyType(1.0 / Param::BATCH_SIZE);
 //  DoubleToFP(norm_examples, 1. / ((double) X.size1()),
 //             Param::NBIT_K, Param::NBIT_F);
   dscores *= norm_examples;
   mpc.Trunc(dscores);
+
+  if (pid > 0) {
+    tcout() << "dscores again" << endl;
+    mpc.PrintFP(dscores);
+  }
+
 
   /*********************
    * Back propagation. *
@@ -680,8 +799,8 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     if (pid == 2)
       if (Param::DEBUG) tcout() << "Back prop, multiplication." << endl;
     /* Compute derivative of weights. */
-    dW[l].resize(W[l].size1(), W[l].size2());
-//    Init(dW[l], W[l].NumRows(), W[l].NumCols());
+//    dW[l].resize(W[l].size1(), W[l].size2());
+    Init(dW[l], W[l].size1(), W[l].size2());
     ublas::matrix<myType> X_T;
 //    Mat<ZZ_p> X_T;
     if (l == 0) {
@@ -705,7 +824,8 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       if (l == 3) {
         int row = X_T.size2() / Param::BATCH_SIZE;
         int channel = X_T.size1();
-        resize_x_t.resize(row * channel, Param::BATCH_SIZE);
+        Init(resize_x_t, row * channel, Param::BATCH_SIZE);
+//        resize_x_t.resize(row * channel, Param::BATCH_SIZE);
 //        resize_x_t.SetDims(row * channel, Param::BATCH_SIZE);
         for (int b = 0; b < Param::BATCH_SIZE; b++) {
           for (int c = 0; c < channel; c++) {
@@ -737,6 +857,15 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     }
     mpc.Trunc(dW[l]);
 
+    if (pid > 0) {
+      tcout() << "X_T" << endl;
+      mpc.PrintFP(X_T);
+      tcout() << "dhidden" << endl;
+      mpc.PrintFP(dhidden);
+      tcout() << "dW[l]" << endl;
+      mpc.PrintFP(dW[l]);
+    }
+
 //    /* Add regularization term to weights. */
 ////    ZZ_p REG;
 //    myType REG;
@@ -753,7 +882,8 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 //    dW[l] += reg;
 
     /* Compute derivative of biases. */
-    db[l].resize(b[l].size());
+    Init(db[l], b[l].size());
+//    db[l].resize(b[l].size());
 //    Init(db[l], b[l].length());
 
 
@@ -788,7 +918,8 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         if (Param::DEBUG) tcout() << "Back prop, ReLU." << endl;
 
       /* Apply derivative of ReLU. */
-      dhidden.resize(dhidden_new.size1(), dhidden_new.size2());
+      Init(dhidden, dhidden_new.size1(), dhidden_new.size2());
+//      dhidden.resize(dhidden_new.size1(), dhidden_new.size2());
 //      Init(dhidden, dhidden_new.size1(), dhidden_new.size2());
 
       if (l == 1) {
@@ -824,7 +955,8 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
           if (l > 2) {
             ublas::matrix<myType> temp;
-            temp.resize(relu.size1(), relu.size2());
+            Init(temp, relu.size1(), relu.size2());
+//            temp.resize(relu.size1(), relu.size2());
 //            Mat<ZZ_p> temp;
 //            temp.SetDims(relu.NumRows(), relu.NumCols());
             int row = dhidden_new.size2() / relu.size2();
@@ -885,8 +1017,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
   /* Update the model using Nesterov momentum. */
   /* Compute constants that update various parameters. */
   myType MOMENTUM = doubleToMyType(Param::MOMENTUM);
+  myType MINUS_MOMENTUM = doubleToMyType(-Param::MOMENTUM);
   myType MOMENTUM_PLUS1 = doubleToMyType(Param::MOMENTUM + 1);
-  myType LEARN_RATE = doubleToMyType(Param::LEARN_RATE + 1);
+  myType LEARN_RATE = doubleToMyType( - Param::LEARN_RATE);
 
 //  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
 //                             Param::NBIT_K, Param::NBIT_F);
@@ -897,25 +1030,66 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
   for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
     /* Update the weights. */
-    ublas::matrix<myType> vW_prev = vW[l];
+    ublas::matrix<myType> vW_prev= vW[l];
 //    Mat<ZZ_p> vW_prev = vW[l];
     vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
     mpc.Trunc(vW[l]);
+    if (pid > 0) {
+      tcout() << "vW[l] l = " << l << endl;
+      mpc.PrintFP(vW[l]);
+    }
+    ublas::matrix<myType> W_update;
+    Init(W_update, vW_prev.size1(), vW_prev.size2());
+    W_update = (MINUS_MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
+    tcout() << "W_update s = " << W_update.size1() << "/" << W_update.size2() << endl;
+    tcout() << "dW[l] s = " << dW[l].size1() << "/" << dW[l].size2() << endl;
+    tcout() << "W[l] s = " << W[l].size1() << "/" << W[l].size2() << endl;
+//    W_update = (LEARN_RATE * dW[l]);
 
-    ublas::matrix<myType> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
 //    Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
     mpc.Trunc(W_update);
+    if (pid > 0) {
+      tcout() << "W_update l = " << l << endl;
+      mpc.PrintFP(W_update);
+      tcout() << "Before W l = " << l << endl;
+      mpc.PrintFP(W[l]);
+    }
+
+//    if (l == 1) {
+//
+//      if (pid > 0) {
+//        tcout() << "W_update l = " << l << endl;
+//        mpc.PrintFP(W_update);
+//        tcout() << "Before W l = "<< test_index << endl;
+//        mpc.PrintFP(W[l]);
+//      }
+//    }
+
+
     W[l] += W_update;
+
+    if (pid > 0) {
+      tcout() << "after WWWW l =" << l << endl;
+      mpc.PrintFP(W[l]);
+    }
 
     /* Update the biases. */
 //    Vec<ZZ_p> vb_prev = vb[l];
     ublas::vector<myType> vb_prev = vb[l];
     vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
     mpc.Trunc(vb[l]);
-    ublas::vector<myType> b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
+    ublas::vector<myType> b_update;
+    Init(b_update, vb[l].size());
+    tcout() << "b_update s = " << b_update.size() << endl;
+    tcout() << "db[l] s = " << db[l].size()  << endl;
+    tcout() << "b[l] s = " << b[l].size()  << endl;
+//    b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
 //    Vec<ZZ_p> b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
+    b_update = (LEARN_RATE * db[l]);
     mpc.Trunc(b_update);
     b[l] += b_update;
+
+    if (pid > 0) tcout() << "fin loop " << l << endl;
 
   }
 
@@ -993,16 +1167,16 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
   ublas::matrix<double> mse_double;
   ublas::matrix<double> dscore_double;
   double mse_score_double;
-//  mpc.MultElem(mse, dscores, dscores);
-//  mpc.Trunc(mse);
-//  mpc.RevealSym(mse);
-//  myTypeToDouble(mse_double, mse);
-//  mse_score_double = Sum(mse_double);
-  mpc.RevealSym(dscores);
-  myTypeToDouble(dscore_double, dscores);
-  dscore_double = ublas::element_prod(dscore_double, dscore_double);
+  mpc.MultElem(mse, dscores, dscores);
+  mpc.Trunc(mse);
+  mpc.RevealSym(mse);
+  myTypeToDouble(mse_double, mse);
+  mse_score_double = Sum(mse_double);
+//  mpc.RevealSym(dscores);
+//  myTypeToDouble(dscore_double, dscores);
+//  dscore_double = ublas::element_prod(dscore_double, dscore_double);
 //  FPToDouble(mse_double, mse, Param::NBIT_K, Param::NBIT_F);
-  mse_score_double = Sum(dscore_double);
+//  mse_score_double = Sum(dscore_double);
   return mse_score_double * Param::BATCH_SIZE;
 }
 
@@ -1140,6 +1314,15 @@ void model_update(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       }
     }
 
+    if (pid > 0) {
+      tcout() << "x before gradient_descent " << endl;
+      mpc.PrintFP(X_batch);
+
+      tcout() << "y before gradient_descent " << endl;
+      mpc.PrintFP(y_batch);
+    }
+//    exit(0);
+
     /* Do one round of mini-batch gradient descent. */
     //TODO
 //    double mse_score = 1.0;
@@ -1147,28 +1330,7 @@ void model_update(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
                      W, b, dW, db, vW, vb, mW, mb, act, relus,
                      epoch, epoch * batches_in_file + i + 1 , pid, mpc);
 
-    /* Save state every 10 batches. */
-    if (i % 10 == 0) {
-      if (pid == 2) {
-        tcout() << "save parameters of W, b into .bin files." << endl;
-      }
-//
-      for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-        ublas::matrix<myType> W_out(W[l].size1(), W[l].size2(), 0);
-//        Mat<ZZ_p> W_out;
-//        Init(W_out, W[l].NumRows(), W[l].NumCols());
-        W_out += W[l];
-        reveal(W_out, cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "W" + to_string(l)), mpc);
 
-        ublas::vector<myType> b_out(b[l].size(), 0);
-//        Vec<ZZ_p> b_out;
-//        Init(b_out, b[l].length());
-        b_out += b[l];
-        reveal(b_out, cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "b" + to_string(l)), mpc);
-      }
-      //      TEST
-//      exit(0);
-    }
 
     if (pid == 2) {
       end = time(NULL);
@@ -1187,6 +1349,49 @@ void model_update(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
               << " laptime : " << laptime
               << " total time: " << hour << ":" << minute << ":" << second << endl;
 
+    }
+    if (i == 1) {
+      //      TEST
+//      exit(0);
+    }
+
+    if (pid > 0 && (mse_score > 1000 || mse_score < -1000)) {
+      tcout() << "OVER FLOW ERROR OCCURED : " << mse_score << endl;
+      for (int pn = 0; pn < 3; pn++) {
+        string fname =
+            cache(pn, to_string(epoch) + "_" + to_string(i) + "_seed");
+        fstream fs;
+        fs.open(fname.c_str(), ios::out | ios::binary);
+        if (!fs.is_open()) {
+          tcout() << "Error: could not open " << fname << endl;
+        }
+        mpc.SwitchSeed(pn);
+        mpc.ExportSeed(fs);
+        fs.close();
+      }
+      exit(0);
+    }
+
+    /* Save state every 10 batches. */
+    if (i % 10 == 0) {
+      if (pid == 2) {
+        tcout() << "save parameters of W, b into .bin files." << endl;
+      }
+//
+      for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+//        ublas::matrix<myType> W_out(W[l].size1(), W[l].size2(), 0);
+//        Mat<ZZ_p> W_out;
+//        Init(W_out, W[l].NumRows(), W[l].NumCols());
+//        W_out += W[l];
+
+        reveal(W[l], cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "W" + to_string(l)), mpc);
+
+//        ublas::vector<myType> b_out(b[l].size(), 0);
+//        Vec<ZZ_p> b_out;
+//        Init(b_out, b[l].length());
+//        b_out += b[l];
+        reveal(b[l], cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "b" + to_string(l)), mpc);
+      }
     }
 
     /* Update reference to training epoch. FOR TEST */
@@ -1224,11 +1429,13 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
 //  vector<ublas::vector<myType>> b( Param::N_HIDDEN + 1),
 //  db( Param::N_HIDDEN + 1), vb( Param::N_HIDDEN + 1), mb( Param::N_HIDDEN + 1);
 //
+
+  /* Seed 0 to have deterministic testing. */
+  srand(0);
+
   initialize_model(W, b, dW, db, vW, vb, mW, mb, pid, mpc);
 
   tcout() << "pid : " << pid << "check 0" << endl;
-
-  srand(0);  /* Seed 0 to have deterministic testing. */
 
   /* Create list of training file suffixes. */
   vector<string> suffixes;
@@ -1247,7 +1454,26 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
   tcout() << "pid : " << pid << "check 1" << endl;
 
 
-  tcout() << "print FP" << endl;
+//  tcout() << "print FP" << endl;
+//  //test start
+//  if (pid > 0) {
+//    for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+////      ublas::matrix<myType> W_out;
+////      W_out.resize(W[l].size1(), W[l].size2());
+////      Mat<ZZ_p> W_out;
+////      Init(W_out, W[l].size1(), W[l].size2());
+////      W_out += W[l];
+//      reveal(W[l], cache(pid, "W" + to_string(l) + "_final"), mpc);
+//
+////      ublas::vector<myType> b_out(b[l].size());
+////      Vec<ZZ_p> b_out;
+////      Init(b_out, b[l].size());
+////      b_out += b[l];
+//      reveal(b[l], cache(pid, "b" + to_string(l) + "_final"), mpc);
+//    }
+//  }
+//  return true;
+  //test end
 //  mpc.RevealSym(X);
 //  tcout() << X(0,0) << endl;
 //  tcout() << X(0,1) << endl;
@@ -1289,18 +1515,18 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
   
   if (pid > 0) {
     for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-      ublas::matrix<myType> W_out;
-      W_out.resize(W[l].size1(), W[l].size2());
+//      ublas::matrix<myType> W_out;
+//      W_out.resize(W[l].size1(), W[l].size2());
 //      Mat<ZZ_p> W_out;
 //      Init(W_out, W[l].size1(), W[l].size2());
-      W_out += W[l];
-      reveal(W_out, cache(pid, "W" + to_string(l) + "_final"), mpc);
+//      W_out += W[l];
+      reveal(W[l], cache(pid, "W" + to_string(l) + "_final"), mpc);
 
-      ublas::vector<myType> b_out(b[l].size());
+//      ublas::vector<myType> b_out(b[l].size());
 //      Vec<ZZ_p> b_out;
 //      Init(b_out, b[l].size());
-      b_out += b[l];
-      reveal(b_out, cache(pid, "b" + to_string(l) + "_final"), mpc);
+//      b_out += b[l];
+      reveal(b[l], cache(pid, "b" + to_string(l) + "_final"), mpc);
     }
   }
   return true;

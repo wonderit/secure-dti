@@ -11,14 +11,15 @@ using namespace std;
 
 #if INT_TYPE == 128
   typedef uint128_t myType;
+  typedef int128_t myTypeSigned;
+  #define FIXED_POINT_FRACTIONAL_BITS 35
   #define IS_INT true
 #elif INT_TYPE == 64
   typedef uint64_t myType;
   typedef int64_t myTypeSigned;
   #define IS_INT true
   const string BASE_PRIME_NUMBER = "18446744073709551557";
-  #define FIXED_POINT_FRACTIONAL_BITS 30
-
+  #define FIXED_POINT_FRACTIONAL_BITS 24
 #elif INT_TYPE == 32
   typedef uint32_t myType;
   #define IS_INT true
