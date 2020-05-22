@@ -356,116 +356,24 @@ void multScalar(ublas::vector<T>& result, ublas::vector<T>& a, T b, myType L) {
   }
 }
 
-//template<class T>
-//inline ublas::vector<T>& operator*(T x, ublas::vector<myType>& a)
-//{
-//  ublas::vector<T> result(a.size(), 0);
-////  cout<<"mytype & vector : ";
-//  for (int i = 0; i < a.size(); i++) {
-//    result[i] = x * a[i];
-//  }
-//  return result;
-//}
-
-//
-//template<class T>
-//inline ublas::vector<T>& operator-(ublas::vector<T>& x, ublas::vector<T>& a)
-//{
-//  ublas::vector<T> result(a.size(), 0);
-//  for (int i = 0; i < a.size(); i++) {
-//    result[i] = x[i] - a[i];
-//  }
-//  return result;
-//}
-//
-//
-//template<class T>
-//inline ublas::vector<T>& operator+(ublas::vector<T>& x, T a)
-//{
-//  ublas::vector<T> result(x.size(), 0);
-//  for (int i = 0; i < x.size(); i++) {
-//    result[i] = x[i] - a;
-//  }
-//  return result;
-//}
-
-
 template<class T>
 static inline void bitset_to_vector(ublas::vector<T>&x, bitset<INT_FIELD>& a)
 {
   for (int i = 0; i < x.size(); i++) {
     x[i] = a[i];
-//    cout << x[i];
   }
-//  cout << endl;
 }
 
-
-//template<class T>
-//static inline void bitset_to_vector(ublas::vector<T>&x, bitset<INT_TYPE>& a)
-//{
-//  for (int i = 0; i < x.size(); i++) {
-//    x[i] = a[i];
-//    cout << x[i];
-//  }
-//  cout << endl;
-//}
-
-
-
-//
-//template<class T>
-//inline Vec<T>& operator+=(Vec<T>& x, Vec<T>& a)
-//{
-//  for (int i = 0; i < x.length(); i++) {
-//    x[i] += a[i];
-//  }
-//}
-//
-//template<class T>
-//inline Vec<T>& operator-=(Vec<T>& x, Vec<T>& a)
-//{
-//  for (int i = 0; i < x.length(); i++) {
-//    x[i] -= a[i];
-//  }
-//}
-//
-//
-//template<class T>
-//inline Vec<T>& operator+(Vec<T>& x, Vec<T>& a)
-//{
-//  Vec<T> result;
-//  Init(result, x.length());
-//  for (int i = 0; i < x.length(); i++) {
-//    result[i] = x[i] + a[i];
-//  }
-//}
-//
-//
-//template<class T>
-//inline Vec<T>& operator-(Vec<T>& x, Vec<T>& a)
-//{
-//  Vec<T> result;
-//  Init(result, x.length());
-//  for (int i = 0; i < x.length(); i++) {
-//    result[i] = x[i] - a[i];
-//  }
-//}
-
-
 //for pre conversion
-
 static inline void initial_reshape(ublas::matrix<myType>& x_2d, ublas::matrix<myType>& x, int input_channel, int batch_size) {
   int row = x.size2() / input_channel;
 
-//  x_2d.resize(batch_size * row, input_channel);
   Init(x_2d, batch_size * row, input_channel);
 
   for (int batch = 0; batch < batch_size; batch++) {
     for (int index = 0; index < row; index++) {
       for (int channel = 0; channel < input_channel; channel++) {
         x_2d(batch * row + index, channel) = x(batch, row * channel + index);
-//        x_2d[batch * row + index][channel] = x[batch][row * channel + index];
       }
     }
   }
@@ -475,7 +383,6 @@ static inline void reshape_conv(ublas::matrix<myType>& conv1d, ublas::matrix<myT
   int channels = x.size2();
   int prev_row = x.size1() / batch_size;  // 488
   int row = prev_row - kernel_size + 1;  // 482
-//  conv1d.resize(batch_size * row, kernel_size * channels);
   Init(conv1d, batch_size * row, kernel_size * channels);
   if(Param::DEBUG) cout << "reshape_conv: (" << conv1d.size1() << ", " << conv1d.size2() << "), (" << x.size1() << ", " << x.size2() << ")" << endl;
 
@@ -484,7 +391,6 @@ static inline void reshape_conv(ublas::matrix<myType>& conv1d, ublas::matrix<myT
       for (int channel = 0; channel < channels; channel++) {
         for (int filter = 0; filter < kernel_size; filter++) {
           conv1d(batch * row + index, kernel_size * channel + filter) = x(batch * prev_row + index + filter, channel);
-//          conv1d[batch * row + index][kernel_size * channel + filter] = x[batch * prev_row + index + filter][channel];
         }
       }
     }
@@ -496,7 +402,6 @@ static inline void back_reshape_conv(ublas::matrix<myType>& x, ublas::matrix<myT
   int row = conv1d.size1() / batch_size; // 482
   int prev_row = row + kernel_size - 1;  // 488
 
-//  x.resize(batch_size * prev_row, input_channel);
   Init(x, batch_size * prev_row, input_channel);
 
   for (int batch = 0; batch < batch_size; batch++) {
@@ -504,7 +409,6 @@ static inline void back_reshape_conv(ublas::matrix<myType>& x, ublas::matrix<myT
       for (int channel = 0; channel < input_channel; channel++) {
         for (int filter = 0; filter < kernel_size; filter++) {
           x(batch * prev_row + index + filter, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
-//          x[batch * prev_row + index + filter][channel] += conv1d[batch * row + index][kernel_size * channel + filter];
         }
       }
     }
