@@ -68,7 +68,7 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
 //      ZZ_p val_fp;
 //      DoubleToFP(val_fp, k, Param::NBIT_K, Param::NBIT_F);
       myType val_mytype;
-      val_mytype = doubleToMyType(k);
+      val_mytype = DoubleToFP(k);
       matrix(i, j) = val_mytype;
 
       j++;

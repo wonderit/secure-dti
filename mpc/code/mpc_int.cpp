@@ -42,10 +42,8 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
     return false;
   }
 
-  tcout() << "1" << endl;
   SetSeed(prg.find(pid)->second);
   cur_prg_pid = pid;
-  tcout() << "2" << endl;
   primes.SetLength(3);
   primes[0] = ZZ_p::modulus();
 
@@ -67,7 +65,6 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
       primes[2] = ZZ(p);
     }
   }
-  tcout() << "3" << endl;
   if (!found1 || !found2) {
     tcout() << "Failed to find suitable small primes" << endl;
     return false;
@@ -724,149 +721,10 @@ void MPCEnv::LessThan(ublas::vector<myType>& c, ublas::vector<myType>& a, ublas:
     }
   }
   PrintFP(a_cpy);
-
   // a - b >= 0?
 //  IsPositive(c, a_cpy);
 //  FlipBit(c);
 }
-
-
-void MPCEnv::ShareConvert(ublas::vector<myType>& y_sh, ublas::vector<myType>& a_sh) {
-
-//  if (pid == 0)
-//    return;
-
-  if (pid == 1) tcout() << " pid 1 : Share Convert" << endl;
-  if (pid == 2) tcout() << " pid 2 : Share Convert" << endl;
-
-//  TODO
-
-  if (pid == 1) {
-
-//    wrapAround()
-
-
-    for (int i = 0; i < a_sh.size(); i++) {
-      cout << a_sh[i] << "->" ;
-      y_sh[i] = a_sh[i] -1;
-//      y_sh[i] = a_sh[i] % (FIELD_L_1);
-      cout << y_sh[i] << "\t" ;
-    }
-  }
-  cout << endl;
-
-
-
-
-//
-////  if (pid > 0) {
-////    for (int i = 0; i < a_sh.size(); i++) {
-////      cout << a_sh[i] << "->" ;
-////      y_sh[i] = a_sh[i] % (FIELD_L_1);
-////      cout << y_sh[i] << "\t" ;
-////    }
-////  }
-////  cout << endl;
-//  size_t size = a_sh.size();
-//  ublas::vector<myType> u_v(size, 0);
-//  ublas::vector<myType> u_v_sh(size, 0);
-//  ublas::vector<myType> a_tilde_sh(size, 0);
-//  ublas::vector<myType> betai(size, 0);
-//  ublas::vector<myType> alpha(size, 0);
-//  ublas::vector<myType> r(size, 0);
-//  ublas::vector<myType> r1(size, 0);
-//  ublas::vector<myType> r2(size, 0);
-//  ublas::vector<myType> eta_pp(size, 0);
-//  ublas::vector<myType> delta(size, 0);
-//
-//  if (pid == 0) {
-//    SwitchSeed(1);
-//    RandVecBnd(eta_pp, 2);
-//    RandVec(r1);
-//    RandVec(u_v_sh);
-//    RestoreSeed();
-//
-//    SwitchSeed(2);
-//    RandVec(r2);
-//    RestoreSeed();
-//
-//    r = r1 + r2;
-//    wrapAround(r1, r2, alpha, size);
-////    if (r >= FIELD_L)
-////      alpha = 1;
-//
-//    ModShare(u_v, u_v_sh, FIELD_L);
-////    u = u_v_sh[0];
-//
-//    SendVec(alpha, 1);
-//
-//    SendVec(eta_pp, 2);
-//    SendVec(alpha, 2);
-//    SendVec(u_v, 2);
-//
-//    tcout() << "::: pid = " << pid << ", eta_pp:" << eta_pp[0] << endl;
-//    tcout() << "::: pid = " << pid << ", r:" << r[0] << endl;
-//
-//  } else {
-//
-//    if (pid == 1) {
-//
-//      SwitchSeed(0);
-//
-//      RandVecBnd(eta_pp, 2);
-//      RandVec(r);
-//      RandVec(u_v_sh);
-//      RestoreSeed();
-//
-//      ReceiveVec(alpha, 0);
-//
-//      cout << "PID = 1 : RAND eta_pp : " << eta_pp[0] << endl;
-//      tcout() << "::: pid = " << pid << ", r1:" << r[0] << endl;
-//
-//    } else {
-//      SwitchSeed(0);
-//      RandVec(r);
-//      RestoreSeed();
-//
-//      ReceiveVec(eta_pp, 0);
-//      ReceiveVec(alpha, 0);
-//      ReceiveVec(u_v_sh, 0);
-//
-//      cout << "PID = 2 : RAND eta_pp : " << eta_pp[0] << endl;
-//      tcout() << "::: pid = " << pid << ", r2:" << r[0] << endl;
-//    }
-//
-//    // # 2
-//    a_tilde_sh = a_sh + r;
-//    wrapAround(a_sh, r, betai, size);
-//    tcout() << MINUS_ONE << "pid : " << pid << "a_sh: " <<a_sh[0] << "\t" << a_sh[1] << "\t" << a_sh[2]<< endl;
-//    tcout() << "pid : " << pid << "r: " <<r[0] << "\t" << r[1] << "\t" << r[2]<< endl;
-//    tcout() << "pid : " << pid << "BETAI: " <<betai[0] << "\t" << betai[1] << "\t" << betai[2]<< endl;
-//    tcout() << "pid : " << pid << "alpha: " <<alpha[0] << "\t" << alpha[1] << "\t" << alpha[2]<< endl;
-//
-//    // #4)
-//
-//
-//  }
-
-
-  if (pid == 1) tcout() << " pid 1 : Share Convert end" << endl;
-  if (pid == 2) tcout() << " pid 2 : Share Convert end" << endl;
-
-}
-
-
-//Returns \Z_L shares of LSB of r.
-void sharesOfLSB(vector<myType> &share_1, vector<myType> &share_2,
-                 const vector<myType> &r, size_t size)
-{
-//  for (size_t i = 0; i < size; ++i)
-//  {
-//    share_1[i] = aes_indep->get64Bits();
-//    share_2[i] = floatToMyType(r[i] % 2) - share_1[i];
-//  }
-}
-
 
 void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
   size_t size = a_sh.size();
@@ -885,7 +743,6 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
   ublas::vector<myType> x_bit_sh_0(a_sh.size(), 0);
   ublas::vector<ublas::vector<myType>> x_bit_sh(a_sh.size(), ublas::vector<myType>(INT_TYPE, 0));
   ublas::vector<myType> beta_prime_v(a_sh.size(), 0);
-  myType L = FIELD;
   myType beta = 0;
   myType u = 0;
 
@@ -929,7 +786,7 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
     SwitchSeed(1);
     beta = RandElemBnd(2);
     RandVecBnd(x_bit_sh, PRIME_NUMBER);
-    RandVecBnd(x_bit_sh_0, FIELD_L);
+    RandVecBnd(x_bit_sh_0, FIELD_L_BIT);
     u = RandElem();
 //    RandVecBnd(u_v_sh, FIELD_L);
     RestoreSeed();
@@ -976,7 +833,7 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
 
       beta = RandElemBnd(2);
       RandVecBnd(x_bit_sh, PRIME_NUMBER);
-      RandVecBnd(x_bit_sh_0, FIELD_L);
+      RandVecBnd(x_bit_sh_0, FIELD_L_BIT);
       u = RandElem();
 //      RandVecBnd(u_v_sh, FIELD_L);
       RestoreSeed();
@@ -1127,13 +984,8 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
   for (size_t i = 0; i < size; ++i)
     b[i] = gamma[i] + delta[i] - (theta[i] * 2) + u;
 
-  RevealSym(b);
+//  RevealSym(b);
 
-  if (pid == 2 && Param::DEBUG ) {
-    tcout() << "::: pid = " << pid << ", b:" << b[0] << endl;
-    tcout() << "::: pid = " << pid << ", b:" << b[1] << endl;
-    tcout() << "::: pid = " << pid << ", b:" << b[2] << endl;
-  }
 }
 
 
@@ -1212,7 +1064,7 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
   bitset<INT_FIELD> t_bitset = bitset<INT_FIELD> (t);
   bitset<INT_FIELD> r_bitset = bitset<INT_FIELD> (r);
 
-  myType beta_prime;
+  myType beta_prime = 0;
 
   // 1)
   bitset_to_vector(t_bit, t_bitset);
@@ -1487,33 +1339,26 @@ void MPCEnv::IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a) {
 
 void MPCEnv::IsPositive(ublas::matrix<myType>& b, ublas::matrix<myType>& a) {
   ublas::vector<myType> av, bv;
-//  Vec<ZZ_p> av, bv;
   int size = a.size1() * a.size2();
-  b.resize(a.size1(), a.size2());
-//  b.SetDims(a.NumRows(), a.NumCols());
-//  Init(av, size); Init(bv, size);
-  av.resize(size);
-  bv.resize(size);
+  Init(b, a.size1(), a.size2());
+  Init(av, size); Init(bv, size);
   Reshape(av, a);
-  if (pid > 0) {
-    tcout() << "before ispositive: " << endl;
-    PrintFP(av);
-  }
   IsPositive(bv, av);
-  if (pid > 0) {
-    tcout() << "after ispositive: " << endl;
-    Print(bv);
-  }
   Reshape(b, bv, b.size1(), b.size2());
 }
 
 void MPCEnv::IsPositive(ublas::vector<myType>& b, ublas::vector<myType>& a) {
-  if (true) tcout() << "IsPositive: " << a.size() << endl;
+  if (Param::DEBUG) tcout() << "IsPositive: " << a.size() << endl;
 
   ComputeMsb(a, b);
 
-  for (size_t i = 0; i < b.size(); i++)
-    b[i] = 1 - b[i];
+  for (size_t i = 0; i < b.size(); i++) {
+    if (pid == 1)
+      b[i] = 1 - b[i];
+    else if(pid == 2)
+      b[i] = - b[i];
+  }
+
 
   if ((pid) == 1)
     tcout() << "Done" << endl;

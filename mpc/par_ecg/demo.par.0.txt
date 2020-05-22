@@ -40,4 +40,4 @@ KEY_PATH ../key/
 LOG_FILE ../log/ecg_P0.txt
 CACHE_FILE_PREFIX ../cache/ecg_P0
 
-DEBUG 1
+DEBUG 0

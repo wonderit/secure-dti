@@ -44,4 +44,4 @@ LOG_FILE ../log/ecg_P2.txt
 OUTPUT_FILE_PREFIX ../out/ecg
 CACHE_FILE_PREFIX ../cache/ecg_P2
 
-DEBUG 1
+DEBUG 0

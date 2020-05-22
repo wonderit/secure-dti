@@ -75,34 +75,34 @@ bool unit_test(MPCEnv& mpc, int pid) {
   double eps = 1e-1;
 
 
-//  cout << myTypeToDouble(b) << endl;
+//  cout << FPToDouble(b) << endl;
   tcout() << "[Fixed-point ZZ_p <-> Double conversion] ";
-//  x = doubleToMyType(-3.14);
+//  x = DoubleToFP(-3.14);
 //  bitset<64> xBits = bitset<64>(x);
 //  for(int i = 63; i >= 0; i--) cout << xBits[i];
 //  cout << endl;
-//  x = doubleToMyType(-3.141592653589793238462643383279);
-//  d = ABS(myTypeToDouble(x) - (-3.141592653589793238462643383279));
+//  x = DoubleToFP(-3.141592653589793238462643383279);
+//  d = ABS(FPToDouble(x) - (-3.141592653589793238462643383279));
 //  double a = 7;
 //  myType a_m;
 //  printf("a=%f\n", a);
 //  bitset<BIT_SIZE>  aBits = bitset<BIT_SIZE> (a);
 //  for(int i = BIT_SIZE-1; i >= 0; i--) cout << aBits[i];
 //  cout << endl;
-//  a_m = doubleToMyType(a);
+//  a_m = DoubleToFP(a);
 //  printf("a_m=%f\n", a_m);
 //  aBits = bitset<BIT_SIZE> (a_m);
 //  for(int i = BIT_SIZE-1; i >= 0; i--) cout << aBits[i];
 //  cout << endl;
-//  double b = myTypeToDouble(a_m);
+//  double b = FPToDouble(a_m);
 //  bitset<BIT_SIZE>  bBits = bitset<BIT_SIZE> (b);
 //  for(int i = BIT_SIZE-1; i >= 0; i--) cout << bBits[i];
 //  cout << endl;
 //  cout << b << endl;
-  x = doubleToMyType(0.0221364);
-  tcout() << "doubletomytype x : " << x << endl;
-  d = ABS(myTypeToDouble(x) - (0.0221364));
-  tcout() << "double: " << myTypeToDouble(x) << " d :: " << d << " / " << FIXED_POINT_FRACTIONAL_BITS << endl;
+  x = DoubleToFP(0.0221364);
+  tcout() << "DoubleToFP x : " << x << endl;
+  d = ABS(FPToDouble(x) - (0.0221364));
+  tcout() << "double: " << FPToDouble(x) << " d :: " << d << " / " << FIXED_POINT_FRACTIONAL_BITS << endl;
   assert(d < eps);
   tcout() << "Success" << endl;
 
@@ -112,23 +112,23 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //    xv[1] = -1;
 //    xv[2] = -3;
 //
-//    xv[0] = doubleToMyType(-135);
-//    xv[1] = doubleToMyType(77);
-//    xv[2] = doubleToMyType(-55);
+//    xv[0] = DoubleToFP(-135);
+//    xv[1] = DoubleToFP(77);
+//    xv[2] = DoubleToFP(-55);
 //
 //    yv[0] = 1;
 //    yv[1] = 2;
 //    yv[2] = -4;
     for(size_t i = 0; i < size; i++) {
       if (i % 3 == 0) {
-        xv[i] = doubleToMyType(-1.25);
-        yv[i] = doubleToMyType(100.0);
+        xv[i] = DoubleToFP(-1.25);
+        yv[i] = DoubleToFP(100.0);
       } else if (i % 3 == 1) {
-        xv[i] = doubleToMyType(2.5);
-        yv[i] = doubleToMyType(-1.0);
+        xv[i] = DoubleToFP(2.5);
+        yv[i] = DoubleToFP(-1.0);
       } else {
-        xv[i] = doubleToMyType(3.14);
-        yv[i] = doubleToMyType(-0.0001);
+        xv[i] = DoubleToFP(3.14);
+        yv[i] = DoubleToFP(-0.0001);
       }
 
     }
@@ -153,12 +153,9 @@ bool unit_test(MPCEnv& mpc, int pid) {
 
 //  use int to test multiply
   xv += yv; // 2
-//  mpc.RevealSym(xv);
-//  myTypeToDouble(xdv, xv);
-  mpc.PrintFP(xv);
-
-//  TEST START
-//
+  if (pid > 0){
+    mpc.PrintFP(xv);
+  }
 
 //  Time MULT START
   time_t start, end;
@@ -169,10 +166,10 @@ bool unit_test(MPCEnv& mpc, int pid) {
   }
   mpc.MultElem(zv, xv, yv);  // (1 2 3) * (1 2 -4) -> (1 4 -12)
   mpc.Trunc(zv);
-//
-//  if (pid == 2) {
-//    toc();
-//  }
+
+  if (pid == 2) {
+    toc();
+  }
 //  Time MULT END
 //
   if (pid > 0) {
@@ -195,7 +192,7 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //
 //  tcout() << "[PrivateCompare]" << endl;
 //
-//  bitset<INT_FIELD> x_bit = bitset<INT_FIELD> (doubleToMyType(13));
+//  bitset<INT_FIELD> x_bit = bitset<INT_FIELD> (DoubleToFP(13));
 //  ublas::vector<myType> x_bit_v(INT_FIELD);
 //  ublas::vector<myType> mask_x_bit(INT_FIELD);
 //  bitset_to_vector(x_bit_v, x_bit);
@@ -226,10 +223,10 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  }
 //
 //  //  beta=0 : x > r ? or beta = 1 : x < r?
-//  myType beta_prime = mpc.PrivateCompare(x_bit_v, doubleToMyType(12.9), 0);
+//  myType beta_prime = mpc.PrivateCompare(x_bit_v, DoubleToFP(12.9), 0);
 //  if (pid == 0) tcout() << " beta_prime 0 : " << beta_prime << endl;
 //
-//  myType beta_prime1 = mpc.PrivateCompare(x_bit_v, doubleToMyType(12.9), 1);
+//  myType beta_prime1 = mpc.PrivateCompare(x_bit_v, DoubleToFP(12.9), 1);
 //  if (pid == 0) tcout() << " beta_prime 1 : " << beta_prime1 << endl;
 
 //  if (pid > 0) {
@@ -244,7 +241,6 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  }
   ublas::vector<myType> sc_xv(xv.size(), 0);
   ublas::vector<myType> relu_deriv(xv.size(), 0);
-//  mpc.ComputeMsb(xv, relu_deriv);
   mpc.IsPositive(relu_deriv, zv );
 
   if (pid == 2) {
@@ -255,10 +251,24 @@ bool unit_test(MPCEnv& mpc, int pid) {
     mpc.Print(relu_deriv);
   }
 
-  zv = ublas::element_prod(relu_deriv, zv);
+  mpc.MultElem(zv, relu_deriv, zv);
+
   if (pid > 0) {
     tcout() << "Print after relu" << endl;
     mpc.PrintFP(zv);
+  }
+
+
+  if (pid == 1) {
+
+    tcout() << MINUS_ONE << endl;
+    tcout() << FIELD_L_1 << endl;
+    tcout() << max_field_L_1 << endl;
+    tcout() << BIT_SIZE << endl;
+    tcout() << LARGEST_NEG << endl;
+    tcout() << FIELD << endl;
+    tcout() << FIELD_L_BIT << endl;
+    printf("----------");
   }
 
 

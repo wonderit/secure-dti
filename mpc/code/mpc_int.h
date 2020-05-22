@@ -55,10 +55,7 @@ public:
     FlipBit(c);
   }
 
-  void sharesOfLSB(vector<myType> &share_1, vector<myType> &share_2,
-                   const vector<myType> &r, size_t size);
   myType PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType beta);
-  void ShareConvert(ublas::vector<myType>& y_sh, ublas::vector<myType>& a_sh);
   void ComputeMsb(ublas::vector<myType>& y_sh, ublas::vector<myType>& b);
   void LessThan(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b);
   void LessThan(ublas::vector<myType>& c, ublas::vector<myType>& a, ublas::vector<myType>& b);
@@ -537,7 +534,7 @@ public:
 //  void PrintFP(T a, ostream& os) {
 //    T a_copy = a;
 //    RevealSym(a_copy);
-//    os << myTypeToDouble(a_copy) << endl;
+//    os << FPToDouble(a_copy) << endl;
 //  }
 
   template<class T>
@@ -545,7 +542,7 @@ public:
     ublas::vector<T> a_copy(a);
     ublas::vector<double> ad(a.size());
     RevealSym(a_copy);
-    myTypeToDouble(ad, a_copy);
+    FPToDouble(ad, a_copy);
     for (int i = 0; i < ad.size(); i++) {
       if (i > 5)
         break;
@@ -574,9 +571,9 @@ public:
 //    RevealSym(a_copy);
     Vec<double> ad;
     ad.SetLength(a.length());
-//    Param::myTypeToDouble();
+//    Param::FPToDouble();
 //    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
-//    myTypeToDouble(ad, a_copy, Param::NBIT_F);
+//    FPToDouble(ad, a_copy, Param::NBIT_F);
 
 //    if (pid == 2) {
 
@@ -597,9 +594,9 @@ public:
     Init(ad, a_copy.length());
 
     RevealSym(a_copy);
-//    Param::myTypeToDouble();
+//    Param::FPToDouble();
 //    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
-    myTypeToDouble(ad, a_copy);
+    FPToDouble(ad, a_copy);
 
     cout<< "pid : " << pid << endl;
 //    if (pid == 2) {
@@ -657,8 +654,7 @@ public:
     RevealSym(a_copy);
     ublas::matrix<double> ad(a.size1(), a.size2());
 
-    myTypeToDouble(ad, a_copy);
-//    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
+    FPToDouble(ad, a_copy);
 
     if (pid == 2) {
       for (int i = 0; i < ad.size1(); i++) {
@@ -703,15 +699,16 @@ public:
   template<class T>
   void Print(ublas::vector<T>& a, ostream& os, int fid = 0) {
 
-//    ublas::vector<T> a_copy(a);
-//    RevealSym(a_copy, fid);
+    ublas::vector<T> a_copy(a);
+    RevealSym(a_copy, fid);
+
     if (pid > 0) {
       os << "Print : ";
-      for (int i = 0; i < a.size(); i++) {
+      for (int i = 0; i < a_copy.size(); i++) {
         if (i > 5)
           break;
-        os << a[i];
-        if (i == a.size() - 1) {
+        os << a_copy[i];
+        if (i == a_copy.size() - 1) {
           os << endl;
         } else {
           os << '\t';
@@ -723,7 +720,8 @@ public:
   void Print(ublas::matrix<T>& a, ostream& os, int fid = 0) {
 
     ublas::matrix<T> a_copy(a);
-//    RevealSym(a_copy, fid);
+    RevealSym(a_copy, fid);
+
     if (pid > 0) {
       os << "Print matrix : ";
       for (int i = 0; i < a_copy.size1(); i++) {
@@ -2249,7 +2247,7 @@ public:
     for (size_t i = 0; i < a.size(); i++)
       if (l == FIELD_L_1)
         a[i] = RandomBnd(max_field_L_1);
-      else if (l == FIELD_L)
+      else if (l == FIELD_L_BIT)
         a[i] = RandomBits_long(INT_FIELD-1);
       else if (l == PRIME_NUMBER)
         a[i] = RandomBnd(l-1)+1;
@@ -2435,8 +2433,7 @@ private:
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
-//    TODO INIT
-//    Init(c, out_rows, out_cols);
+    Init(c, out_rows, out_cols);
     BeaverMult(c, ar, am, br, bm, elem_wise, fid);
 
     BeaverReconstruct(c, fid);

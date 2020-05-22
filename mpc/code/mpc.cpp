@@ -1991,6 +1991,7 @@ void MPCEnv::TableLookup(Mat<ZZ_p>& b, Vec<ZZ_p>& a, int table_id) {
   EvaluatePoly(b, a, lagrange_cache[table_id]);
 }
 
+// TODO to int datatype? zzp
 void MPCEnv::TableLookup(Mat<ZZ_p>& b, Vec<ZZ>& a, int table_id, int fid) {
   if (debug) tcout() << "TableLookup: " << a.length() << endl; 
 

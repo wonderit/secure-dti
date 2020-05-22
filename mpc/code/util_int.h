@@ -119,11 +119,11 @@ static inline RandomStream NewRandomStream(unsigned char *key) {
   return rs;
 }
 
-static inline myType doubleToMyType(double a) {
+static inline myType DoubleToFP(double a) {
   return static_cast<myType>(static_cast<myTypeSigned>(a * (1 << FIXED_POINT_FRACTIONAL_BITS)));
 }
 
-static inline long double myTypeToDouble(myType a) {
+static inline long double FPToDouble(myType a) {
 
   long gate = 0;
   if (a > LARGEST_NEG) { // negative number
@@ -137,18 +137,18 @@ static inline long double myTypeToDouble(myType a) {
 }
 
 template<class T>
-static inline void myTypeToDouble(ublas::vector<double>& b, ublas::vector<T>& a) {
+static inline void FPToDouble(ublas::vector<double>& b, ublas::vector<T>& a) {
   for (int i = 0; i < a.size(); i++) {
-    b[i] = myTypeToDouble(a[i]);
+    b[i] = FPToDouble(a[i]);
   }
 }
 
 template<class T>
-static inline void myTypeToDouble(ublas::matrix<double>& b, ublas::matrix<T>& a) {
+static inline void FPToDouble(ublas::matrix<double>& b, ublas::matrix<T>& a) {
   b.resize(a.size1(), a.size2());
   for (int i = 0; i < a.size1(); i++) {
     for (int j = 0; j < a.size2(); j++) {
-      b(i, j) = myTypeToDouble(a(i, j));
+      b(i, j) = FPToDouble(a(i, j));
 //      tcout() << "a -> b : " << a(i, j) << "-> " << b(i, j) << "\t";
     }
 //    cout << endl;
@@ -286,7 +286,7 @@ inline ublas::vector<myType>& operator*(ublas::vector<myType>& x, ublas::vector<
 
 
 template<class T>
-static inline void multvec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a, myType L = FIELD_L)
+static inline void multvec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a, myType L)
 {
 //  cout<< "* start:";
   for (int i = 0; i < x.size(); i++) {
@@ -297,7 +297,7 @@ static inline void multvec(ublas::vector<T>& result, ublas::vector<T>& x, ublas:
 }
 
 template<class T>
-static inline void addVec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a, myType L = FIELD_L)
+static inline void addVec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a, myType L)
 {
   for (int i = 0; i < x.size(); i++) {
     result[i] = (x[i] + a[i]) % L;
@@ -306,7 +306,7 @@ static inline void addVec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::
 
 
 template<class T>
-static inline void addScalar(ublas::vector<T>& result, ublas::vector<T>& x, T a, myType L = FIELD_L)
+static inline void addScalar(ublas::vector<T>& result, ublas::vector<T>& x, T a, myType L)
 {
   for (int i = 0; i < x.size(); i++) {
     result[i] = ( x[i] + a) % L;
@@ -315,7 +315,7 @@ static inline void addScalar(ublas::vector<T>& result, ublas::vector<T>& x, T a,
 
 
 template<class T>
-static inline void cumsum(ublas::vector<T>& x, myType L = FIELD_L){
+static inline void cumsum(ublas::vector<T>& x, myType L){
   // initialize an accumulator variable
   myType acc = 0;
 
@@ -342,7 +342,7 @@ static T mod_c(T x, T m) {
 }
 
 template<class T>
-static inline void subtractVec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a, myType L = FIELD_L)
+static inline void subtractVec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a, myType L)
 {
   for (int i = 0; i < x.size(); i++) {
     result[i] = mod_c(x[i] - a[i], L);
@@ -350,44 +350,44 @@ static inline void subtractVec(ublas::vector<T>& result, ublas::vector<T>& x, ub
 }
 
 template<class T>
-void multScalar(ublas::vector<T>& result, ublas::vector<T>& a, T b, myType L = FIELD_L) {
+void multScalar(ublas::vector<T>& result, ublas::vector<T>& a, T b, myType L) {
   for (int i = 0; i < a.size(); i++) {
     result[i] =  (a[i] * b) % L;
   }
 }
 
-template<class T>
-inline ublas::vector<T>& operator*(T x, ublas::vector<myType>& a)
-{
-  ublas::vector<T> result(a.size(), 0);
-//  cout<<"mytype & vector : ";
-  for (int i = 0; i < a.size(); i++) {
-    result[i] = x * a[i];
-  }
-  return result;
-}
+//template<class T>
+//inline ublas::vector<T>& operator*(T x, ublas::vector<myType>& a)
+//{
+//  ublas::vector<T> result(a.size(), 0);
+////  cout<<"mytype & vector : ";
+//  for (int i = 0; i < a.size(); i++) {
+//    result[i] = x * a[i];
+//  }
+//  return result;
+//}
 
-
-template<class T>
-inline ublas::vector<T>& operator-(ublas::vector<T>& x, ublas::vector<T>& a)
-{
-  ublas::vector<T> result(a.size(), 0);
-  for (int i = 0; i < a.size(); i++) {
-    result[i] = x[i] - a[i];
-  }
-  return result;
-}
-
-
-template<class T>
-inline ublas::vector<T>& operator+(ublas::vector<T>& x, T a)
-{
-  ublas::vector<T> result(x.size(), 0);
-  for (int i = 0; i < x.size(); i++) {
-    result[i] = x[i] - a;
-  }
-  return result;
-}
+//
+//template<class T>
+//inline ublas::vector<T>& operator-(ublas::vector<T>& x, ublas::vector<T>& a)
+//{
+//  ublas::vector<T> result(a.size(), 0);
+//  for (int i = 0; i < a.size(); i++) {
+//    result[i] = x[i] - a[i];
+//  }
+//  return result;
+//}
+//
+//
+//template<class T>
+//inline ublas::vector<T>& operator+(ublas::vector<T>& x, T a)
+//{
+//  ublas::vector<T> result(x.size(), 0);
+//  for (int i = 0; i < x.size(); i++) {
+//    result[i] = x[i] - a;
+//  }
+//  return result;
+//}
 
 
 template<class T>
