@@ -33,16 +33,11 @@ using namespace std;
 void reveal(ublas::vector<myType>& X, string fname, MPCEnv& mpc) {
   ublas::vector<myType> X_copy(X);
   mpc.RevealSym(X_copy);
-//  Vec<double> X_double;
   ublas::vector<double> X_double(X.size(), 0);
   fstream fs;
   fs.open(fname.c_str(), ios::out);
   FPToDouble(X_double, X_copy);
-  //TODO
-
-//  FPToDouble(X_double, X, Param::NBIT_K, Param::NBIT_F);
   for (int i = 0; i < X.size(); i++) {
-//    X_double[i] = FPToDouble(X[i]);
     fs << X_double[i] << '\t';
   }
   fs.close();
@@ -51,17 +46,12 @@ void reveal(ublas::vector<myType>& X, string fname, MPCEnv& mpc) {
 void reveal(ublas::matrix<myType>& X, string fname, MPCEnv& mpc) {
   ublas::matrix<myType> X_copy(X);
   mpc.RevealSym(X_copy);
-//  mpc.RevealSym(X);
   ublas::matrix<double> X_double(X_copy.size1(), X_copy.size2(), 0);
-//  Mat<double> X_double;
   fstream fs;
   fs.open(fname.c_str(), ios::out);
   FPToDouble(X_double, X_copy);
-  //TODO
-//  FPToDouble(X_double, X, Param::NBIT_K, Param::NBIT_F);
   for (int i = 0; i < X.size1(); i++) {
     for (int j = 0; j < X.size2(); j++) {
-//      X_double(i, j) = FPToDouble(X(i, j));
       fs << X_double(i, j) << '\t';
     }
     fs << endl;
@@ -833,71 +823,127 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
   assert(act.size() == 0);
   assert(relus.size() == 0);
 
-  if (pid == 2)
-    if (Param::DEBUG) tcout() << "Momentum update." << endl;
-  /* Update the model using Nesterov momentum. */
-  /* Compute constants that update various parameters. */
-  myType MOMENTUM = DoubleToFP(Param::MOMENTUM);
-  myType MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1);
-  myType LEARN_RATE = DoubleToFP( - Param::LEARN_RATE);
-
-//  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
-//                             Param::NBIT_K, Param::NBIT_F);
-//  ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
-//                                   Param::NBIT_K, Param::NBIT_F);
-//  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
-//                               Param::NBIT_K, Param::NBIT_F);
-
-  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-    /* Update the weights. */
-    ublas::matrix<myType> vW_prev= vW[l];
-    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
-    mpc.Trunc(vW[l]);
-
-    ublas::matrix<myType> W_update;
-    Init(W_update, vW_prev.size1(), vW_prev.size2());
-    W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
-
-    if (Param::DEBUG) {
-
-      tcout() << "W_update s = " << W_update.size1() << "/" << W_update.size2() << endl;
-      tcout() << "dW[l] s = " << dW[l].size1() << "/" << dW[l].size2() << endl;
-      tcout() << "W[l] s = " << W[l].size1() << "/" << W[l].size2() << endl;
-    }
-    mpc.Trunc(W_update);
-
-    W[l] += W_update;
-
-    /* Update the biases. */
-    ublas::vector<myType> vb_prev = vb[l];
-    vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
-    mpc.Trunc(vb[l]);
-
-    ublas::vector<myType> b_update;
-    Init(b_update, vb[l].size());
-    if (Param::DEBUG) {
-      tcout() << "b_update s = " << b_update.size() << endl;
-      tcout() << "db[l] s = " << db[l].size()  << endl;
-      tcout() << "b[l] s = " << b[l].size()  << endl;
-    }
-    b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
-    mpc.Trunc(b_update);
-    b[l] += b_update;
-
-  }
+//  if (pid == 2)
+//    if (Param::DEBUG) tcout() << "Momentum update." << endl;
+//  /* Update the model using Nesterov momentum. */
+//  /* Compute constants that update various parameters. */
+//  myType MOMENTUM = DoubleToFP(Param::MOMENTUM);
+//  myType MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1);
+//  myType LEARN_RATE = DoubleToFP( - Param::LEARN_RATE);
+//
+////  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
+////                             Param::NBIT_K, Param::NBIT_F);
+////  ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
+////                                   Param::NBIT_K, Param::NBIT_F);
+////  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
+////                               Param::NBIT_K, Param::NBIT_F);
+//
+//  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+//    /* Update the weights. */
+//    ublas::matrix<myType> vW_prev= vW[l];
+//    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
+//    mpc.Trunc(vW[l]);
+//
+//    ublas::matrix<myType> W_update;
+//    Init(W_update, vW_prev.size1(), vW_prev.size2());
+//    W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
+//
+//    if (Param::DEBUG) {
+//
+//      tcout() << "W_update s = " << W_update.size1() << "/" << W_update.size2() << endl;
+//      tcout() << "dW[l] s = " << dW[l].size1() << "/" << dW[l].size2() << endl;
+//      tcout() << "W[l] s = " << W[l].size1() << "/" << W[l].size2() << endl;
+//    }
+//    mpc.Trunc(W_update);
+//
+//    W[l] += W_update;
+//
+//    /* Update the biases. */
+//    ublas::vector<myType> vb_prev = vb[l];
+//    vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
+//    mpc.Trunc(vb[l]);
+//
+//    ublas::vector<myType> b_update;
+//    Init(b_update, vb[l].size());
+//    if (Param::DEBUG) {
+//      tcout() << "b_update s = " << b_update.size() << endl;
+//      tcout() << "db[l] s = " << db[l].size()  << endl;
+//      tcout() << "b[l] s = " << b[l].size()  << endl;
+//    }
+//    b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
+//    mpc.Trunc(b_update);
+//    b[l] += b_update;
+//
+//  }
 
   if (pid == 2)
     if (Param::DEBUG) tcout() << "Momentum update. end" << endl;
 //
 // ADAM START
-//  if (pid == 2)
-//    if (Param::DEBUG) tcout() << "Adam update." << endl;
+  if (pid == 2)
+    if (Param::DEBUG) tcout() << "Adam update." << endl;
 //  /* Update the model using Adam. */
 //  /* Compute constants that update various parameters. */
 //
-//  double beta_1 = 0.9;
-//  double beta_2 = 0.999;
-////  double eps = 1e-8;
+  double beta_1 = 0.9;
+  double beta_2 = 0.999;
+  double eps = 1e-7;
+
+
+  myType LEARN_RATE = DoubleToFP(Param::LEARN_RATE);
+  myType fp_b1 = DoubleToFP(beta_1);
+  myType fp_b2 = DoubleToFP(beta_2);
+  myType fp_1_b1 = DoubleToFP(1 - beta_1);
+  myType fp_1_b2 = DoubleToFP(1 - beta_2);
+
+  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+    double new_double_learn_rate = Param::LEARN_RATE * sqrt(1.0 - pow(beta_2, step)) / sqrt(1.0 - pow(beta_1, step));
+    myType fp_new_learn_rate = DoubleToFP(new_double_learn_rate);
+
+    ublas::matrix<myType> dW2;
+    mpc.MultElem(dW2, dW[l], dW[l]);
+    mpc.Trunc(dW2);
+
+    /* Update the weights. */
+    mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
+    vW[l] = fp_b2 * vW[l] + fp_1_b2 * dW2;
+    mpc.Trunc(mW[l]);
+    mpc.Trunc(vW[l]);
+
+    ublas::matrix<myType> W_update;
+//    Mat<ZZ_p> W_update;
+//    Mat<ZZ_p> vWsqrt, inv_vWsqrt;
+//    vector<Mat<ZZ_p>> vW, mW;
+    //TODO
+//    mpc.FPSqrt(vWsqrt, inv_vWsqrt, vW[l]);
+//    mpc.MultElem(W_update, mW[l], inv_vWsqrt);
+
+
+    mpc.Trunc(W_update);
+    W_update *= fp_new_learn_rate;
+    mpc.Trunc(W_update);
+    W[l] -= W_update;
+
+    /* Update the biases. */
+    ublas::vector<myType> db2;
+    mpc.MultElem(db2, db[l], db[l]);
+    mpc.Trunc(db2);
+
+    mb[l] = fp_b1 * mb[l] + fp_1_b1 * db[l];
+    vb[l] = fp_b2 * vb[l] + fp_1_b2 * db2;
+    mpc.Trunc(mb[l]);
+    mpc.Trunc(vb[l]);
+
+    Vec<ZZ_p> b_update;
+    Vec<ZZ_p> vbsqrt, inv_vbsqrt;
+    //TODO
+//    mpc.FPSqrt(vbsqrt, inv_vbsqrt, vb[l]);
+//    mpc.MultElem(b_update, mb[l], inv_vbsqrt);
+//    mpc.Trunc(b_update);
+//    b_update *= fp_new_learn_rate;
+//    mpc.Trunc(b_update);
+//    b[l] -= b_update;
+  }
 //
 ////TODO
 ////  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
@@ -1162,24 +1208,12 @@ void model_update(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       }
 //
       for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-//        ublas::matrix<myType> W_out(W[l].size1(), W[l].size2(), 0);
-//        Mat<ZZ_p> W_out;
-//        Init(W_out, W[l].NumRows(), W[l].NumCols());
-//        W_out += W[l];
-
         reveal(W[l], cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "W" + to_string(l)), mpc);
-
-//        ublas::vector<myType> b_out(b[l].size(), 0);
-//        Vec<ZZ_p> b_out;
-//        Init(b_out, b[l].length());
-//        b_out += b[l];
         reveal(b[l], cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "b" + to_string(l)), mpc);
       }
     }
-
     /* Update reference to training epoch. FOR TEST */
 //    epoch++;
-//
 //    if (epoch >= Param::MAX_EPOCHS) {
 //      break;
 //    }
@@ -1237,17 +1271,7 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
   
   if (pid > 0) {
     for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-//      ublas::matrix<myType> W_out;
-//      W_out.resize(W[l].size1(), W[l].size2());
-//      Mat<ZZ_p> W_out;
-//      Init(W_out, W[l].size1(), W[l].size2());
-//      W_out += W[l];
       reveal(W[l], cache(pid, "W" + to_string(l) + "_final"), mpc);
-
-//      ublas::vector<myType> b_out(b[l].size());
-//      Vec<ZZ_p> b_out;
-//      Init(b_out, b[l].size());
-//      b_out += b[l];
       reveal(b[l], cache(pid, "b" + to_string(l) + "_final"), mpc);
     }
   }

@@ -24,8 +24,8 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
   tcout() << "Initializing MPC environment" << endl;
 
   /* Set base prime for the finite field */
-//  ZZ base_p = conv<ZZ>(Param::BASE_P.c_str());
-  ZZ base_p = conv<ZZ>(BASE_PRIME_NUMBER.c_str());
+  ZZ base_p = conv<ZZ>(Param::BASE_P.c_str());
+//  ZZ base_p = conv<ZZ>(BASE_PRIME_NUMBER.c_str());
   ZZ_p::init(base_p);
 
   this->pid = pid;
@@ -703,12 +703,16 @@ void MPCEnv::LessThanBitsAux(Vec<ZZ>& c, Mat<ZZ>& a, Mat<ZZ>& b, int public_flag
     Vec< Mat<ZZ> > c_arr;
     MultMatParallel(c_arr, f_arr, b_arr, fid);
 
+    if (pid == 1) tcout() << " pid 1 : LessThanBitsAux 5" << endl;
+
     c.SetLength(n);
     if (pid > 0) {
       for (int i = 0; i < n; i++) {
         c[i] = c_arr[i][0][0];
       }
     }
+
+    if (pid == 1) tcout() << " pid 1 : LessThanBitsAux 6" << endl;
   }
 }
 
@@ -1577,7 +1581,7 @@ void MPCEnv::FPSqrt(Vec<ZZ_p>& b, Vec<ZZ_p>& b_inv, Vec<ZZ_p>& a) {
     scaled_est = - 4 * a_scaled + 2 * a_scaled_sq;
     if (pid == 1) {
       ZZ_p coeff;
-//      DoubleToFP(coeff, 2.9581, Param::NBIT_K, Param::NBIT_F);
+      DoubleToFP(coeff, 2.9581, Param::NBIT_K, Param::NBIT_F);
       for (int i = 0; i < n; i++) {
         scaled_est[i] += coeff;
       }
@@ -1599,7 +1603,7 @@ void MPCEnv::FPSqrt(Vec<ZZ_p>& b, Vec<ZZ_p>& b_inv, Vec<ZZ_p>& a) {
   Trunc(h_and_g[1]);
 
   ZZ_p onepointfive;
-//  DoubleToFP(onepointfive, 1.5, Param::NBIT_K, Param::NBIT_F);
+  DoubleToFP(onepointfive, 1.5, Param::NBIT_K, Param::NBIT_F);
 
   for (int it = 0; it < niter; it++) {
     Mat<ZZ_p> r;
@@ -2130,6 +2134,8 @@ void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
     Mod(c, fid);
   }
 
+  tcout() << "NormalizerEvenExp: 1"  << endl;
+
   Mat<ZZ> ep;
   ep.SetDims(n, Param::NBIT_K + 1);
   if (pid > 0) {
@@ -2145,6 +2151,8 @@ void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
     Mod(ep, fid);
   }
   c.kill();
+
+  tcout() << "NormalizerEvenExp: 2"  << endl;
 
   Mat<ZZ> E;
   PrefixOr(E, ep, fid);
@@ -2204,8 +2212,8 @@ void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
   Tneg.kill();
 
   Vec<ZZ> odd_bit_sum, even_bit_sum;
-//  Init(odd_bit_sum, n);
-//  Init(even_bit_sum, n);
+  Init(odd_bit_sum, n);
+  Init(even_bit_sum, n);
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < half_len; j++) {
       odd_bit_sum[i] += odd_bits[i][j];
@@ -2254,6 +2262,7 @@ void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
     b_sqrt.SetLength(n);
     b.SetLength(n);
   }
+  tcout() << "NormalizerEvenExp: end"  << endl;
 }
 void MPCEnv::ReadFromFile(ZZ_p& a, ifstream& ifs) {
   Vec<ZZ_p> avec;

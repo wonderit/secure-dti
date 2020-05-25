@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <boost/numeric/ublas/vector.hpp>
+#include <boost/lexical_cast.hpp>
 #include <stack>
 #include <NTL/mat_ZZ_p.h>
 #include <NTL/mat_ZZ.h>
@@ -133,7 +134,7 @@ public:
   // The i-th column of b contains 0,1,...,pow powers of a[i]
   template<class T>
   void Powers(Mat<T>& b, Vec<T>& a, int pow, int fid = 0) {
-    if (debug) cout << "Powers: " << a.length() << ", power = " << pow << endl;
+    if (true) cout << "Powers: " << a.length() << ", power = " << pow << endl;
 
     assert(pow >= 1);
 
@@ -149,6 +150,7 @@ public:
       }
       if (pid == 1) tcout() << " Powers : test log 0 " << endl;
     } else { // pow > 1
+      if (pid == 1) tcout() << " Powers : test log 001 " << endl;
       Vec<T> ar, am;
       BeaverPartition(ar, am, a, fid);
 
@@ -239,7 +241,6 @@ public:
     }
   }
 
-
   template<class T>
   void EvaluatePoly(Mat<T>& b, Vec<T>& a, Mat<T>& coeff, int fid = 0) {
     if (debug) cout << "EvaluatePoly: " << a.length() << ", deg = " << coeff.NumCols() - 1 << endl;
@@ -260,6 +261,8 @@ public:
       if (pid == 1) tcout() << " pid 1 : EvaluatePoly 3" << endl;
 
     } else {
+      if (pid == 1) tcout() << " pid 1 : b dim : " << b.NumRows() << "/" << b.NumCols() << endl;
+      if (pid == 1) tcout() << " pid 1 : npoly : " << npoly << "/" << n << endl;
       b.SetDims(npoly, n);
       if (pid == 1) tcout() << " pid 1 : EvaluatePoly 4" << endl;
     }
@@ -291,34 +294,34 @@ public:
 //    Mod(a, fid);
 //  }
 
-  template<class T>
-  void RevealSymOdd(ublas::vector<T>& a, int fid = 0) {
-    if (debug) cout << "RevealSym: " << a.size() << endl;
-
-    if (pid == 0) {
-      return;
-    }
-
-    ublas::vector<T> b(a.size(), 0);
-    if (pid == 1) {
-      SendVec(a, 3 - pid, fid);
-      ReceiveVec(b, 3 - pid, fid);
-    } else {
-      ReceiveVec(b, 3 - pid, fid);
-      SendVec(a, 3 - pid, fid);
-    }
-
-//    for (int i = 0; i < a.size(); i++) {
-    ////      cout << "a[i]/b[i] :: " << a[i] << "/" << b[i] << endl;
-    ////    }
-    addModuloOdd(a, b, a, a.size());
-//    a += b;
-
-
-//    for (int i = 0; i < a.size(); i++) {
-//      cout << "a[i] before :: " << a[i] << endl;
+//  template<class T>
+//  void RevealSymOdd(ublas::vector<T>& a, int fid = 0) {
+//    if (debug) cout << "RevealSym: " << a.size() << endl;
+//
+//    if (pid == 0) {
+//      return;
 //    }
-  }
+//
+//    ublas::vector<T> b(a.size(), 0);
+//    if (pid == 1) {
+//      SendVec(a, 3 - pid, fid);
+//      ReceiveVec(b, 3 - pid, fid);
+//    } else {
+//      ReceiveVec(b, 3 - pid, fid);
+//      SendVec(a, 3 - pid, fid);
+//    }
+//
+////    for (int i = 0; i < a.size(); i++) {
+//    ////      cout << "a[i]/b[i] :: " << a[i] << "/" << b[i] << endl;
+//    ////    }
+//    addModuloOdd(a, b, a, a.size());
+////    a += b;
+//
+//
+////    for (int i = 0; i < a.size(); i++) {
+////      cout << "a[i] before :: " << a[i] << endl;
+////    }
+//  }
 
   template<class T>
   void RevealSym(ublas::vector<T>& a, int fid = 0) {
@@ -449,11 +452,10 @@ public:
     if (pid == 0) {
       return;
     }
+
     Vec<T> b;
     if (pid == 1) {
-
       SendVec(a, 3 - pid, fid);
-
       ReceiveVec(b, 3 - pid, a.length(), fid);
     } else {
       ReceiveVec(b, 3 - pid, a.length(), fid);
@@ -521,8 +523,8 @@ public:
   }
 
   template<class T>
-  void Print(T& a) {
-    Print(a, cout);
+  void Print(T& a, int fid = 0) {
+    Print(a, cout, fid);
   }
 
   template<class T>
@@ -530,12 +532,16 @@ public:
     PrintFP(a, cout);
   }
 
-//  template<class T>
-//  void PrintFP(T a, ostream& os) {
-//    T a_copy = a;
-//    RevealSym(a_copy);
-//    os << FPToDouble(a_copy) << endl;
-//  }
+  void PrintFP(ZZ_p& a, ostream& os) {
+    Vec<ZZ_p> a_copy;
+    a_copy.SetLength(1);
+    a_copy[0] = a;
+    PrintFP(a_copy, os);
+  }
+
+  void PrintFP(Vec<ZZ_p>& a, int maxlen) {
+    PrintFP(a, maxlen, cout);
+  }
 
   template<class T>
   void PrintFP(ublas::vector<T>& a, ostream& os) {
@@ -565,89 +571,102 @@ public:
     Print(a_copy, cout);
   }
 
-  template<class T>
-  void Print(Vec<T>& a, ostream& os) {
-    Vec<T> a_copy(a);
-//    RevealSym(a_copy);
+  void PrintFP(Vec<ZZ_p>& a, int maxlen, ostream& os) {
+    Vec<ZZ_p> a_copy = a;
+    if (a.length() < maxlen) {
+      maxlen = a.length();
+    }
+    a_copy.SetLength(maxlen);
+    RevealSym(a_copy);
     Vec<double> ad;
-    ad.SetLength(a.length());
-//    Param::FPToDouble();
-//    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
-//    FPToDouble(ad, a_copy, Param::NBIT_F);
+    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
 
-//    if (pid == 2) {
-
-    for (int i = 0; i < a.length(); i++) {
-      os << ad[i];
-      if (i == a.length() - 1) {
-        os << endl;
-      } else {
-        os << '\t';
+    if (pid == 2) {
+      for (int i = 0; i < ad.length(); i++) {
+        os << ad[i];
+        if (i == ad.length() - 1) {
+          os << endl;
+        } else {
+          os << '\t';
+        }
       }
     }
-//    }
   }
-  template<class T>
-  void PrintFP(Vec<T>& a, ostream& os) {
-    Vec<T> a_copy(a);
+
+  void PrintFP(Vec<ZZ_p>& a, ostream& os) {
+    Vec<ZZ_p> a_copy = a;
+    RevealSym(a_copy);
     Vec<double> ad;
-    Init(ad, a_copy.length());
+    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
+
+    if (pid == 2) {
+      for (int i = 0; i < ad.length(); i++) {
+        os << ad[i];
+        if (i == ad.length() - 1) {
+          os << endl;
+        } else {
+          os << '\t';
+        }
+      }
+    }
+  }
+
+  void PrintFP(Mat<ZZ_p>& a, int maxrow, int maxcol) {
+    PrintFP(a, maxrow, maxcol, cout);
+  }
+  void PrintFP(Mat<ZZ_p>& a, int maxrow, int maxcol, ostream& os) {
+    if (a.NumRows() < maxrow) {
+      maxrow = a.NumRows();
+    }
+    if (a.NumCols() < maxcol) {
+      maxcol = a.NumCols();
+    }
+
+    Mat<ZZ_p> a_copy;
+    a_copy.SetDims(maxrow, maxcol);
+    for (int i = 0; i < maxrow; i++) {
+      for (int j = 0; j < maxcol; j++) {
+        a_copy[i][j] = a[i][j];
+      }
+    }
 
     RevealSym(a_copy);
-//    Param::FPToDouble();
-//    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
-    FPToDouble(ad, a_copy);
+    Mat<double> ad;
+    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
 
-    cout<< "pid : " << pid << endl;
-//    if (pid == 2) {
-    for (int i = 0; i < a.length(); i++) {
-      os << ad[i];
-      if (i == a.length() - 1) {
-        os << endl;
-      } else {
-        os << '\t';
+    if (pid == 2) {
+      for (int i = 0; i < ad.NumRows(); i++) {
+        for (int j = 0; j < ad.NumCols(); j++) {
+          os << ad[i][j];
+          if (j == ad.NumCols() - 1) {
+            os << endl;
+          } else {
+            os << '\t';
+          }
+        }
       }
     }
-//    }
   }
 
-//
-//  void PrintFP(Mat<ZZ_p>& a, int maxrow, int maxcol) {
-//    PrintFP(a, maxrow, maxcol, cout);
-//  }
-//  void PrintFP(Mat<ZZ_p>& a, int maxrow, int maxcol, ostream& os) {
-//    if (a.NumRows() < maxrow) {
-//      maxrow = a.NumRows();
-//    }
-//    if (a.NumCols() < maxcol) {
-//      maxcol = a.NumCols();
-//    }
-//
-//    Mat<ZZ_p> a_copy;
-//    a_copy.SetDims(maxrow, maxcol);
-//    for (int i = 0; i < maxrow; i++) {
-//      for (int j = 0; j < maxcol; j++) {
-//        a_copy[i][j] = a[i][j];
-//      }
-//    }
-//
-//    RevealSym(a_copy);
-//    Mat<double> ad;
-//    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
-//
-//    if (pid == 2) {
-//      for (int i = 0; i < ad.NumRows(); i++) {
-//        for (int j = 0; j < ad.NumCols(); j++) {
-//          os << ad[i][j];
-//          if (j == ad.NumCols() - 1) {
-//            os << endl;
-//          } else {
-//            os << '\t';
-//          }
-//        }
-//      }
-//    }
-//  }
+  void PrintFP(Mat<ZZ_p>& a, ostream& os) {
+    Mat<ZZ_p> a_copy = a;
+    RevealSym(a_copy);
+    Mat<double> ad;
+    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
+
+    if (pid == 2) {
+      for (int i = 0; i < ad.NumRows(); i++) {
+        for (int j = 0; j < ad.NumCols(); j++) {
+          os << ad[i][j];
+          if (j == ad.NumCols() - 1) {
+            os << endl;
+          } else {
+            os << '\t';
+          }
+        }
+      }
+    }
+  }
 //
   void PrintFP(ublas::matrix<myType>& a, ostream& os) {
     ublas::matrix<myType> a_copy(a);
@@ -691,6 +710,23 @@ public:
           } else {
             os << '\t';
           }
+        }
+      }
+    }
+  }
+
+  template<class T>
+  void Print(Vec<T>& a, ostream& os, int fid = 0) {
+    Vec<T> a_copy = a;
+    RevealSym(a_copy, fid);
+
+    if (pid == 2) {
+      for (int i = 0; i < a_copy.length(); i++) {
+        os << a_copy[i];
+        if (i == a_copy.length() - 1) {
+          os << endl;
+        } else {
+          os << '\t';
         }
       }
     }
@@ -843,7 +879,7 @@ public:
       RestoreSeed();
 
       ab -= mask;
-//      Mod(ab, fid);
+      Mod(ab, fid);
 
       SendVec(ab, 2, fid);
     } else {
@@ -857,7 +893,7 @@ public:
       }
 
       ab += ambm;
-//      Mod(ab, fid);
+      Mod(ab, fid);
     }
   }
   template<class T>
@@ -913,7 +949,6 @@ public:
       Mod(ab, fid);
     }
   }
-
 
   template<class T>
   void BeaverReconstruct(Vec< Mat<T> >& ab, int fid = 0) {
@@ -1152,6 +1187,7 @@ public:
 
   template<class T>
   void BeaverPartition(Vec<T>& ar, Vec<T>& am, Vec<T>& a, int fid = 0) {
+    if (pid == 1) tcout() << " Powers : test log 002 " << endl;
     int n = a.length();
 
     if (pid == 0) {
@@ -1166,7 +1202,7 @@ public:
       RestoreSeed();
 
       am = x1 + x2;
-//      Mod(am, fid);
+      Mod(am, fid);
       ar.SetLength(n);
     } else {
       SwitchSeed(0);
@@ -1174,7 +1210,7 @@ public:
       RestoreSeed();
 
       ar = a - am;
-//      Mod(ar, fid);
+      Mod(ar, fid);
       RevealSym(ar, fid);
     }
   }
@@ -1368,7 +1404,7 @@ public:
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
-//    Init(c, a.NumRows());
+    Init(c, a.NumRows());
     BeaverMult(c, ar, am, br, bm, fid);
 
     BeaverReconstruct(c, fid);
@@ -1381,7 +1417,7 @@ public:
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
-//    Init(c, a.NumRows());
+    Init(c, a.NumRows());
     BeaverMult(c, ar, am, br, bm, fid);
 
     BeaverReconstruct(c, fid);
@@ -1504,7 +1540,7 @@ public:
     BeaverPartition(br, bm, b, fid);
 
 
-//    Init(c, a.length());
+    Init(c, a.length());
     BeaverMult(c, ar, am, br, bm, fid);
 
     BeaverReconstruct(c, fid);
@@ -1697,8 +1733,20 @@ public:
 
   /* Communication */
 
-  template<class T>
-  void ReceiveElem(T& a, int from_pid, int fid = 0) {
+  void ReceiveElem(ZZ& a, int from_pid, int fid = 0) {
+    unsigned char *buf_ptr = buf;
+    sockets.find(from_pid)->second.ReceiveSecure(buf, ZZ_bytes[fid]);
+    ConvertBytes(a, buf_ptr, fid);
+//    memcpy((char *)&a, buf_ptr, ZZ_bytes[fid]);
+  }
+  void ReceiveElem(ZZ_p& a, int from_pid, int fid = 0) {
+    unsigned char *buf_ptr = buf;
+    sockets.find(from_pid)->second.ReceiveSecure(buf, ZZ_bytes[fid]);
+    ConvertBytes(a, buf_ptr, fid);
+//    memcpy((char *)&a, buf_ptr, ZZ_bytes[fid]);
+  }
+
+  void ReceiveElem(myType a, int from_pid, int fid = 0) {
     unsigned char *buf_ptr = buf;
     sockets.find(from_pid)->second.ReceiveSecure(buf, ZZ_bytes[fid]);
 //    ConvertBytes(a, buf_ptr, fid);
@@ -1878,8 +1926,8 @@ public:
         }
 
 
-        memcpy((char *)&a[i][j], buf_ptr, ZZ_bytes[fid]);
-//        ConvertBytes(a[i][j], buf_ptr, fid);
+//        memcpy((char *)&a[i][j], buf_ptr, ZZ_bytes[fid]);
+        ConvertBytes(a[i][j], buf_ptr, fid);
         buf_ptr += ZZ_bytes[fid];
         stored_in_buf--;
       }
@@ -1915,17 +1963,23 @@ public:
     }
   }
 
-  template<class T>
-  void SendElem(T& a, int to_pid, int fid = 0) {
+  void SendElem(ZZ& a, int to_pid, int fid = 0) {
     unsigned char *buf_ptr = buf;
-//    BytesFromZZ(buf_ptr, AsZZ(a), ZZ_bytes[fid]);
-
-    memcpy(buf_ptr, (char*) &a, ZZ_bytes[fid]);
+    BytesFromZZ(buf_ptr, AsZZ(a), ZZ_bytes[fid]);
+//
+//    memcpy(buf_ptr, (char*) &a, ZZ_bytes[fid]);
     sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid]);
   }
 
-  template<class T>
-  void SendElem(myType& a, int to_pid, int fid = 0) {
+  void SendElem(ZZ_p& a, int to_pid, int fid = 0) {
+    unsigned char *buf_ptr = buf;
+    BytesFromZZ(buf_ptr, AsZZ(a), ZZ_bytes[fid]);
+//
+//    memcpy(buf_ptr, (char*) &a, ZZ_bytes[fid]);
+    sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid]);
+  }
+
+  void SendElem(myType a, int to_pid, int fid = 0) {
     unsigned char *buf_ptr = buf;
 
     tcout() << " send ELEMMMMM " << to_pid << " : ";
@@ -2036,8 +2090,8 @@ public:
           buf_ptr = buf;
         }
 
-        memcpy(buf_ptr, (char*)&a[i][j], ZZ_bytes[fid]);
-//        BytesFromZZ(buf_ptr, AsZZ(a[i][j]), ZZ_bytes[fid]);
+//        memcpy(buf_ptr, (char*)&a[i][j], ZZ_bytes[fid]);
+        BytesFromZZ(buf_ptr, AsZZ(a[i][j]), ZZ_bytes[fid]);
         stored_in_buf++;
         buf_ptr += ZZ_bytes[fid];
       }
@@ -2162,10 +2216,6 @@ public:
   static void RandElem(ZZ_p& a, int fid = 0) {
     random(a);
   }
-
-//  static myType RandElem() {
-//    return RandomWord();
-//  }
 
   inline smallType wrapAround(myType a, myType b)
   {return (a > MINUS_ONE - b);}
@@ -2367,6 +2417,25 @@ public:
       }
     }
   }
+
+  string zToString(const ZZ &z) {
+    std::stringstream buffer;
+    buffer << z;
+    return buffer.str();
+  }
+
+  void to_zz(Vec<ZZ_p>& c, ublas::vector<myType>& x) {
+    for (int i = 0; i < x.size(); i++) {
+      c[i] = to_ZZ_p(conv<ZZ>(std::to_string(x[i]).c_str()));
+    }
+  }
+
+  void to_mytype(ublas::vector<myType>& x, Vec<ZZ_p>& c) {
+    for (int i = 0; i < x.size(); i++) {
+      x[i] = boost::lexical_cast<myType>(zToString(rep(c[i])));
+    }
+  }
+
 private:
   map<int, CSocket> sockets;
   map<int, RandomStream> prg;
@@ -2396,7 +2465,6 @@ private:
   bool debug;
 
   Vec<ZZ> primes;
-  Vec<myType> primes_mytype;
   Vec<uint32_t> ZZ_bytes;
   Vec<uint32_t> ZZ_bits;
   Vec<uint64_t> ZZ_per_buf;
@@ -2459,16 +2527,19 @@ private:
       out_rows[k] = a[k].NumRows();
       out_cols[k] = elem_wise ? a[k].NumCols() : b[k].NumCols();
     }
+    cout << "MultAuxParallel 2" << endl;
 
     Vec< Mat<T> > ar, am, br, bm;
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
+    cout << "MultAuxParallel 3" << endl;
 
     c.SetLength(nmat);
     for (int k = 0; k < nmat; k++) {
       Init(c[k], out_rows[k], out_cols[k]);
       BeaverMult(c[k], ar[k], am[k], br[k], bm[k], elem_wise, fid);
     }
+    cout << "MultAuxParallel 4" << endl;
 
     BeaverReconstruct(c, fid);
   }
@@ -2553,11 +2624,11 @@ private:
 
     NTL_GEXEC_RANGE(c.length() > Param::PAR_THRES, c.length(), first, last)
 
-          context.restore();
+    context.restore();
 
-          for (int i = first; i < last; i++) {
-            mul(c[i], a[i], b[i]);
-          }
+    for (int i = first; i < last; i++) {
+      mul(c[i], a[i], b[i]);
+    }
 
     NTL_GEXEC_RANGE_END
   }
@@ -2568,9 +2639,9 @@ private:
 
     NTL_GEXEC_RANGE(c.length() > Param::PAR_THRES, c.length(), first, last)
 
-          for (int i = first; i < last; i++) {
-            mul(c[i], a[i], b[i]);
-          }
+    for (int i = first; i < last; i++) {
+      mul(c[i], a[i], b[i]);
+    }
 
     NTL_GEXEC_RANGE_END
   }
@@ -2596,13 +2667,13 @@ private:
 
     NTL_GEXEC_RANGE(c.NumRows() > Param::PAR_THRES, c.NumRows(), first, last)
 
-          context.restore();
+    context.restore();
 
-          for (int i = first; i < last; i++) {
-            for (int j = 0; j < c.NumCols(); j++) {
-              mul(c[i][j], a[i][j], b[i][j]);
-            }
-          }
+    for (int i = first; i < last; i++) {
+      for (int j = 0; j < c.NumCols(); j++) {
+        mul(c[i][j], a[i][j], b[i][j]);
+      }
+    }
 
     NTL_GEXEC_RANGE_END
   }
@@ -2613,11 +2684,11 @@ private:
 
     NTL_GEXEC_RANGE(c.NumRows() > Param::PAR_THRES, c.NumRows(), first, last)
 
-          for (int i = first; i < last; i++) {
-            for (int j = 0; j < c.NumCols(); j++) {
-              mul(c[i][j], a[i][j], b[i][j]);
-            }
-          }
+    for (int i = first; i < last; i++) {
+      for (int j = 0; j < c.NumCols(); j++) {
+        mul(c[i][j], a[i][j], b[i][j]);
+      }
+    }
 
     NTL_GEXEC_RANGE_END
   }

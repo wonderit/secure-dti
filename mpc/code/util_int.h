@@ -492,6 +492,24 @@ static inline void FPToDouble(Mat<double>& b, Mat<ZZ_p>& a, int k, int f) {
   }
 }
 
+static inline void FPToDouble(Vec<double>& b, Vec<ZZ_p>& a, int k, int f) {
+  Mat<ZZ_p> am;
+  am.SetDims(1, a.length());
+  am[0] = a;
+  Mat<double> bm;
+  FPToDouble(bm, am, k, f);
+  b = bm[0];
+}
+
+static inline double FPToDouble(ZZ_p& a, int k, int f) {
+  Mat<ZZ_p> am;
+  am.SetDims(1, 1);
+  am[0][0] = a;
+  Mat<double> bm;
+  FPToDouble(bm, am, k, f);
+  return bm[0][0];
+}
+
 template<class T>
 static T Sum(Vec<T>& a) {
   T val;
