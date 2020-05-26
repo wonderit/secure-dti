@@ -14,6 +14,7 @@
 //#include <vector>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
+#include <cstring>
 
 using namespace boost::numeric;
 using namespace std;
@@ -271,20 +272,6 @@ static inline T sumifzero(ublas::vector<T>& x)
   return sum;
 }
 
-
-inline ublas::vector<myType>& operator*(ublas::vector<myType>& x, ublas::vector<myType>& a)
-{
-  ublas::vector<myType> result(x.size(), 0);
-//  cout<< "* start:";
-  for (int i = 0; i < x.size(); i++) {
-    result[i] = x[i] * a[i];
-//    cout << result[i];
-  }
-//  cout << endl;
-  return result;
-}
-
-
 template<class T>
 static inline void multvec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a, myType L)
 {
@@ -416,6 +403,8 @@ static inline void back_reshape_conv(ublas::matrix<myType>& x, ublas::matrix<myT
 }
 
 static inline void DoubleToFP(ZZ_p& b, double a, int k, int f) {
+//  ZZ za(a * (1 << f));
+//  b =  conv<ZZ_p>(za);
   double x = a;
   long sn = 1;
   if (x < 0) {
@@ -492,6 +481,24 @@ static inline void FPToDouble(Mat<double>& b, Mat<ZZ_p>& a, int k, int f) {
   }
 }
 
+static inline void FPToDouble(Vec<double>& b, Vec<ZZ_p>& a, int k, int f) {
+  Mat<ZZ_p> am;
+  am.SetDims(1, a.length());
+  am[0] = a;
+  Mat<double> bm;
+  FPToDouble(bm, am, k, f);
+  b = bm[0];
+}
+
+static inline double FPToDouble(ZZ_p& a, int k, int f) {
+  Mat<ZZ_p> am;
+  am.SetDims(1, 1);
+  am[0][0] = a;
+  Mat<double> bm;
+  FPToDouble(bm, am, k, f);
+  return bm[0][0];
+}
+
 template<class T>
 static T Sum(Vec<T>& a) {
   T val;
@@ -512,4 +519,47 @@ static T Sum(Mat<T>& a) {
   }
   return val;
 }
+
+
+static inline void zToString(const ZZ& z, string& s) {
+  std::stringstream buffer;
+  buffer << z;
+  s = buffer.str();
+}
+
+static inline void to_zz(Vec<ZZ_p>& c, ublas::vector<myType>& x) {
+  for (int i = 0; i < x.size(); i++) {
+    string str_x(std::to_string(x[i]));
+    c[i] = to_ZZ_p(conv<ZZ>(str_x.c_str()));
+  }
+}
+
+static inline void to_zz(Mat<ZZ_p>& c, ublas::matrix<myType>& x) {
+  for (size_t i = 0; i < x.size1(); i++) {
+    for (size_t j = 0; j < x.size2(); j++) {
+      string str_x(std::to_string(x(i, j)));
+      c[i][j] = to_ZZ_p(conv<ZZ>(str_x.c_str()));
+    }
+  }
+}
+
+static inline void to_mytype(ublas::vector<myType>& x, Vec<ZZ_p>& c) {
+  string str;
+  for (int i = 0; i < x.size(); i++) {
+    zToString(rep(c[i]), str);
+    x[i] = boost::lexical_cast<myType>(str);
+  }
+}
+
+
+static inline void to_mytype(ublas::matrix<myType>& x, Mat<ZZ_p>& c) {
+  for (size_t i = 0; i < x.size1(); i++) {
+    for (size_t j = 0; j < x.size2(); j++) {
+      string str;
+      zToString(rep(c[i][j]), str);
+      x(i, j) = boost::lexical_cast<myType>(str);
+    }
+  }
+}
+
 #endif

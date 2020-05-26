@@ -634,7 +634,6 @@ void MPCEnv::LessThanBitsAux(Vec<ZZ>& c, Mat<ZZ>& a, Mat<ZZ>& b, int public_flag
   /* Calculate XOR */
   Mat<ZZ> x;
   x.SetDims(n, L);
-  if (pid == 1) tcout() << " pid 1 : LessThanBitsAux 1" << endl;
   if (public_flag == 0) {
     MultElem(x, a, b, fid);
     if (pid > 0) {
@@ -650,8 +649,6 @@ void MPCEnv::LessThanBitsAux(Vec<ZZ>& c, Mat<ZZ>& a, Mat<ZZ>& b, int public_flag
     Mod(x, fid);
   }
 
-  if (pid == 1) tcout() << " pid 1 : LessThanBitsAux 2" << endl;
-
   Mat<ZZ> f;
   PrefixOr(f, x, fid);
   x.kill();
@@ -664,8 +661,6 @@ void MPCEnv::LessThanBitsAux(Vec<ZZ>& c, Mat<ZZ>& a, Mat<ZZ>& b, int public_flag
     }
     Mod(f, fid);
   }
-
-  if (pid == 1) tcout() << " pid 1 : LessThanBitsAux 3" << endl;
 
   if (public_flag == 2) {
     c.SetLength(n);
@@ -698,8 +693,6 @@ void MPCEnv::LessThanBitsAux(Vec<ZZ>& c, Mat<ZZ>& a, Mat<ZZ>& b, int public_flag
       }
     }
 
-    if (pid == 1) tcout() << " pid 1 : LessThanBitsAux 4" << endl;
-
     Vec< Mat<ZZ> > c_arr;
     MultMatParallel(c_arr, f_arr, b_arr, fid);
 
@@ -709,6 +702,7 @@ void MPCEnv::LessThanBitsAux(Vec<ZZ>& c, Mat<ZZ>& a, Mat<ZZ>& b, int public_flag
         c[i] = c_arr[i][0][0];
       }
     }
+
   }
 }
 
@@ -1577,7 +1571,7 @@ void MPCEnv::FPSqrt(Vec<ZZ_p>& b, Vec<ZZ_p>& b_inv, Vec<ZZ_p>& a) {
     scaled_est = - 4 * a_scaled + 2 * a_scaled_sq;
     if (pid == 1) {
       ZZ_p coeff;
-//      DoubleToFP(coeff, 2.9581, Param::NBIT_K, Param::NBIT_F);
+      DoubleToFP(coeff, 2.9581, Param::NBIT_K, Param::NBIT_F);
       for (int i = 0; i < n; i++) {
         scaled_est[i] += coeff;
       }
@@ -1599,7 +1593,7 @@ void MPCEnv::FPSqrt(Vec<ZZ_p>& b, Vec<ZZ_p>& b_inv, Vec<ZZ_p>& a) {
   Trunc(h_and_g[1]);
 
   ZZ_p onepointfive;
-//  DoubleToFP(onepointfive, 1.5, Param::NBIT_K, Param::NBIT_F);
+  DoubleToFP(onepointfive, 1.5, Param::NBIT_K, Param::NBIT_F);
 
   for (int it = 0; it < niter; it++) {
     Mat<ZZ_p> r;
@@ -1627,16 +1621,16 @@ void MPCEnv::FPSqrt(Vec<ZZ_p>& b, Vec<ZZ_p>& b_inv, Vec<ZZ_p>& a) {
   b = h_and_g[1][0];
 }
 //
-//void MPCEnv::FPSqrt(Mat<ZZ_p>& b, Mat<ZZ_p>& b_inv, Mat<ZZ_p>& a) {
-//
-//  Vec<ZZ_p> bv, bv_inv, av;
-//  int size = a.NumRows() * a.NumCols();
-////  Init(av, size); Init(bv, size); Init(bv_inv, size);
-//  Reshape(av, a);
-//  FPSqrt(bv, bv_inv, av);
-//  Reshape(b, bv, a.NumRows(), a.NumCols());
-//  Reshape(b_inv, bv_inv, a.NumRows(), a.NumCols());
-//}
+void MPCEnv::FPSqrt(Mat<ZZ_p>& b, Mat<ZZ_p>& b_inv, Mat<ZZ_p>& a) {
+
+  Vec<ZZ_p> bv, bv_inv, av;
+  int size = a.NumRows() * a.NumCols();
+  Init(av, size); Init(bv, size); Init(bv_inv, size);
+  Reshape(av, a);
+  FPSqrt(bv, bv_inv, av);
+  Reshape(b, bv, a.NumRows(), a.NumCols());
+  Reshape(b_inv, bv_inv, a.NumRows(), a.NumCols());
+}
 
 
 void MPCEnv::Trunc(ublas::matrix<myType>& a) {
@@ -1862,16 +1856,12 @@ void MPCEnv::PrefixOr(Mat<ZZ>& b, Mat<ZZ>& a, int fid) {
       }
     }
   }
-  if (pid == 1) tcout() << " pid 1 : PrefixOr 1" << endl;
   Reshape(a_padded, n * L, L);
 
-  if (pid == 1) tcout() << " pid 1 : PrefixOr 2" << endl;
   Vec<ZZ> x;
   FanInOr(x, a_padded, fid);
-  if (pid == 1) tcout() << " pid 1 : PrefixOr 3" << endl;
   Mat<ZZ> xpre;
   xpre.SetDims(n * L, L);
-  if (pid == 1) tcout() << " pid 1 : PrefixOr 4" << endl;
   if (pid > 0) {
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < L; j++) {
@@ -1921,7 +1911,6 @@ void MPCEnv::PrefixOr(Mat<ZZ>& b, Mat<ZZ>& a, int fid) {
     }
   }
   a_padded.kill();
-  if (pid == 1) tcout() << " pid 1 : PrefixOr 5" << endl;
   Vec< Mat<ZZ> > c;
   MultMatParallel(c, f, tmp, fid); // c is a concatenation of n 1-by-L matrices
   tmp.kill();
@@ -1939,7 +1928,6 @@ void MPCEnv::PrefixOr(Mat<ZZ>& b, Mat<ZZ>& a, int fid) {
     }
   }
   c.kill();
-  if (pid == 1) tcout() << " pid 1 : PrefixOr 6" << endl;
   Vec<ZZ> bdot_vec;
   FanInOr(bdot_vec, cpre, fid);
   cpre.kill();
@@ -2004,7 +1992,6 @@ void MPCEnv::FanInOr(Vec<ZZ>& b, Mat<ZZ>& a, int fid) {
     }
     Mod(a_sum, fid);
   }
-  if (pid == 1) tcout() << " pid 1 : FanInOr 1" << endl;
   Mat<ZZ> coeff;
   coeff.SetDims(1, d + 1);
   pair<int, int> key = make_pair(d + 1, fid);
@@ -2019,7 +2006,6 @@ void MPCEnv::FanInOr(Vec<ZZ>& b, Mat<ZZ>& a, int fid) {
     lagrange_interp_simple(coeff[0], y, fid); // OR function
     or_lagrange_cache[key] = coeff[0];
   }
-  if (pid == 1) tcout() << " pid 1 : FanInOr 2" << endl;
   Mat<ZZ> bmat;
   EvaluatePoly(bmat, a_sum, coeff, fid);
   b = bmat[0];
@@ -2091,7 +2077,7 @@ void MPCEnv::TableLookup(Mat<ZZ_p>& b, Vec<ZZ>& a, int table_id, int fid) {
 
 // Base field index 1
 void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
-  if (debug) tcout() << "NormalizerEvenExp: " << a.length() << endl;
+  if (true) tcout() << "NormalizerEvenExp: " << a.length() << endl;
 
   int n = a.length();
   int fid = 1;
@@ -2204,8 +2190,8 @@ void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
   Tneg.kill();
 
   Vec<ZZ> odd_bit_sum, even_bit_sum;
-//  Init(odd_bit_sum, n);
-//  Init(even_bit_sum, n);
+  Init(odd_bit_sum, n);
+  Init(even_bit_sum, n);
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < half_len; j++) {
       odd_bit_sum[i] += odd_bits[i][j];
@@ -2254,6 +2240,7 @@ void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
     b_sqrt.SetLength(n);
     b.SetLength(n);
   }
+  tcout() << "NormalizerEvenExp: end"  << endl;
 }
 void MPCEnv::ReadFromFile(ZZ_p& a, ifstream& ifs) {
   Vec<ZZ_p> avec;

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <boost/numeric/ublas/vector.hpp>
+#include <boost/lexical_cast.hpp>
 #include <stack>
 #include <NTL/mat_ZZ_p.h>
 #include <NTL/mat_ZZ.h>
@@ -139,6 +140,8 @@ public:
 
     int n = a.length();
 
+
+
     if (pow == 1) {
       Init(b, 2, n);
       if (pid > 0) {
@@ -147,18 +150,12 @@ public:
         }
         b[1] = a;
       }
-      if (pid == 1) tcout() << " Powers : test log 0 " << endl;
     } else { // pow > 1
       Vec<T> ar, am;
       BeaverPartition(ar, am, a, fid);
 
-
-      if (pid == 1) tcout() << " Powers : test log 1 " << endl;
-
-
       if (pid == 0) {
 
-        if (pid == 1) tcout() << " Powers : test log 2 " << endl;
         Mat<T> ampow;
         ampow.SetDims(pow - 1, n);
         mul_elem(ampow[0], am, am);
@@ -200,8 +197,6 @@ public:
         Mat<T> t;
         GetPascalMatrix(t, pow, fid);
 
-        if (pid == 1) tcout() << " Powers : test log 3 " << endl;
-
         Init(b, pow + 1, n);
 
         if (pid == 1) {
@@ -233,7 +228,6 @@ public:
 
           b[p] += ampow[p - 2];
         }
-        if (pid == 1) tcout() << " Powers : test log 4 " << endl;
         Mod(b, fid);
       }
     }
@@ -250,18 +244,12 @@ public:
 
     Mat<T> apow;
     //TODO Check SecureNN
-    if (pid == 1) tcout() << " pid 1 : EvaluatePoly 1" << endl;
-
     Powers(apow, a, deg, fid);
-    if (pid == 1) tcout() << " pid 1 : EvaluatePoly 2" << endl;
     if (pid > 0) {
       b = coeff * apow;
       Mod(b, fid);
-      if (pid == 1) tcout() << " pid 1 : EvaluatePoly 3" << endl;
-
     } else {
       b.SetDims(npoly, n);
-      if (pid == 1) tcout() << " pid 1 : EvaluatePoly 4" << endl;
     }
   }
 
@@ -290,35 +278,6 @@ public:
 //    a += b;
 //    Mod(a, fid);
 //  }
-
-  template<class T>
-  void RevealSymOdd(ublas::vector<T>& a, int fid = 0) {
-    if (debug) cout << "RevealSym: " << a.size() << endl;
-
-    if (pid == 0) {
-      return;
-    }
-
-    ublas::vector<T> b(a.size(), 0);
-    if (pid == 1) {
-      SendVec(a, 3 - pid, fid);
-      ReceiveVec(b, 3 - pid, fid);
-    } else {
-      ReceiveVec(b, 3 - pid, fid);
-      SendVec(a, 3 - pid, fid);
-    }
-
-//    for (int i = 0; i < a.size(); i++) {
-    ////      cout << "a[i]/b[i] :: " << a[i] << "/" << b[i] << endl;
-    ////    }
-    addModuloOdd(a, b, a, a.size());
-//    a += b;
-
-
-//    for (int i = 0; i < a.size(); i++) {
-//      cout << "a[i] before :: " << a[i] << endl;
-//    }
-  }
 
   template<class T>
   void RevealSym(ublas::vector<T>& a, int fid = 0) {
@@ -425,7 +384,7 @@ public:
         b[i] = mod_c(b[i] + b2[i], (myType)PRIME_NUMBER);
 //        b[i] = ( b[i] + b2[i] ) % PRIME_NUMBER;
       }
-      
+
 //      b += b2;
     }
     a = b;
@@ -451,9 +410,7 @@ public:
     }
     Vec<T> b;
     if (pid == 1) {
-
       SendVec(a, 3 - pid, fid);
-
       ReceiveVec(b, 3 - pid, a.length(), fid);
     } else {
       ReceiveVec(b, 3 - pid, a.length(), fid);
@@ -521,8 +478,8 @@ public:
   }
 
   template<class T>
-  void Print(T& a) {
-    Print(a, cout);
+  void Print(T& a, int fid = 0) {
+    Print(a, cout, fid);
   }
 
   template<class T>
@@ -530,12 +487,16 @@ public:
     PrintFP(a, cout);
   }
 
-//  template<class T>
-//  void PrintFP(T a, ostream& os) {
-//    T a_copy = a;
-//    RevealSym(a_copy);
-//    os << FPToDouble(a_copy) << endl;
-//  }
+  void PrintFP(ZZ_p& a, ostream& os) {
+    Vec<ZZ_p> a_copy;
+    a_copy.SetLength(1);
+    a_copy[0] = a;
+    PrintFP(a_copy, os);
+  }
+
+  void PrintFP(Vec<ZZ_p>& a, int maxlen) {
+    PrintFP(a, maxlen, cout);
+  }
 
   template<class T>
   void PrintFP(ublas::vector<T>& a, ostream& os) {
@@ -565,90 +526,102 @@ public:
     Print(a_copy, cout);
   }
 
-  template<class T>
-  void Print(Vec<T>& a, ostream& os) {
-    Vec<T> a_copy(a);
-//    RevealSym(a_copy);
+  void PrintFP(Vec<ZZ_p>& a, int maxlen, ostream& os) {
+    Vec<ZZ_p> a_copy = a;
+    if (a.length() < maxlen) {
+      maxlen = a.length();
+    }
+    a_copy.SetLength(maxlen);
+    RevealSym(a_copy);
     Vec<double> ad;
-    ad.SetLength(a.length());
-//    Param::FPToDouble();
-//    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
-//    FPToDouble(ad, a_copy, Param::NBIT_F);
+    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
 
-//    if (pid == 2) {
-
-    for (int i = 0; i < a.length(); i++) {
-      os << ad[i];
-      if (i == a.length() - 1) {
-        os << endl;
-      } else {
-        os << '\t';
+    if (pid == 2) {
+      for (int i = 0; i < ad.length(); i++) {
+        os << ad[i];
+        if (i == ad.length() - 1) {
+          os << endl;
+        } else {
+          os << '\t';
+        }
       }
     }
-//    }
   }
-  template<class T>
-  void PrintFP(Vec<T>& a, ostream& os) {
-    Vec<T> a_copy(a);
+
+  void PrintFP(Vec<ZZ_p>& a, ostream& os) {
+    Vec<ZZ_p> a_copy = a;
+    RevealSym(a_copy);
     Vec<double> ad;
-    Init(ad, a_copy.length());
+    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
+
+    if (pid == 2) {
+      for (int i = 0; i < ad.length(); i++) {
+        os << ad[i];
+        if (i == ad.length() - 1) {
+          os << endl;
+        } else {
+          os << '\t';
+        }
+      }
+    }
+  }
+
+  void PrintFP(Mat<ZZ_p>& a, int maxrow, int maxcol) {
+    PrintFP(a, maxrow, maxcol, cout);
+  }
+  void PrintFP(Mat<ZZ_p>& a, int maxrow, int maxcol, ostream& os) {
+    if (a.NumRows() < maxrow) {
+      maxrow = a.NumRows();
+    }
+    if (a.NumCols() < maxcol) {
+      maxcol = a.NumCols();
+    }
+
+    Mat<ZZ_p> a_copy;
+    a_copy.SetDims(maxrow, maxcol);
+    for (int i = 0; i < maxrow; i++) {
+      for (int j = 0; j < maxcol; j++) {
+        a_copy[i][j] = a[i][j];
+      }
+    }
 
     RevealSym(a_copy);
-//    Param::FPToDouble();
-//    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
-    FPToDouble(ad, a_copy);
+    Mat<double> ad;
+    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
 
-    cout<< "pid : " << pid << endl;
-//    if (pid == 2) {
-    for (int i = 0; i < a.length(); i++) {
-      os << ad[i];
-      if (i == a.length() - 1) {
-        os << endl;
-      } else {
-        os << '\t';
+    if (pid == 2) {
+      for (int i = 0; i < ad.NumRows(); i++) {
+        for (int j = 0; j < ad.NumCols(); j++) {
+          os << ad[i][j];
+          if (j == ad.NumCols() - 1) {
+            os << endl;
+          } else {
+            os << '\t';
+          }
+        }
       }
     }
-//    }
   }
 
-//
-//  void PrintFP(Mat<ZZ_p>& a, int maxrow, int maxcol) {
-//    PrintFP(a, maxrow, maxcol, cout);
-//  }
-//  void PrintFP(Mat<ZZ_p>& a, int maxrow, int maxcol, ostream& os) {
-//    if (a.NumRows() < maxrow) {
-//      maxrow = a.NumRows();
-//    }
-//    if (a.NumCols() < maxcol) {
-//      maxcol = a.NumCols();
-//    }
-//
-//    Mat<ZZ_p> a_copy;
-//    a_copy.SetDims(maxrow, maxcol);
-//    for (int i = 0; i < maxrow; i++) {
-//      for (int j = 0; j < maxcol; j++) {
-//        a_copy[i][j] = a[i][j];
-//      }
-//    }
-//
-//    RevealSym(a_copy);
-//    Mat<double> ad;
-//    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
-//
-//    if (pid == 2) {
-//      for (int i = 0; i < ad.NumRows(); i++) {
-//        for (int j = 0; j < ad.NumCols(); j++) {
-//          os << ad[i][j];
-//          if (j == ad.NumCols() - 1) {
-//            os << endl;
-//          } else {
-//            os << '\t';
-//          }
-//        }
-//      }
-//    }
-//  }
-//
+  void PrintFP(Mat<ZZ_p>& a, ostream& os) {
+    Mat<ZZ_p> a_copy = a;
+    RevealSym(a_copy);
+    Mat<double> ad;
+    FPToDouble(ad, a_copy, Param::NBIT_K, Param::NBIT_F);
+
+    if (pid == 2) {
+      for (int i = 0; i < ad.NumRows(); i++) {
+        for (int j = 0; j < ad.NumCols(); j++) {
+          os << ad[i][j];
+          if (j == ad.NumCols() - 1) {
+            os << endl;
+          } else {
+            os << '\t';
+          }
+        }
+      }
+    }
+  }
   void PrintFP(ublas::matrix<myType>& a, ostream& os) {
     ublas::matrix<myType> a_copy(a);
     RevealSym(a_copy);
@@ -691,6 +664,23 @@ public:
           } else {
             os << '\t';
           }
+        }
+      }
+    }
+  }
+
+  template<class T>
+  void Print(Vec<T>& a, ostream& os, int fid = 0) {
+    Vec<T> a_copy = a;
+    RevealSym(a_copy, fid);
+
+    if (pid == 2) {
+      for (int i = 0; i < a_copy.length(); i++) {
+        os << a_copy[i];
+        if (i == a_copy.length() - 1) {
+          os << endl;
+        } else {
+          os << '\t';
         }
       }
     }
@@ -1166,7 +1156,7 @@ public:
       RestoreSeed();
 
       am = x1 + x2;
-//      Mod(am, fid);
+      Mod(am, fid);
       ar.SetLength(n);
     } else {
       SwitchSeed(0);
@@ -1174,7 +1164,7 @@ public:
       RestoreSeed();
 
       ar = a - am;
-//      Mod(ar, fid);
+      Mod(ar, fid);
       RevealSym(ar, fid);
     }
   }
@@ -1368,7 +1358,7 @@ public:
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
-//    Init(c, a.NumRows());
+    Init(c, a.NumRows());
     BeaverMult(c, ar, am, br, bm, fid);
 
     BeaverReconstruct(c, fid);
@@ -1381,7 +1371,7 @@ public:
     BeaverPartition(ar, am, a, fid);
     BeaverPartition(br, bm, b, fid);
 
-//    Init(c, a.NumRows());
+    Init(c, a.NumRows());
     BeaverMult(c, ar, am, br, bm, fid);
 
     BeaverReconstruct(c, fid);
@@ -1878,8 +1868,8 @@ public:
         }
 
 
-        memcpy((char *)&a[i][j], buf_ptr, ZZ_bytes[fid]);
-//        ConvertBytes(a[i][j], buf_ptr, fid);
+//        memcpy((char *)&a[i][j], buf_ptr, ZZ_bytes[fid]);
+        ConvertBytes(a[i][j], buf_ptr, fid);
         buf_ptr += ZZ_bytes[fid];
         stored_in_buf--;
       }
@@ -2036,8 +2026,8 @@ public:
           buf_ptr = buf;
         }
 
-        memcpy(buf_ptr, (char*)&a[i][j], ZZ_bytes[fid]);
-//        BytesFromZZ(buf_ptr, AsZZ(a[i][j]), ZZ_bytes[fid]);
+//        memcpy(buf_ptr, (char*)&a[i][j], ZZ_bytes[fid]);
+        BytesFromZZ(buf_ptr, AsZZ(a[i][j]), ZZ_bytes[fid]);
         stored_in_buf++;
         buf_ptr += ZZ_bytes[fid];
       }
@@ -2237,7 +2227,6 @@ public:
 
     for (int i = 0; i < a.size(); i++)
       a[i] = RandomBits_long(INT_FIELD-1);
-
 //      a[i] = RandomBnd(max_field_L_1);
 //      a[i] = RandomBits_long(l);
   }
@@ -2246,9 +2235,9 @@ public:
 
     for (size_t i = 0; i < a.size(); i++)
       if (l == FIELD_L_1)
-        a[i] = RandomBnd(max_field_L_1);
+        a[i] = RandomBits_ulong(FIELD_L_BIT);
       else if (l == FIELD_L_BIT)
-        a[i] = RandomBits_long(INT_FIELD-1);
+        a[i] = RandomBits_ulong(FIELD_L_BIT);
       else if (l == PRIME_NUMBER)
         a[i] = RandomBnd(l-1)+1;
       else
@@ -2367,6 +2356,8 @@ public:
       }
     }
   }
+
+
 private:
   map<int, CSocket> sockets;
   map<int, RandomStream> prg;
@@ -2396,7 +2387,6 @@ private:
   bool debug;
 
   Vec<ZZ> primes;
-  Vec<myType> primes_mytype;
   Vec<uint32_t> ZZ_bytes;
   Vec<uint32_t> ZZ_bits;
   Vec<uint64_t> ZZ_per_buf;
@@ -2510,7 +2500,7 @@ private:
     }
   }
 
-    void Mod(ublas::vector<myType>& a, long L) {
+  void Mod(ublas::vector<myType>& a, long L) {
 //    tcout() << "p : " << primes_mytype[fid] << endl;
     for (int i = 0; i < a.size(); i++) {
 //      a[i] %= primes_mytype[fid];

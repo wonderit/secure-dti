@@ -74,9 +74,72 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  double eps = 1e-6;
   double eps = 1e-1;
 
+  // Mat, Vec
+  Mat<ZZ_p> xm, zzp_ym, zm;
+
 
 //  cout << FPToDouble(b) << endl;
   tcout() << "[Fixed-point ZZ_p <-> Double conversion] ";
+  ZZ_p zzp_x, zzp_y, zzp_z;
+  Vec<ZZ_p> zzp_xv, zzp_yv, zzp_zv, zzp_wv;
+  Vec<double> zzp_dzv;
+  zzp_x = DoubleToFP(3.141592653589793238462643383279, Param::NBIT_K, Param::NBIT_F);
+  d = ABS(FPToDouble(zzp_x, Param::NBIT_K, Param::NBIT_F) - 3.141592653589793238462643383279);
+  if (pid > 0) {
+    tcout() << d << endl;
+    assert(d < eps);
+    tcout() << "Success";
+  }
+  tcout() << endl;
+
+  tcout() << "[FP multiplcation] ";
+  Init(zzp_xv, 3); Init(zzp_yv, 3);
+  if (pid == 2) {
+//    zzp_xv[0] = ZZ_p(1);
+//    zzp_xv[1] = ZZ_p(2);
+//    zzp_xv[2] = ZZ_p(3);
+//    zzp_yv[0] = ZZ_p(4);
+//    zzp_yv[1] = ZZ_p(-2);
+//    zzp_yv[2] = ZZ_p(3);
+
+    zzp_xv[0] = DoubleToFP(1.34, Param::NBIT_K, Param::NBIT_F);
+    zzp_xv[1] = DoubleToFP(100.3, Param::NBIT_K, Param::NBIT_F);
+    zzp_xv[2] = DoubleToFP(-0.304, Param::NBIT_K, Param::NBIT_F);
+    zzp_yv[0] = DoubleToFP(-0.001, Param::NBIT_K, Param::NBIT_F);
+    zzp_yv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
+    zzp_yv[2] = DoubleToFP(-539, Param::NBIT_K, Param::NBIT_F);
+  }
+  mpc.MultElem(zzp_zv, zzp_xv, zzp_yv);
+  mpc.Trunc(zzp_zv);
+  mpc.RevealSym(zzp_zv);
+
+  FPToDouble(zzp_dzv, zzp_zv, Param::NBIT_K, Param::NBIT_F);
+  if (pid > 0) {
+    tcout() << zzp_dzv << endl;
+//    assert(ABS(zzp_dzv[0] - (-0.00134)) < eps);
+//    assert(ABS(zzp_dzv[1] - (30390.9)) < eps);
+//    assert(ABS(zzp_dzv[2] - (163.856)) < eps);
+    tcout() << "Success";
+  }
+
+  tcout() << endl;
+//
+//  tcout() << "[Powers]" << endl;;
+//  Init(xv, 5);
+//  if (pid == 1) {
+//    xv[0] = 0;
+//    xv[1] = 1;
+//    xv[2] = 2;
+//    xv[3] = 3;
+//    xv[4] = 4;
+//  }
+//
+//  mpc.Powers(zzp_ym, zzp_xv, 3);
+//  mpc.Print(zzp_ym, cout);
+//
+//  return true;
+
+
 //  x = DoubleToFP(-3.14);
 //  bitset<64> xBits = bitset<64>(x);
 //  for(int i = 63; i >= 0; i--) cout << xBits[i];
@@ -263,14 +326,76 @@ bool unit_test(MPCEnv& mpc, int pid) {
 
     tcout() << MINUS_ONE << endl;
     tcout() << FIELD_L_1 << endl;
-    tcout() << max_field_L_1 << endl;
     tcout() << BIT_SIZE << endl;
     tcout() << LARGEST_NEG << endl;
     tcout() << FIELD << endl;
     tcout() << FIELD_L_BIT << endl;
     printf("----------");
   }
+  if (pid > 0) {
+    tcout() << "Print before fpsqrt" << endl;
+    mpc.PrintFP(xv);
+  }
 
+  Vec<ZZ_p> p;
+  Init(p, xv.size());
+  to_zz(p, xv);
+//
+//  printf("----------print p -----");
+//  mpc.PrintFP(p);
+//  p = p + p;
+//  mpc.MultElem(p, p, p);
+//  mpc.Trunc(p);
+//  ublas::vector<myType> vpp;
+//  Init(vpp, p.length());
+//  to_mytype(vpp, p);
+//  if (pid > 0) {
+//    mpc.PrintFP(vpp);
+//  }
+
+
+  Vec<ZZ_p> sqrt_p, sqrt_inv_p;
+  ublas::vector<myType> vp;
+  Init(vp, p.length());
+  mpc.FPSqrt(sqrt_p, sqrt_inv_p, p);
+
+//  if (pid == 1) {
+//    printf("----------print int -----");
+//    tcout() << zv[0] << endl;
+//    tcout() << zv[1] << endl;
+//    tcout() << zv[2] << endl;
+//
+//
+//    printf("----------print zzp -----");
+//    tcout() << p[0] << endl;
+//    tcout() << p[1] << endl;
+//    tcout() << p[2] << endl;
+//
+//    mpc.to_mytype(zv, p);
+//
+//
+//    printf("----------print int again -----");
+//    tcout() << zv[0] << endl;
+//    tcout() << zv[1] << endl;
+//    tcout() << zv[2] << endl;
+//  }
+  if (pid > 0 ) {
+
+    printf("----------print sqrt -----");
+    mpc.PrintFP(sqrt_p);
+    printf("----------print sqrt inv -----");
+    mpc.PrintFP(sqrt_inv_p);
+  }
+
+
+  to_mytype(vp, sqrt_p);
+
+
+  if (pid > 0 ) {
+
+    printf("----------print int -----");
+    mpc.PrintFP(vp);
+  }
 
 //  Time MULT END
 
