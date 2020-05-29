@@ -427,7 +427,6 @@ static inline void back_reshape_conv(ublas::matrix<myType>& x, ublas::matrix<myT
   int input_channel = conv1d.size2() / kernel_size;
   int row = conv1d.size1() / batch_size; // 482
   int prev_row = row + kernel_size - 1;  // 488
-
   Init(x, batch_size * prev_row, input_channel);
 
   for (int batch = 0; batch < batch_size; batch++) {

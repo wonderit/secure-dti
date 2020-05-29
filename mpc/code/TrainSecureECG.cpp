@@ -105,7 +105,6 @@ bool text_to_matrix(ublas::matrix<myType>& matrix, ifstream& ifs, string fname, 
   return true;
 }
 
-
 bool text_to_vector(ublas::vector<myType>& vec, ifstream& ifs, string fname) {
   ifs.open(fname.c_str(), ios::in | ios::binary);
   if (!ifs.is_open()) {
@@ -131,8 +130,6 @@ bool text_to_vector(ublas::vector<myType>& vec, ifstream& ifs, string fname) {
 void AveragePool(ublas::matrix<myType>& avgpool, ublas::matrix<myType>& input, int kernel_size, int stride) {
   int prev_row = input.size1() / Param::BATCH_SIZE;
   int row = prev_row / stride;
-  if (row % 2 == 1)
-    row--;
 
   Init(avgpool, row * Param::BATCH_SIZE, input.size2());
 
@@ -149,18 +146,18 @@ void AveragePool(ublas::matrix<myType>& avgpool, ublas::matrix<myType>& input, i
     }
   }
 
-//  ZZ_p norm_examples;
-//  DoubleToFP(norm_examples, 1. / ((double) kernel_size),
-//             Param::NBIT_K, Param::NBIT_F);
-//  avgpool *= norm_examples;
-//  mpc.Trunc(avgpool);
 }
 
-void BackAveragePool(ublas::matrix<myType>& input, ublas::matrix<myType>& avgpool, int kernel_size, int stride) {
+void BackAveragePool(ublas::matrix<myType>& input, ublas::matrix<myType>& avgpool,
+                     int kernel_size, int stride, bool isDifferent=false) {
 
   if (Param::DEBUG) tcout() << "avgpool row, cols (" << avgpool.size1() << ", " << avgpool.size2() << ")" << endl;
   int prev_row = avgpool.size1() / Param::BATCH_SIZE;
   int row = prev_row * stride;
+  if (isDifferent){
+    row++;
+  }
+
   Init(input, row * Param::BATCH_SIZE, avgpool.size2());
 
   for (int b = 0; b < Param::BATCH_SIZE; b++) {
@@ -168,23 +165,20 @@ void BackAveragePool(ublas::matrix<myType>& input, ublas::matrix<myType>& avgpoo
       for (int c = 0; c < avgpool.size2(); c++) {
         for (int k = 0; k < kernel_size; k++) {
           input(b * row + i * stride + k, c) = avgpool(b * prev_row + i, c);
+          if (isDifferent && i == prev_row-1 && k == 0)
+            input(b * row + prev_row * stride + k, c) = 0;
         }
       }
     }
   }
 
-//  ZZ_p norm_examples;
-//  DoubleToFP(norm_examples, 1. / ((double) kernel_size),
-//             Param::NBIT_K, Param::NBIT_F);
-//  input *= norm_examples;
-//  Trunc(input);
 }
 
 void initialize_parameters(ublas::matrix<myType>& W_layer, ublas::vector<myType>& b_layer) {
 
-//  Init(b_layer, b_layer.length());
-  W_layer.clear();
-  b_layer.clear();
+  Init(b_layer, b_layer.size());
+//  W_layer.clear();
+//  b_layer.clear();
   std::default_random_engine random_generator (0);
   int fan_in = W_layer.size1();
   // Initialize
@@ -229,14 +223,8 @@ void initialize_model(
 //  std::normal_distribution<double> distribution (0.0, 0.01);
 
   for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-//    Mat<ZZ_p> W_layer, dW_layer, vW_layer, mW_layer;
-//    Vec<ZZ_p> b_layer, db_layer, vb_layer, mb_layer;
-//    Mat<double> double_W_layer;
-//    Vec<double> double_b_layer;
     ublas::matrix<myType> W_layer, dW_layer, vW_layer, mW_layer;
     ublas::vector<myType> b_layer, db_layer, vb_layer, mb_layer;
-
-//    ublas::matrix<double> double_W_layer;
 
     /* Handle case with 0 hidden layers. */
     if (Param::N_HIDDEN == 0 && l >= 1) {
@@ -258,7 +246,7 @@ void initialize_model(
       Init(W_layer, 42, 6);
       Init(b_layer, 6);
     } else if (l == 3) {
-      Init(W_layer, 336, Param::N_NEURONS);
+      Init(W_layer, 342, Param::N_NEURONS);
       Init(b_layer, Param::N_NEURONS);
     } else if (l == 4) {
 
@@ -267,7 +255,6 @@ void initialize_model(
 
     /* Set dimensions of the output layer. */
     } else if (l == Param::N_HIDDEN) {
-
       Init(W_layer, Param::N_NEURONS_2, Param::N_CLASSES - 1);
       Init(b_layer, Param::N_CLASSES - 1);
     }
@@ -425,18 +412,15 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       // first layer of FC layers
       } else if (l == 3) {
         ublas::matrix<myType> ann;
-//        Mat<ZZ_p> ann;
         int channels = act[l-1].size2();
         int row = act[l-1].size1() / Param::BATCH_SIZE;
         ann.resize(Param::BATCH_SIZE, row * channels);
         ann.clear();
-//        ann.SetDims(Param::BATCH_SIZE, row * channels);
 
         for (int b = 0; b < Param::BATCH_SIZE; b++) {
           for (int c = 0; c < channels; c++) {
             for (int r = 0; r < row; r++) {
               ann(b, c * row + r) = act[l-1](b * row + r, c);
-//              ann[b][c * row + r] = act[l-1][b * row + r][c];
             }
           }
         }
@@ -588,11 +572,13 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       if (Param::DEBUG) tcout() << "Back prop, multiplication." << endl;
     /* Compute derivative of weights. */
     Init(dW[l], W[l].size1(), W[l].size2());
-    ublas::matrix<myType> X_T;
+    ublas::matrix<myType> X_T, X_org;
     if (l == 0) {
+      X_org = X_reshape;
       X_T = ublas::trans(X_reshape);
     } else {
-      X_T = ublas::trans(act.back());
+      X_org = act.back();
+      X_T = ublas::trans(X_org);
       act.pop_back();
     }
     if (pid == 2) {
@@ -706,8 +692,8 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
           if (l > 2) {
             ublas::matrix<myType> temp;
-            Init(temp, relu.size1(), relu.size2());
             int row = dhidden_new.size2() / relu.size2();
+            Init(temp, row * Param::BATCH_SIZE, relu.size2());
             for (int b = 0; b < Param::BATCH_SIZE; b++) {
               for (int c = 0; c < relu.size2(); c++) {
                 for (int r = 0; r < row; r++) {
@@ -734,9 +720,12 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
         // Compute backpropagated avgpool
         /* Apply derivative of AvgPool1D (stride 2, kernel_size 2). */
-        if (l <= 2) {
+        if (l <= 3) {
           ublas::matrix<myType> backAvgPool;
-          BackAveragePool(backAvgPool, dhidden_new, 2, 2);
+          if (l == 2)
+            BackAveragePool(backAvgPool, dhidden_new, 2, 2, true);
+          else
+            BackAveragePool(backAvgPool, dhidden_new, 2, 2);
           backAvgPool *= inv2;
           mpc.Trunc(backAvgPool);
           if (Param::DEBUG) tcout() << "backAvgPool: " << backAvgPool.size1() << "/" << backAvgPool.size2() << endl;
@@ -754,7 +743,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
   assert(act.size() == 0);
   assert(relus.size() == 0);
-//
 
   if (Param::DEBUG && pid == 2) {
     tic();
@@ -762,8 +750,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
   // ADAM START
   if (Param::OPTIMIZER == "adam") {
-    if (pid == 2)
-      tcout() << "Update model using Adam" << endl;
 
     /* Compute constants that update various parameters. */
     double beta_1 = 0.9;
@@ -846,8 +832,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       b[l] -= b_update;
     }
   } else {
-    if (pid == 2)
-      tcout() << "Update model using SGD - Nesterov momentum" << endl;
 
     /* Update the model using Nesterov momentum. */
     /* Compute constants that update various parameters. */
@@ -1130,6 +1114,19 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
 
   string suffix = suffixes[rand() % suffixes.size()];
   load_X_y(suffix, X, y, pid, mpc);
+
+  /* optimizer setting */
+  if (pid == 2) {
+    if (Param::OPTIMIZER == "adam") {
+      tcout() << "Update model using Adam" << endl;
+    } else if(Param::OPTIMIZER == "sgd") {
+      tcout() << "Update model using SGD - Nesterov momentum" << endl;
+    } else {
+      tcout() << "Check optimizer setting : " << Param::OPTIMIZER << endl;
+      return false;
+    }
+  }
+
 
   /* Do gradient descent over multiple training epochs. */
   for (int epoch = 0; epoch < Param::MAX_EPOCHS;

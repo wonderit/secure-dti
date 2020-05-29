@@ -178,3 +178,30 @@ brew install cmake
 pip install conan
 conan remote add ess-dmsc https://api.bintray.com/conan/ess-dmsc/conan
 conan remote add bincrafters https://api.bintray.com/conan/bincrafters/public-conan
+
+### manual for secure-ecg
+
+1. fetch data and convert into text
+```
+./fetch_data.sh
+```
+
+2. share data
+```
+./ecg_share_data.sh
+```
+
+3. train
+```
+./ecg_train.sh
+```
+
+4. evaluate
+```
+./ecg_evaluate.sh
+```
+
+5. remove cache
+```
+./ecg_remove_cache.sh
+```
