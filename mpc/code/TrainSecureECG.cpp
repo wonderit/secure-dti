@@ -96,9 +96,7 @@ bool text_to_matrix(ublas::matrix<myType>& matrix, ifstream& ifs, string fname, 
     std::istringstream stream(line);
     for(int j = 0; stream >> x; j ++) {
       if (Param::DEBUG) printf("%f", x);
-      //TODO
       matrix(i,j) = DoubleToFP(x);
-//      DoubleToFP(matrix[i][j], x, Param::NBIT_K, Param::NBIT_F);
       if (Param::DEBUG) printf("%llu", matrix(i,j));
     }
     if (Param::DEBUG) printf("-- \n");
@@ -121,9 +119,7 @@ bool text_to_vector(ublas::vector<myType>& vec, ifstream& ifs, string fname) {
     std::istringstream stream(line);
     for(int j = 0; stream >> x; j ++) {
       if (Param::DEBUG) printf(" : %f", x);
-      //TODO
       vec[j] = DoubleToFP(x);
-//      DoubleToFP(vec[j], x, Param::NBIT_K, Param::NBIT_F);
       if (Param::DEBUG) printf(" : %llu", vec[j]);
     }
     if (Param::DEBUG) printf("-- \n");
@@ -387,14 +383,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
   /************************
    * Forward propagation. *
    ************************/
-   //TODO resize x_reshape
   ublas::matrix<myType> X_reshape;
-//  Mat<ZZ_p> X_reshape;
 
   // calculate denominator for avgpooling
-//  ZZ_p inv2;
-//  DoubleToFP(inv2, 1. / ((double) 2), Param::NBIT_K, Param::NBIT_F);
-
   myType inv2 = DoubleToFP(1. / (double) 2);
 
   for (int l = 0; l < Param::N_HIDDEN; l++) {
@@ -403,9 +394,7 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       if (Param::DEBUG) tcout() << "Forward prop, multiplication. layer #" << l << endl;
 
     /* Multiply weight matrix. */
-    //TODO resize activation
     ublas::matrix<myType> activation;
-//    Mat<ZZ_p> activation;
 
     // Conv1d LAYER START
     if (l == 0) {
@@ -467,39 +456,32 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     /* Add bias term; */
     for (int i = 0; i < activation.size1(); i++) {
       for (int j = 0; j < activation.size2(); j++) {
-        // TODO CHECK!
         activation(i, j) += b[l][j];
-//        activation[i] += b[l];
       }
     }
 
     if (l == 0) {
 
       // Avg Pool
-//      Mat<ZZ_p> avgpool;
       ublas::matrix<myType> avgpool;
       AveragePool(avgpool, activation, 2, 2);
       avgpool *= inv2;
       mpc.Trunc(avgpool);
       if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
 
-//      act[l] = avgpool;
       act.push_back(avgpool);
 
     } else {
 
       /* Apply ReLU non-linearity. */
-//      Mat<ZZ_p> relu;
       ublas::matrix<myType> relu;
       relu.resize(activation.size1(), activation.size2());
-//      mpc.ComputeMsb(activation, relu);
       mpc.IsPositive(relu, activation);
-//      Mat<ZZ_p> after_relu;
       ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
       assert(activation.size1() == relu.size1());
       assert(activation.size2() == relu.size2());
-//      after_relu = ublas::element_prod(activation, relu);
       mpc.MultElem(after_relu, activation, relu);
+
       /* Note: Do not call Trunc() here because IsPositive()
          returns a secret shared integer, not a fixed point.*/
       // TODO: Implement dropout.
@@ -510,20 +492,16 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
       if (l <= 2) {
         // Avg Pool
-//        Mat<ZZ_p> avgpool;
         ublas::matrix<myType> avgpool;
         AveragePool(avgpool, after_relu, 2, 2);
         avgpool *= inv2;
         mpc.Trunc(avgpool);
-//        act[l] = avgpool;
         act.push_back(avgpool);
         if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
 
       } else {
-//        act[l] = after_relu;
         act.push_back(after_relu);
       }
-//      relus[l] = relu;
       relus.push_back(relu);
     }
 
@@ -535,7 +513,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
    **************************/
   if (pid == 2)
     if (Param::DEBUG) tcout() << "Score computation." << endl;
-//  Mat<ZZ_p> scores;
   ublas::matrix<myType> scores;
 
   if (pid == 2) {
@@ -573,45 +550,36 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
     /* Compute 1 - y * scores. */
     y *= -1;
-//    Mat<ZZ_p> mod_scores;
     ublas::matrix<myType> mod_scores;
     mpc.MultElem(mod_scores, y, scores);
     mpc.Trunc(mod_scores);
     if (pid == 2) {
       for (int i = 0; i < mod_scores.size1(); i++) {
         for (int j = 0; j < mod_scores.size2(); j++) {
-          //TODO
           mod_scores(i, j) += DoubleToFP(1.0);
-//          mod_scores[i][j] += DoubleToFP(1, Param::NBIT_K, Param::NBIT_F);
         }
       }
     }
 
     /* Compute hinge loss and derivative. */
-//    Mat<ZZ_p> hinge;
     ublas::matrix<myType> hinge;
     mpc.IsPositive(hinge, mod_scores);
     mpc.MultElem(dscores, y, hinge);
-    /* Note: No need to not call Trunc(). */
+    /* Note: No need to call Trunc(). */
   } else {
     /* Compute derivative of the scores using MSE loss. */
     dscores = scores - y;
   }
 
-//  ZZ_p norm_examples;
   myType norm_examples;
   norm_examples = DoubleToFP(1.0 / Param::BATCH_SIZE);
-//  DoubleToFP(norm_examples, 1. / ((double) X.size1()),
-//             Param::NBIT_K, Param::NBIT_F);
   dscores *= norm_examples;
   mpc.Trunc(dscores);
-
 
   /*********************
    * Back propagation. *
    *********************/
   ublas::matrix<myType> dhidden = dscores;
-//  Mat<ZZ_p> dhidden = dscores;
   for (int l = Param::N_HIDDEN; l >= 0; l--) {
 
     if (Param::DEBUG) tcout() << "L :: " << l << endl;
@@ -619,16 +587,12 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     if (pid == 2)
       if (Param::DEBUG) tcout() << "Back prop, multiplication." << endl;
     /* Compute derivative of weights. */
-//    dW[l].resize(W[l].size1(), W[l].size2());
     Init(dW[l], W[l].size1(), W[l].size2());
     ublas::matrix<myType> X_T;
-//    Mat<ZZ_p> X_T;
     if (l == 0) {
       X_T = ublas::trans(X_reshape);
-//      X_T = transpose(X_reshape);
     } else {
       X_T = ublas::trans(act.back());
-//      X_T = transpose(act.back());
       act.pop_back();
     }
     if (pid == 2) {
@@ -639,19 +603,15 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     // resize
     if (X_T.size2() != dhidden.size1()) {
       ublas::matrix<myType> resize_x_t;
-//      Mat<ZZ_p> resize_x_t;
 
       if (l == 3) {
         int row = X_T.size2() / Param::BATCH_SIZE;
         int channel = X_T.size1();
         Init(resize_x_t, row * channel, Param::BATCH_SIZE);
-//        resize_x_t.resize(row * channel, Param::BATCH_SIZE);
-//        resize_x_t.SetDims(row * channel, Param::BATCH_SIZE);
         for (int b = 0; b < Param::BATCH_SIZE; b++) {
           for (int c = 0; c < channel; c++) {
             for (int r = 0; r < row; r++) {
               resize_x_t(c * row + r, b) = X_T(c, b * row + r);
-//              resize_x_t[c * row + r][b] = X_T[c][b * row + r];
             }
           }
         }
@@ -665,12 +625,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         mpc.MultMatForConvBack(dW[l], X_T, dhidden, 7);
         if (Param::DEBUG) tcout() << "mult mat for conv back end" << endl;
       }
-//      else {
-//        Mat<ZZ_p> tmp = transpose(X_T);
-//        reshape_conv(resize_x_t, tmp, 7);
-//        X_T = transpose(resize_x_t);
-//      }
-
     } else {
 
       mpc.MultMat(dW[l], X_T, dhidden);
@@ -680,7 +634,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 //    /* Add regularization term to weights. */
 ////    ZZ_p REG;
 //    myType REG;
-//    //TODO
 //    DoubleToFP(Param::REG);
 ////    DoubleToFP(REG, Param::REG, Param::NBIT_K, Param::NBIT_F);
 //    Mat<ZZ_p> reg = W[l] * REG;
@@ -694,11 +647,7 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
     /* Compute derivative of biases. */
     Init(db[l], b[l].size());
-//    db[l].resize(b[l].size());
-//    Init(db[l], b[l].length());
 
-
-    // TODO error?
     if (Param::DEBUG) tcout() << "dhidden size 1 / size 2 : (" << dhidden.size1() << ", " << dhidden.size2() << ")" << endl;
     if (Param::DEBUG) tcout() << "db size : (" << db[l].size()  << ")" << endl;
 
@@ -710,9 +659,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
     if (l > 0) {
       /* Compute backpropagated activations. */
-
-//      Mat<ZZ_p> dhidden_new, W_T;
-//      W_T = transpose(W[l]);
       ublas::matrix<myType> dhidden_new, W_T;
       W_T = ublas::trans(W[l]);
 
@@ -730,13 +676,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
       /* Apply derivative of ReLU. */
       Init(dhidden, dhidden_new.size1(), dhidden_new.size2());
-//      dhidden.resize(dhidden_new.size1(), dhidden_new.size2());
-//      Init(dhidden, dhidden_new.size1(), dhidden_new.size2());
 
       if (l == 1) {
         ublas::matrix<myType> temp;
-//        Mat<ZZ_p> temp;
-        //TODO
         back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
 
         if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
@@ -745,7 +687,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
         // Compute backpropagated avgpool
         ublas::matrix<myType> backAvgPool;
-//        Mat<ZZ_p> backAvgPool;
         BackAveragePool(backAvgPool, temp, 2, 2);
         backAvgPool *= inv2;
         mpc.Trunc(backAvgPool);
@@ -754,7 +695,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         dhidden = backAvgPool;
       } else {
         ublas::matrix<myType> relu = relus.back();
-//        Mat<ZZ_p> relu = relus.back();
 
         if (pid == 2 && Param::DEBUG) {
           tcout() << "dhidden_new: " << dhidden_new.size1() << "/" << dhidden_new.size2() << endl;
@@ -767,23 +707,17 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
           if (l > 2) {
             ublas::matrix<myType> temp;
             Init(temp, relu.size1(), relu.size2());
-//            temp.resize(relu.size1(), relu.size2());
-//            Mat<ZZ_p> temp;
-//            temp.SetDims(relu.NumRows(), relu.NumCols());
             int row = dhidden_new.size2() / relu.size2();
             for (int b = 0; b < Param::BATCH_SIZE; b++) {
               for (int c = 0; c < relu.size2(); c++) {
                 for (int r = 0; r < row; r++) {
                   temp(b * row + r, c) = dhidden_new(b, c * row + r );
-//                  temp[b * row  + r][c] = dhidden_new[b][c*row + r];
                 }
               }
             }
             dhidden_new = temp;
           } else {
             ublas::matrix<myType> temp;
-//            Mat<ZZ_p> temp;
-            //TODO
             back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
 
             if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
@@ -802,7 +736,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         /* Apply derivative of AvgPool1D (stride 2, kernel_size 2). */
         if (l <= 2) {
           ublas::matrix<myType> backAvgPool;
-//          Mat<ZZ_p> backAvgPool;
           BackAveragePool(backAvgPool, dhidden_new, 2, 2);
           backAvgPool *= inv2;
           mpc.Trunc(backAvgPool);
@@ -812,8 +745,7 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
           mpc.MultElem(dhidden, dhidden_new, relu);
         }
 
-
-        /* Note: No need to not call Trunc().*/
+        /* Note: No need to call Trunc().*/
         relus.pop_back();
 
       }
@@ -823,212 +755,150 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
   assert(act.size() == 0);
   assert(relus.size() == 0);
 //
-//  if (pid == 2)
-//    if (Param::DEBUG) tcout() << "Momentum update." << endl;
-//  /* Update the model using Nesterov momentum. */
-//  /* Compute constants that update various parameters. */
-//  myType MOMENTUM = DoubleToFP(Param::MOMENTUM);
-//  myType MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1);
-//  myType LEARN_RATE = DoubleToFP( - Param::LEARN_RATE);
-//
-////  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
-////                             Param::NBIT_K, Param::NBIT_F);
-////  ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
-////                                   Param::NBIT_K, Param::NBIT_F);
-////  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
-////                               Param::NBIT_K, Param::NBIT_F);
-//
-//  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-//    /* Update the weights. */
-//    ublas::matrix<myType> vW_prev= vW[l];
-//    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
-//    mpc.Trunc(vW[l]);
-//
-//    ublas::matrix<myType> W_update;
-//    Init(W_update, vW_prev.size1(), vW_prev.size2());
-//    W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
-//
-//    if (Param::DEBUG) {
-//
-//      tcout() << "W_update s = " << W_update.size1() << "/" << W_update.size2() << endl;
-//      tcout() << "dW[l] s = " << dW[l].size1() << "/" << dW[l].size2() << endl;
-//      tcout() << "W[l] s = " << W[l].size1() << "/" << W[l].size2() << endl;
-//    }
-//    mpc.Trunc(W_update);
-//
-//    W[l] += W_update;
-//
-//    /* Update the biases. */
-//    ublas::vector<myType> vb_prev = vb[l];
-//    vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
-//    mpc.Trunc(vb[l]);
-//
-//    ublas::vector<myType> b_update;
-//    Init(b_update, vb[l].size());
-//    if (Param::DEBUG) {
-//      tcout() << "b_update s = " << b_update.size() << endl;
-//      tcout() << "db[l] s = " << db[l].size()  << endl;
-//      tcout() << "b[l] s = " << b[l].size()  << endl;
-//    }
-//    b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
-//    mpc.Trunc(b_update);
-//    b[l] += b_update;
-//
-//  }
 
-//  if (pid == 2)
-//    if (Param::DEBUG) tcout() << "Momentum update. end" << endl;
-////
-//// ADAM START
-  if (pid == 2)
-    if (Param::DEBUG) tcout() << "Adam update." << endl;
-//  /* Update the model using Adam. */
-//  /* Compute constants that update various parameters. */
-//
-  double beta_1 = 0.9;
-  double beta_2 = 0.999;
-  double eps = 1e-7;
-
-
-  myType LEARN_RATE = DoubleToFP(Param::LEARN_RATE);
-  myType fp_b1 = DoubleToFP(beta_1);
-  myType fp_b2 = DoubleToFP(beta_2);
-  myType fp_1_b1 = DoubleToFP(1 - beta_1);
-  myType fp_1_b2 = DoubleToFP(1 - beta_2);
-  myType fp_eps = DoubleToFP(eps);
-
-  if (pid == 2) {
+  if (Param::DEBUG && pid == 2) {
     tic();
   }
 
-  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-    double new_double_learn_rate = Param::LEARN_RATE * sqrt(1.0 - pow(beta_2, step)) / sqrt(1.0 - pow(beta_1, step));
-    myType fp_new_learn_rate = DoubleToFP(new_double_learn_rate);
+  // ADAM START
+  if (Param::OPTIMIZER == "adam") {
+    if (pid == 2)
+      tcout() << "Update model using Adam" << endl;
 
-    ublas::matrix<myType> dW2;
-    mpc.MultElem(dW2, dW[l], dW[l]);
-    mpc.Trunc(dW2);
+    /* Compute constants that update various parameters. */
+    double beta_1 = 0.9;
+    double beta_2 = 0.999;
+    double eps = 1e-7;
 
-    /* Update the weights. */
-    mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
-    vW[l] = fp_b2 * vW[l] + fp_1_b2 * dW2;
-    mpc.Trunc(mW[l]);
-    mpc.Trunc(vW[l]);
-    mpc.AddPublic(vW[l], fp_eps);
+    myType fp_b1 = DoubleToFP(beta_1);
+    myType fp_b2 = DoubleToFP(beta_2);
+    myType fp_1_b1 = DoubleToFP(1 - beta_1);
+    myType fp_1_b2 = DoubleToFP(1 - beta_2);
+    myType fp_eps = DoubleToFP(eps);
 
-    ublas::matrix<myType> W_update, inv_vWsqrt;
-    Mat<ZZ_p> zzp_W_update;
-    Mat<ZZ_p> zzp_vWsqrt, zzp_inv_vWsqrt;
+    for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+      double new_double_learn_rate = Param::LEARN_RATE * sqrt(1.0 - pow(beta_2, step)) / sqrt(1.0 - pow(beta_1, step));
+      myType fp_new_learn_rate = DoubleToFP(new_double_learn_rate);
 
-    Mat<ZZ_p> zzp_vW;
-    Init(zzp_vW, vW[l].size1(), vW[l].size2());
-    //TODO
+      ublas::matrix<myType> dW2;
+      mpc.MultElem(dW2, dW[l], dW[l]);
+      mpc.Trunc(dW2);
 
-    to_zz(zzp_vW, vW[l]);
+      /* Update the weights. */
+      mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
+      vW[l] = fp_b2 * vW[l] + fp_1_b2 * dW2;
+      mpc.Trunc(mW[l]);
+      mpc.Trunc(vW[l]);
+      mpc.AddPublic(vW[l], fp_eps);
 
-    mpc.FPSqrt(zzp_vWsqrt, zzp_inv_vWsqrt, zzp_vW);
+      ublas::matrix<myType> W_update, inv_vWsqrt;
+      Mat<ZZ_p> zzp_W_update;
+      Mat<ZZ_p> zzp_vWsqrt, zzp_inv_vWsqrt;
 
-    Init(inv_vWsqrt, zzp_inv_vWsqrt.NumRows(), zzp_inv_vWsqrt.NumCols());
+      Mat<ZZ_p> zzp_vW;
+      Init(zzp_vW, vW[l].size1(), vW[l].size2());
 
-    to_mytype(inv_vWsqrt, zzp_inv_vWsqrt);
+      to_zz(zzp_vW, vW[l]);
+
+      mpc.FPSqrt(zzp_vWsqrt, zzp_inv_vWsqrt, zzp_vW);
+
+      Init(inv_vWsqrt, zzp_inv_vWsqrt.NumRows(), zzp_inv_vWsqrt.NumCols());
+
+      to_mytype(inv_vWsqrt, zzp_inv_vWsqrt);
 
 
-    mpc.MultElem(W_update, mW[l], inv_vWsqrt);
-    mpc.Trunc(W_update);
+      mpc.MultElem(W_update, mW[l], inv_vWsqrt);
+      mpc.Trunc(W_update);
 
-    W_update *= fp_new_learn_rate;
-    mpc.Trunc(W_update);
-    W[l] -= W_update;
+      W_update *= fp_new_learn_rate;
+      mpc.Trunc(W_update);
+      W[l] -= W_update;
 
-    /* Update the biases. */
-    ublas::vector<myType> db2;
-    mpc.MultElem(db2, db[l], db[l]);
-    mpc.Trunc(db2);
+      /* Update the biases. */
+      ublas::vector<myType> db2;
+      mpc.MultElem(db2, db[l], db[l]);
+      mpc.Trunc(db2);
 
-    mb[l] = fp_b1 * mb[l] + fp_1_b1 * db[l];
-    vb[l] = fp_b2 * vb[l] + fp_1_b2 * db2;
-    mpc.Trunc(mb[l]);
-    mpc.Trunc(vb[l]);
-    mpc.AddPublic(vb[l], fp_eps);
+      mb[l] = fp_b1 * mb[l] + fp_1_b1 * db[l];
+      vb[l] = fp_b2 * vb[l] + fp_1_b2 * db2;
+      mpc.Trunc(mb[l]);
+      mpc.Trunc(vb[l]);
+      mpc.AddPublic(vb[l], fp_eps);
 
-    ublas::vector<myType> b_update, inv_vbsqrt;
-    Vec<ZZ_p> zzp_b_update;
-    Vec<ZZ_p> zzp_vbsqrt, zzp_inv_vbsqrt;
+      ublas::vector<myType> b_update, inv_vbsqrt;
+      Vec<ZZ_p> zzp_b_update;
+      Vec<ZZ_p> zzp_vbsqrt, zzp_inv_vbsqrt;
 
-    Vec<ZZ_p> zzp_vb;
-    Init(zzp_vb, vb[l].size());
-    //TODO
-    to_zz(zzp_vb, vb[l]);
-    mpc.FPSqrt(zzp_vbsqrt, zzp_inv_vbsqrt, zzp_vb);
+      Vec<ZZ_p> zzp_vb;
+      Init(zzp_vb, vb[l].size());
 
-    Init(inv_vbsqrt, zzp_inv_vbsqrt.length());
+      to_zz(zzp_vb, vb[l]);
+      mpc.FPSqrt(zzp_vbsqrt, zzp_inv_vbsqrt, zzp_vb);
 
-    to_mytype(inv_vbsqrt, zzp_inv_vbsqrt);
+      Init(inv_vbsqrt, zzp_inv_vbsqrt.length());
 
-    mpc.MultElem(b_update, mb[l], inv_vbsqrt);
-    mpc.Trunc(b_update);
-    b_update *= fp_new_learn_rate;
-    mpc.Trunc(b_update);
-    b[l] -= b_update;
+      to_mytype(inv_vbsqrt, zzp_inv_vbsqrt);
+
+      mpc.MultElem(b_update, mb[l], inv_vbsqrt);
+      mpc.Trunc(b_update);
+      b_update *= fp_new_learn_rate;
+      mpc.Trunc(b_update);
+      b[l] -= b_update;
+    }
+  } else {
+    if (pid == 2)
+      tcout() << "Update model using SGD - Nesterov momentum" << endl;
+
+    /* Update the model using Nesterov momentum. */
+    /* Compute constants that update various parameters. */
+    myType MOMENTUM = DoubleToFP(Param::MOMENTUM);
+    myType MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1);
+    myType LEARN_RATE = DoubleToFP( - Param::LEARN_RATE);
+
+    for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+      /* Update the weights. */
+      ublas::matrix<myType> vW_prev= vW[l];
+      vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
+      mpc.Trunc(vW[l]);
+
+      ublas::matrix<myType> W_update;
+      Init(W_update, vW_prev.size1(), vW_prev.size2());
+      W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
+
+      if (Param::DEBUG) {
+        tcout() << "W_update s = " << W_update.size1() << "/" << W_update.size2() << endl;
+        tcout() << "dW[l] s = " << dW[l].size1() << "/" << dW[l].size2() << endl;
+        tcout() << "W[l] s = " << W[l].size1() << "/" << W[l].size2() << endl;
+      }
+      mpc.Trunc(W_update);
+
+      W[l] += W_update;
+
+      /* Update the biases. */
+      ublas::vector<myType> vb_prev = vb[l];
+      vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
+      mpc.Trunc(vb[l]);
+
+      ublas::vector<myType> b_update;
+      Init(b_update, vb[l].size());
+
+      if (Param::DEBUG) {
+        tcout() << "b_update s = " << b_update.size() << endl;
+        tcout() << "db[l] s = " << db[l].size()  << endl;
+        tcout() << "b[l] s = " << b[l].size()  << endl;
+      }
+      b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
+      mpc.Trunc(b_update);
+      b[l] += b_update;
+    }
+
+    if (pid == 2)
+      if (Param::DEBUG) tcout() << "Momentum update. end" << endl;
   }
-
-  if (pid == 2) {
+  if (Param::DEBUG && pid == 2) {
     toc();
   }
-//
-////TODO
-////  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
-////                               Param::NBIT_K, Param::NBIT_F);
-//
-////TODO
-//  ZZ_p fp_b1 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
-//  ZZ_p fp_b2 = DoubleToFP(beta_2, Param::NBIT_K, Param::NBIT_F);
-//  ZZ_p fp_1_b1 = DoubleToFP(1 - beta_1, Param::NBIT_K, Param::NBIT_F);
-//  ZZ_p fp_1_b2 = DoubleToFP(1 - beta_2, Param::NBIT_K, Param::NBIT_F);
-//
-//
-//  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-//    double new_double_learn_rate = Param::LEARN_RATE * sqrt(1.0 - pow(beta_2, step)) / sqrt(1.0 - pow(beta_1, step));
-////    tcout() << "l=" << l << " new_double_learn_rate: " << new_double_learn_rate << endl;
-//    ZZ_p fp_new_learn_rate = DoubleToFP(new_double_learn_rate, Param::NBIT_K, Param::NBIT_F);
-//
-//    Mat<ZZ_p> dW2;
-//    mpc.MultElem(dW2, dW[l], dW[l]);
-//    mpc.Trunc(dW2);
-//    /* Update the weights. */
-//    mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
-//    vW[l] = fp_b2 * vW[l] + fp_1_b2 * dW2;
-//    mpc.Trunc(mW[l]);
-//    mpc.Trunc(vW[l]);
-//    Mat<ZZ_p> W_update;
-//    Mat<ZZ_p> vWsqrt, inv_vWsqrt;
-//    //TODO
-////    mpc.FPSqrt(vWsqrt, inv_vWsqrt, vW[l]);
-//    mpc.MultElem(W_update, mW[l], inv_vWsqrt);
-//    mpc.Trunc(W_update);
-//    W_update *= fp_new_learn_rate;
-//    mpc.Trunc(W_update);
-//    W[l] -= W_update;
-//
-//    /* Update the biases. */
-//    Vec<ZZ_p> db2;
-//    mpc.MultElem(db2, db[l], db[l]);
-//    mpc.Trunc(db2);
-//    mb[l] = fp_b1 * mb[l] + fp_1_b1 * db[l];
-//    vb[l] = fp_b2 * vb[l] + fp_1_b2 * db2;
-//    mpc.Trunc(mb[l]);
-//    mpc.Trunc(vb[l]);
-//    Vec<ZZ_p> b_update;
-//    Vec<ZZ_p> vbsqrt, inv_vbsqrt;
-//    //TODO
-////    mpc.FPSqrt(vbsqrt, inv_vbsqrt, vb[l]);
-//    mpc.MultElem(b_update, mb[l], inv_vbsqrt);
-//    mpc.Trunc(b_update);
-//    b_update *= fp_new_learn_rate;
-//    mpc.Trunc(b_update);
-//    b[l] -= b_update;
-//
-//  }
+
 
   // ADAM END
   ublas::matrix<myType> mse;
@@ -1040,11 +910,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
   mpc.RevealSym(mse);
   FPToDouble(mse_double, mse);
   mse_score_double = Sum(mse_double);
-//  mpc.RevealSym(dscores);
-//  FPToDouble(dscore_double, dscores);
-//  dscore_double = ublas::element_prod(dscore_double, dscore_double);
-//  FPToDouble(mse_double, mse, Param::NBIT_K, Param::NBIT_F);
-//  mse_score_double = Sum(dscore_double);
   return mse_score_double * Param::BATCH_SIZE;
 }
 
@@ -1110,13 +975,6 @@ void model_update(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
                   vector<ublas::vector<myType>>& mb,
                   vector<ublas::matrix<myType>>& act,
                   vector<ublas::matrix<myType>>& relus,
-
-//                  Mat<ZZ_p>& X, Mat<ZZ_p>& y,
-//                  vector<Mat<ZZ_p> >& W, vector<Vec<ZZ_p> >& b,
-//                  vector<Mat<ZZ_p> >& dW, vector<Vec<ZZ_p> >& db,
-//                  vector<Mat<ZZ_p> >& vW, vector<Vec<ZZ_p> >& vb,
-//                  vector<Mat<ZZ_p> >& mW, vector<Vec<ZZ_p> >& mb,
-//                  vector<Mat<ZZ_p> >& act, vector<Mat<ZZ_p> >& relus,
                   int &epoch, int pid, MPCEnv& mpc) {
 
   if (Param::DEBUG) tcout() << "X.size1() : " << X.size1() << "." << X.size2() << endl;
@@ -1183,8 +1041,6 @@ void model_update(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     }
 
     /* Do one round of mini-batch gradient descent. */
-    //TODO
-//    double mse_score = 1.0;
     double mse_score = gradient_descent(X_batch, y_batch,
                      W, b, dW, db, vW, vb, mW, mb, act, relus,
                      epoch, epoch * batches_in_file + i + 1 , pid, mpc);
@@ -1227,8 +1083,8 @@ void model_update(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       exit(0);
     }
 
-    /* Save state every 10 batches. */
-    if (i % 10 == 0) {
+    /* Save state every LOG_INTERVAL batches. */
+    if (i % Param::LOG_INTERVAL == 0) {
       if (pid == 2) {
         tcout() << "save parameters of W, b into .bin files." << endl;
       }

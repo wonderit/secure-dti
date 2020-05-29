@@ -51,7 +51,6 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
   bool found2 = false;
   long thres1 = Param::NBIT_K / 2;
   long thres2 = ((long) ceil(sqrt((double) NumBits(ZZ_p::modulus())))) + 1;
-//  long thres2 = 9;
 
   long ind = -1;
   long maxind = sizeof(PRIME_LIST) / sizeof(PRIME_LIST[0]);

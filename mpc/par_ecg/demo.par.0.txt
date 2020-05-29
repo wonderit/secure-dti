@@ -22,8 +22,7 @@ TRAIN_SUFFIXES ../../demo_data/text_demo/train_suffixes.txt
 TEST_SUFFIXES ../../demo_data/text_demo/test_suffixes.txt
 PROFILER 1
 
-# DEMO.
-# MAX_EPOCHS 50
+# ECG
 N_FILE_BATCH 5000
 MAX_EPOCHS 3
 BATCH_SIZE 20
@@ -31,7 +30,8 @@ N_NEURONS 16
 N_NEURONS_2 64
 N_HIDDEN 5
 LEARN_RATE 0.001
-REG 0.0
+OPTIMIZER sgd
+LOG_INTERVAL 5
 
 # FILES
 CACHED_PARAM_EPOCH 0
