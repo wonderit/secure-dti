@@ -61,6 +61,240 @@ string outname(string desc) {
   return oss.str();
 }
 
+bool unit_test_combined(MPCEnv& mpc, int pid) {
+  myType int_x, int_y, int_z;
+  ZZ_p zzp_x, zzp_y, zzp_z;
+
+  Vec<ZZ_p> zzp_xv, zzp_yv, zzp_zv, zzp_wv, zzp_pc;
+  ublas::vector<myType> int_xv, int_yv, int_zv, int_pc;
+
+  Vec<double> zzp_xdv, zzp_ydv, zzp_zdv;
+  ublas::vector<double> int_xdv, int_ydv, int_zdv;
+
+  Mat<ZZ_p> zzp_xm, zzp_ym, zzp_zm;
+  ublas::matrix<myType> int_xm, int_ym, int_zm;
+
+  ZZ a, b, c;
+  Vec<ZZ> av, bv, cv, dv;
+  Mat<ZZ> am, bm, cm, dm;
+
+  double d;
+  double eps = 1e-3;
+
+  tcout() << "1. [Fixed-point ZZ_p <-> Double conversion] " << endl;
+  tcout() << ">> ZZ_p : " << endl;
+  zzp_x = DoubleToFP(3.141592653589793238462643383279, Param::NBIT_K, Param::NBIT_F);
+  d = ABS(FPToDouble(zzp_x, Param::NBIT_K, Param::NBIT_F) - 3.141592653589793238462643383279);
+  if (pid > 0) {
+    tcout() << "d < eps ? --> " << d << " < " << eps << " --> ?";
+    assert(d < eps);
+    cout << "Success" << endl;;
+  }
+
+  tcout() << ">> Integer : " << endl;
+  int_x = DoubleToFP(3.141592653589793238462643383279);
+  d = ABS(FPToDouble(int_x) - 3.141592653589793238462643383279);
+  if (pid > 0) {
+    tcout() << "d < eps ? --> " << d << " < " << eps << " --> ";
+    assert(d < eps);
+    cout << "Success" << endl;
+  }
+
+  tcout() << "[FP multiplcation] " << endl;
+  tcout() << ">> ZZ_p : " << endl;
+
+  Init(zzp_xv, 3); Init(zzp_yv, 3);
+  if (pid == 2) {
+    zzp_xv[0] = DoubleToFP(1.34, Param::NBIT_K, Param::NBIT_F);
+    zzp_xv[1] = DoubleToFP(100.3, Param::NBIT_K, Param::NBIT_F);
+    zzp_xv[2] = DoubleToFP(-0.304, Param::NBIT_K, Param::NBIT_F);
+    zzp_yv[0] = DoubleToFP(-0.001, Param::NBIT_K, Param::NBIT_F);
+    zzp_yv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
+    zzp_yv[2] = DoubleToFP(-539, Param::NBIT_K, Param::NBIT_F);
+  }
+  mpc.MultElem(zzp_zv, zzp_xv, zzp_yv);
+  tcout() << "before trunc" << endl;
+  mpc.PrintFP(zzp_zv);
+  mpc.Trunc(zzp_zv);
+  tcout() << "after trunc" << endl;
+  mpc.PrintFP(zzp_zv);
+  mpc.RevealSym(zzp_zv);
+
+  FPToDouble(zzp_zdv, zzp_zv, Param::NBIT_K, Param::NBIT_F);
+  if (pid > 0) {
+    tcout() << "1 : " << zzp_zdv[0] - (-0.00134) << endl;
+    tcout() << "2 : " << zzp_zdv[1] - (30390.9) << endl;
+    tcout() << "3 : " << zzp_zdv[2] - (163.856) << endl;
+    assert(ABS(zzp_zdv[0] - (-0.00134)) < eps);
+    assert(ABS(zzp_zdv[1] - (30390.9)) < eps);
+    assert(ABS(zzp_zdv[2] - (163.856)) < eps);
+    cout << "Success" << endl;
+  }
+
+  tcout() << ">> Integer : " << endl;
+  tcout() << ">> Integer int_xv : " << int_xv.size() << endl;
+  Init(int_xv, 3); Init(int_yv, 3);
+  if (pid == 2) {
+    int_xv[0] = DoubleToFP(1.34);
+    int_xv[1] = DoubleToFP(100.3);
+    int_xv[2] = DoubleToFP(-0.304);
+    int_yv[0] = DoubleToFP(-0.001);
+    int_yv[1] = DoubleToFP(303);
+    int_yv[2] = DoubleToFP(-539);
+  }
+  mpc.MultElem(int_zv, int_xv, int_yv);
+  tcout() << "before trunc" << endl;
+  mpc.PrintFP(int_zv);
+  mpc.Trunc(int_zv);
+  tcout() << "after trunc" << endl;
+  mpc.PrintFP(int_zv);
+  mpc.RevealSym(int_zv);
+
+  FPToDouble(int_zdv, int_zv);
+  if (pid > 0) {
+    tcout() << "1 : " << int_zdv[0] - (-0.00134) << endl;
+    tcout() << "2 : " << int_zdv[1] - (30390.9) << endl;
+    tcout() << "3 : " << int_zdv[2] - (163.856) << endl;
+    assert(ABS(int_zdv[0] - (-0.00134)) < eps);
+    assert(ABS(int_zdv[1] - (30390.9)) < eps);
+    assert(ABS(int_zdv[2] - (163.856)) < eps);
+    cout << "Success" << endl;
+  }
+
+
+  tcout() << "[PrivateCompare]" << endl;
+  tcout() << ">> ZZ_p : " << endl;
+  Init(zzp_pc, 3);
+  mpc.PrintFP(zzp_yv);
+  mpc.IsPositive(zzp_pc, zzp_yv);
+  tcout() << "pc: " << zzp_pc << endl;
+  mpc.Print(zzp_pc);
+
+  tcout() << ">> Integer : " << endl;
+  Init(int_pc, 3);
+  mpc.PrintFP(int_yv);
+  mpc.IsPositive(int_pc, int_yv);
+  mpc.Print(int_pc);
+
+  tcout() << "[Powers]" << endl;
+  tcout() << ">> ZZ_p : " << endl;
+  Init(zzp_xv, 5);
+  if (pid == 1) {
+    zzp_xv[0] = 0;
+    zzp_xv[1] = 1;
+    zzp_xv[2] = 2;
+    zzp_xv[3] = 3;
+    zzp_xv[4] = 4;
+  }
+
+  mpc.Powers(zzp_ym, zzp_xv, 3);
+  mpc.Print(zzp_ym, cout);
+
+  tcout() << "[FanInOr]" << endl;
+  Init(am, 5, 3);
+  if (pid == 1) {
+    am[0][0] = 0; am[0][1] = 1; am[0][2] = 1;
+    am[1][0] = 0; am[1][1] = 1; am[1][2] = 0;
+    am[2][0] = 0; am[2][1] = 0; am[2][2] = 0;
+    am[3][0] = 0; am[3][1] = 0; am[3][2] = 1;
+    am[4][0] = 1; am[4][1] = 1; am[4][2] = 1;
+  }
+  mpc.FanInOr(bv, am, 2);
+  mpc.Print(bv, 100, 2);
+
+  tcout() << "[LessThanBitsPublic]" << endl;
+  Init(bm, 5, 3);
+  bm[0][0] = 0; bm[0][1] = 0; bm[0][2] = 1;
+  bm[1][0] = 0; bm[1][1] = 1; bm[1][2] = 1;
+  bm[2][0] = 0; bm[2][1] = 0; bm[2][2] = 1;
+  bm[3][0] = 1; bm[3][1] = 0; bm[3][2] = 1;
+  bm[4][0] = 0; bm[4][1] = 1; bm[4][2] = 1;
+  mpc.LessThanBitsPublic(cv, am, bm, 2);
+  mpc.Print(cv, 100, 2);
+
+  tcout() << "[TableLookup]" << endl;
+  Init(av, 5);
+  if (pid == 1) {
+    for (int i = 0; i < 5; i++) {
+      av[i] = i+1;
+    }
+  }
+  mpc.TableLookup(zzp_ym, av, 1, 1);
+  mpc.Print(zzp_ym);
+
+  tcout() << "[FP normalization] ";
+  zzp_yv[0] *= -1;
+  zzp_yv[2] *= -1;
+  mpc.NormalizerEvenExp(zzp_zv, zzp_wv, zzp_yv);
+
+  mpc.MultElem(zzp_zv, zzp_yv, zzp_zv);
+  mpc.Trunc(zzp_zv, Param::NBIT_K, Param::NBIT_K - Param::NBIT_F);
+  mpc.RevealSym(zzp_zv);
+  FPToDouble(zzp_zdv, zzp_zv, Param::NBIT_K, Param::NBIT_F);
+  tcout() << zzp_zdv;
+  tcout() << endl;
+
+  tcout() << "[FP sqrt] ";
+  Init(int_xv, 3);
+  Init(zzp_xv, 3);
+  if (pid == 2) {
+    int_xv[0] = DoubleToFP(0.001);
+    int_xv[1] = DoubleToFP(303);
+    int_xv[2] = DoubleToFP(539);
+//    zzp_xv[0] = DoubleToFP(0.001, Param::NBIT_K, Param::NBIT_F);
+//    zzp_xv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
+//    zzp_xv[2] = DoubleToFP(539, Param::NBIT_K, Param::NBIT_F);
+  }
+  to_zz(zzp_xv, int_xv);
+
+  mpc.FPSqrt(zzp_yv, zzp_zv, zzp_xv);
+
+  mpc.PrintFP(zzp_yv);
+  mpc.PrintFP(zzp_zv);
+  tcout() << endl;
+//
+  to_mytype(int_yv, zzp_yv);
+  to_mytype(int_zv, zzp_zv);
+
+  tcout() << "print int" << endl;
+  mpc.PrintFP(int_yv);
+  mpc.PrintFP(int_zv);
+
+
+//  tcout() << "[FP sqrt] INTEGER " << endl;
+//  Init(int_xv, 3);
+//
+//  if (pid == 2) {
+//    int_xv[0] = DoubleToFP(0.001);
+//    int_xv[1] = DoubleToFP(303);
+//    int_xv[2] = DoubleToFP(539);
+//  }
+//
+//  to_zz(zzp_xv, int_xv);
+//  mpc.FPSqrt(zzp_yv, zzp_zv, zzp_xv);
+//  mpc.PrintFP(zzp_yv);
+//  mpc.PrintFP(zzp_zv);
+//
+//  to_mytype(int_yv, zzp_yv);
+//  to_mytype(int_zv, zzp_zv);
+//
+//  printf("----------print int -----");
+//  mpc.PrintFP(int_yv);
+//  mpc.PrintFP(int_zv);
+  //
+  // This is here just to keep P0 online until the end for data transfer
+  // In practice, P0 would send data in advance before each phase and go offline
+//  if (pid == 0) {
+//    mpc.ReceiveBool(2);
+//  } else if (pid == 2) {
+//    mpc.SendBool(true, 0);
+//  }
+//
+//  mpc.CleanUp();
+//
+  return true;
+}
+
 bool unit_test(MPCEnv& mpc, int pid) {
   myType x, y, z;
   size_t size = 3;
@@ -341,19 +575,22 @@ bool unit_test(MPCEnv& mpc, int pid) {
   Init(p, xv.size());
   to_zz(p, xv);
 //
-//  printf("----------print p -----");
-//  mpc.PrintFP(p);
-//  p = p + p;
-//  mpc.MultElem(p, p, p);
-//  mpc.Trunc(p);
-//  ublas::vector<myType> vpp;
-//  Init(vpp, p.length());
-//  to_mytype(vpp, p);
-//  if (pid > 0) {
-//    mpc.PrintFP(vpp);
-//  }
+  if (pid > 0) tcout() << "start Test add , mult" << endl;
+  mpc.PrintFP(p);
+  p = p + p;
+  mpc.MultElem(p, p, p);
+  mpc.Trunc(p);
+  ublas::vector<myType> vpp;
+  Init(vpp, p.length());
+  to_mytype(vpp, p);
+  if (pid > 0) {
+    mpc.PrintFP(vpp);
 
 
+  }
+  if (pid > 0) tcout() << "End Test mult" << endl;
+
+  if (pid > 0) tcout() << "start Test Sqrt" << endl;
   Vec<ZZ_p> sqrt_p, sqrt_inv_p;
   ublas::vector<myType> vp;
   Init(vp, p.length());
@@ -546,6 +783,212 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  tcout() << endl;
 //  //
 
+  // This is here just to keep P0 online until the end for data transfer
+  // In practice, P0 would send data in advance before each phase and go offline
+//  if (pid == 0) {
+//    mpc.ReceiveBool(2);
+//  } else if (pid == 2) {
+//    mpc.SendBool(true, 0);
+//  }
+//
+//  mpc.CleanUp();
+
+  return true;
+}
+
+
+bool unit_test_ZZ(MPCEnv& mpc, int pid) {
+  ZZ_p x, y, z;
+  Vec<ZZ_p> xv, yv, zv, wv, pc;
+  Vec<double> xdv, ydv, zdv, wdv;
+  Mat<ZZ_p> xm, ym, zm;
+  ZZ a, b, c;
+  Vec<ZZ> av, bv, cv, dv;
+  Mat<ZZ> am, bm, cm, dm;
+  double d;
+//  double eps = 1e-6;
+  double eps = 1e-2;
+
+  tcout() << "[Fixed-point ZZ_p <-> Double conversion] ";
+  x = DoubleToFP(3.141592653589793238462643383279, Param::NBIT_K, Param::NBIT_F);
+  d = ABS(FPToDouble(x, Param::NBIT_K, Param::NBIT_F) - 3.141592653589793238462643383279);
+  if (pid > 0) {
+    tcout() << d << eps;
+    assert(d < eps);
+    tcout() << "Success";
+  }
+  tcout() << endl;
+
+  tcout() << "[FP multiplcation] ";
+
+  Init(xv, 3); Init(yv, 3);
+  if (pid == 2) {
+    xv[0] = DoubleToFP(1.34, Param::NBIT_K, Param::NBIT_F);
+    xv[1] = DoubleToFP(100.3, Param::NBIT_K, Param::NBIT_F);
+    xv[2] = DoubleToFP(-0.304, Param::NBIT_K, Param::NBIT_F);
+    yv[0] = DoubleToFP(-0.001, Param::NBIT_K, Param::NBIT_F);
+    yv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
+    yv[2] = DoubleToFP(-539, Param::NBIT_K, Param::NBIT_F);
+  }
+  mpc.MultElem(zv, xv, yv);
+  tcout() << "before trunc" << endl;
+  mpc.PrintFP(zv);
+  mpc.Trunc(zv);
+  tcout() << "after trunc" << endl;
+  mpc.PrintFP(zv);
+  mpc.RevealSym(zv);
+
+  FPToDouble(zdv, zv, Param::NBIT_K, Param::NBIT_F);
+  if (pid > 0) {
+    tcout() << "1 : " << zdv[0] - (-0.00134) << endl;
+    tcout() << "2 : " << zdv[1] - (30390.9) << endl;
+    tcout() << "3 : " << zdv[2] - (163.856) << endl;
+    assert(ABS(zdv[0] - (-0.00134)) < eps);
+    assert(ABS(zdv[1] - (30390.9)) < eps);
+    assert(ABS(zdv[2] - (163.856)) < eps);
+    tcout() << "Success";
+  }
+  tcout() << endl;
+
+  tcout() << "[PrivateCompare]" << endl;
+  Init(pc, 3);
+  mpc.PrintFP(xv);
+  mpc.PrintFP(yv);
+  mpc.LessThan(pc, xv, yv);
+  tcout() << "pc: " << pc << endl;
+  mpc.Print(pc);
+
+  tcout() << "[Powers]" << endl;;
+  Init(xv, 5);
+  if (pid == 1) {
+    xv[0] = 0;
+    xv[1] = 1;
+    xv[2] = 2;
+    xv[3] = 3;
+    xv[4] = 4;
+  }
+
+  mpc.Powers(ym, xv, 3);
+  mpc.Print(ym, cout);
+
+  tcout() << "[FanInOr]" << endl;
+  Init(am, 5, 3);
+  if (pid == 1) {
+    am[0][0] = 0; am[0][1] = 1; am[0][2] = 1;
+    am[1][0] = 0; am[1][1] = 1; am[1][2] = 0;
+    am[2][0] = 0; am[2][1] = 0; am[2][2] = 0;
+    am[3][0] = 0; am[3][1] = 0; am[3][2] = 1;
+    am[4][0] = 1; am[4][1] = 1; am[4][2] = 1;
+  }
+  mpc.FanInOr(bv, am, 2);
+  mpc.Print(bv, 100, 2);
+
+  tcout() << "[LessThanBitsPublic]" << endl;
+  Init(bm, 5, 3);
+  bm[0][0] = 0; bm[0][1] = 0; bm[0][2] = 1;
+  bm[1][0] = 0; bm[1][1] = 1; bm[1][2] = 1;
+  bm[2][0] = 0; bm[2][1] = 0; bm[2][2] = 1;
+  bm[3][0] = 1; bm[3][1] = 0; bm[3][2] = 1;
+  bm[4][0] = 0; bm[4][1] = 1; bm[4][2] = 1;
+  mpc.LessThanBitsPublic(cv, am, bm, 2);
+  mpc.Print(cv, 100, 2);
+
+  tcout() << "[TableLookup]" << endl;
+  Init(av, 5);
+  if (pid == 1) {
+    for (int i = 0; i < 5; i++) {
+      av[i] = i+1;
+    }
+  }
+  mpc.TableLookup(ym, av, 1, 1);
+  mpc.Print(ym);
+
+  tcout() << "[FP normalization] ";
+  yv[0] *= -1;
+  yv[2] *= -1;
+  mpc.NormalizerEvenExp(zv, wv, yv);
+
+  mpc.MultElem(zv, yv, zv);
+  mpc.Trunc(zv, Param::NBIT_K, Param::NBIT_K - Param::NBIT_F);
+  mpc.RevealSym(zv);
+  FPToDouble(zdv, zv, Param::NBIT_K, Param::NBIT_F);
+  tcout() << zdv;
+  tcout() << endl;
+
+  tcout() << "[FP sqrt] ";
+  Init(xv, 3);
+  if (pid == 2) {
+    xv[0] = DoubleToFP(0.001, Param::NBIT_K, Param::NBIT_F);
+    xv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
+    xv[2] = DoubleToFP(539, Param::NBIT_K, Param::NBIT_F);
+  }
+  mpc.FPSqrt(yv, zv, xv);
+  mpc.PrintFP(yv);
+  mpc.PrintFP(zv);
+  tcout() << endl;
+
+//  tcout() << "[FP division] ";
+//  Init(xv, 3); Init(yv, 3);
+//  if (pid == 2) {
+//    xv[0] = DoubleToFP(1.34, Param::NBIT_K, Param::NBIT_F);
+//    xv[1] = DoubleToFP(100.3, Param::NBIT_K, Param::NBIT_F);
+//    xv[2] = DoubleToFP(-0.304, Param::NBIT_K, Param::NBIT_F);
+//    yv[0] = DoubleToFP(0.001, Param::NBIT_K, Param::NBIT_F);
+//    yv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
+//    yv[2] = DoubleToFP(539, Param::NBIT_K, Param::NBIT_F);
+//  }
+//  mpc.FPDiv(zv, xv, yv);
+//  mpc.RevealSym(zv);
+//
+//  FPToDouble(zdv, zv, Param::NBIT_K, Param::NBIT_F);
+//  if (pid > 0) {
+//    tcout() << zdv << endl;
+//    assert(ABS(zdv[0] - (1340.000000000000000)) < eps);
+//    assert(ABS(zdv[1] - (0.331023102310231)) < eps);
+//    assert(ABS(zdv[2] - (-0.000564007421150)) < eps);
+//    tcout() << "Success";
+//  }
+//  tcout() << endl;
+
+  tcout() << "[Householder] ";
+  mpc.Householder(yv, xv);
+  mpc.PrintFP(xv);
+  mpc.PrintFP(yv);
+
+  tcout() << "[Eigendecomp]";
+  Init(xm, 5, 5);
+  if (pid == 2) {
+    xm[0][0] = DoubleToFP(1.34, Param::NBIT_K, Param::NBIT_F);
+    xm[0][1] = DoubleToFP(0, Param::NBIT_K, Param::NBIT_F);
+    xm[0][2] = DoubleToFP(-3, Param::NBIT_K, Param::NBIT_F);
+    xm[0][3] = DoubleToFP(5, Param::NBIT_K, Param::NBIT_F);
+    xm[0][4] = DoubleToFP(0.003, Param::NBIT_K, Param::NBIT_F);
+    xm[1][0] = DoubleToFP(10, Param::NBIT_K, Param::NBIT_F);
+    xm[1][1] = DoubleToFP(1, Param::NBIT_K, Param::NBIT_F);
+    xm[1][2] = DoubleToFP(2.2, Param::NBIT_K, Param::NBIT_F);
+    xm[1][3] = DoubleToFP(3.33, Param::NBIT_K, Param::NBIT_F);
+    xm[1][4] = DoubleToFP(4.444, Param::NBIT_K, Param::NBIT_F);
+    xm[2][0] = DoubleToFP(5, Param::NBIT_K, Param::NBIT_F);
+    xm[2][1] = DoubleToFP(4, Param::NBIT_K, Param::NBIT_F);
+    xm[2][2] = DoubleToFP(3, Param::NBIT_K, Param::NBIT_F);
+    xm[2][3] = DoubleToFP(2, Param::NBIT_K, Param::NBIT_F);
+    xm[2][4] = DoubleToFP(1, Param::NBIT_K, Param::NBIT_F);
+    xm[3][0] = DoubleToFP(0, Param::NBIT_K, Param::NBIT_F);
+    xm[3][1] = DoubleToFP(2, Param::NBIT_K, Param::NBIT_F);
+    xm[3][2] = DoubleToFP(5, Param::NBIT_K, Param::NBIT_F);
+    xm[3][3] = DoubleToFP(1, Param::NBIT_K, Param::NBIT_F);
+    xm[3][4] = DoubleToFP(0, Param::NBIT_K, Param::NBIT_F);
+    xm[4][0] = DoubleToFP(1, Param::NBIT_K, Param::NBIT_F);
+    xm[4][1] = DoubleToFP(2, Param::NBIT_K, Param::NBIT_F);
+    xm[4][2] = DoubleToFP(1, Param::NBIT_K, Param::NBIT_F);
+    xm[4][3] = DoubleToFP(2, Param::NBIT_K, Param::NBIT_F);
+    xm[4][4] = DoubleToFP(1, Param::NBIT_K, Param::NBIT_F);
+  }
+  mpc.EigenDecomp(ym, yv, xm);
+  mpc.PrintFP(yv);
+  mpc.PrintFP(ym);
+  tcout() << endl;
+  //
   // This is here just to keep P0 online until the end for data transfer
   // In practice, P0 would send data in advance before each phase and go offline
 //  if (pid == 0) {

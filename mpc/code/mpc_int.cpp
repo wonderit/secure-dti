@@ -24,8 +24,8 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
   tcout() << "Initializing MPC environment" << endl;
 
   /* Set base prime for the finite field */
-//  ZZ base_p = conv<ZZ>(Param::BASE_P.c_str());
-  ZZ base_p = conv<ZZ>(BASE_PRIME_NUMBER.c_str());
+  ZZ base_p = conv<ZZ>(Param::BASE_P.c_str());
+//  ZZ base_p = conv<ZZ>(BASE_PRIME_NUMBER.c_str());
   ZZ_p::init(base_p);
 
   this->pid = pid;
@@ -51,6 +51,7 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
   bool found2 = false;
   long thres1 = Param::NBIT_K / 2;
   long thres2 = ((long) ceil(sqrt((double) NumBits(ZZ_p::modulus())))) + 1;
+//  long thres2 = 9;
 
   long ind = -1;
   long maxind = sizeof(PRIME_LIST) / sizeof(PRIME_LIST[0]);
@@ -81,6 +82,8 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
     ZZ_bits[i] = NumBits(primes[i]);
     ZZ_per_buf[i] = (uint64_t) (Param::MPC_BUF_SIZE / ZZ_bytes[i]);
   }
+  myType_per_buf = (uint64_t) (Param::MPC_BUF_SIZE / BYTE_SIZE);
+  tcout() << "myType_per_buf :: " << myType_per_buf << endl;
 
   assert(ZZ_bytes[0] <= Param::MPC_BUF_SIZE); // buffer should contain at least one ZZ_p
 
@@ -621,6 +624,511 @@ void MPCEnv::NegLogSigmoid(Vec<ZZ_p>& b, Vec<ZZ_p>& b_grad, Vec<ZZ_p>& a) {
 }
 */
 
+void MPCEnv::InnerProd(Vec<ZZ_p>& c, Mat<ZZ_p>& a) {
+  if (debug) tcout() << "InnerProd: " << a.NumRows() << ", " << a.NumCols() << endl;
+
+  Mat<ZZ_p> ar, am;
+  BeaverPartition(ar, am, a);
+
+  Init(c, a.NumRows());
+  for (int i = 0; i < a.NumRows(); i++) {
+    BeaverInnerProd(c[i], ar[i], am[i]);
+  }
+
+  BeaverReconstruct(c);
+}
+void MPCEnv::InnerProd(ZZ_p& c, Vec<ZZ_p>& a) {
+  if (debug) tcout() << "InnerProd: " << a.length() << endl;
+
+  Vec<ZZ_p> ar, am;
+  BeaverPartition(ar, am, a);
+  BeaverInnerProd(c, ar, am);
+  BeaverReconstruct(c);
+}
+
+void MPCEnv::Householder(Vec<ZZ_p>& v, Vec<ZZ_p>& x) {
+  if (debug) tcout() << "Householder: " << x.length() << endl;
+
+  int n = x.length();
+
+  Vec<ZZ_p> xr, xm;
+  BeaverPartition(xr, xm, x);
+
+  Vec<ZZ_p> xdot;
+  Init(xdot, 1);
+  BeaverInnerProd(xdot[0], xr, xm);
+  BeaverReconstruct(xdot);
+  Trunc(xdot);
+
+  Vec<ZZ_p> xnorm, dummy;
+  FPSqrt(xnorm, dummy, xdot);
+
+  Vec<ZZ_p> x1;
+  x1.SetLength(1);
+  x1[0] = x[0];
+
+  Vec<ZZ_p> x1sign;
+  IsPositive(x1sign, x1);
+
+  x1sign *= 2;
+  if (pid == 1) {
+    x1sign[0] -= 1;
+  }
+
+  Vec<ZZ_p> shift;
+  MultElem(shift, xnorm, x1sign);
+
+  ZZ_p sr, sm;
+  BeaverPartition(sr, sm, shift[0]);
+
+  ZZ_p dot_shift(0);
+  BeaverMult(dot_shift, xr[0], xm[0], sr, sm);
+  BeaverReconstruct(dot_shift);
+  Trunc(dot_shift);
+
+  Vec<ZZ_p> vdot;
+  vdot.SetLength(1);
+  if (pid > 0) {
+    vdot[0] = 2 * (xdot[0] + dot_shift);
+  }
+
+  Vec<ZZ_p> vnorm_inv;
+  FPSqrt(dummy, vnorm_inv, vdot);
+
+  ZZ_p invr, invm;
+  BeaverPartition(invr, invm, vnorm_inv[0]);
+
+  Vec<ZZ_p> vr, vm;
+  if (pid > 0) {
+    vr = xr;
+    vr[0] += sr;
+  } else {
+    vr.SetLength(n);
+  }
+  vm = xm;
+  vm[0] += sm;
+
+  Init(v, n);
+  BeaverMult(v, vr, vm, invr, invm);
+  BeaverReconstruct(v);
+  Trunc(v);
+}
+
+void MPCEnv::QRFactSquare(Mat<ZZ_p>& Q, Mat<ZZ_p>& R, Mat<ZZ_p>& A) {
+  if (debug) tcout() << "QRFactSquare: " << A.NumRows() << ", " << A.NumCols() << endl;
+
+  assert(A.NumRows() == A.NumCols());
+
+  int n = A.NumRows();
+  R.SetDims(n, n);
+  if (pid > 0) {
+    clear(R);
+  }
+
+  Mat<ZZ_p> Ap;
+  if (pid == 0) {
+    Ap.SetDims(n, n);
+  } else {
+    Ap = A;
+  }
+
+  ZZ_p one;
+  DoubleToFP(one, 1, Param::NBIT_K, Param::NBIT_F);
+
+  for (int i = 0; i < n - 1; i++) {
+    Mat<ZZ_p> v;
+    v.SetDims(1, Ap.NumCols());
+    Householder(v[0], Ap[0]);
+
+    Mat<ZZ_p> vt;
+    if (pid == 0) {
+      vt.SetDims(Ap.NumCols(), 1);
+    } else {
+      transpose(vt, v);
+    }
+
+    Mat<ZZ_p> P;
+    MultMat(P, vt, v);
+    Trunc(P);
+    if (pid > 0) {
+      P *= -2;
+      if (pid == 1) {
+        for (int j = 0; j < P.NumCols(); j++) {
+          P[j][j] += one;
+        }
+      }
+    }
+
+    Mat<ZZ_p> B;
+    if (i == 0) {
+      Q = P;
+      MultMat(B, Ap, P);
+      Trunc(B);
+    } else {
+      Mat<ZZ_p> Qsub;
+      Qsub.SetDims(n - i, n);
+      if (pid > 0) {
+        for (int j = 0; j < n - i; j++) {
+          Qsub[j] = Q[j+i];
+        }
+      }
+
+      Vec< Mat<ZZ_p> > left;
+      Vec< Mat<ZZ_p> > right;
+      left.SetLength(2);
+      right.SetLength(2);
+      left[0] = P;
+      right[0] = Qsub;
+      left[1] = Ap;
+      right[1] = P;
+
+      Vec< Mat<ZZ_p> > prod;
+      MultMatParallel(prod, left, right);
+      // TODO: parallelize Trunc
+      Trunc(prod[0]);
+      Trunc(prod[1]);
+
+      if (pid > 0) {
+        for (int j = 0; j < n - i; j++) {
+          Q[j+i] = prod[0][j];
+        }
+        B = prod[1];
+      } else {
+        B.SetDims(n - i, n - i);
+      }
+    }
+
+    if (pid > 0) {
+      for (int j = 0; j < n - i; j++) {
+        R[i+j][i] = B[j][0];
+      }
+      if (i == n - 2) {
+        R[n-1][n-1] = B[1][1];
+      }
+
+      Ap.SetDims(n - i - 1, n - i - 1);
+      for (int j = 0; j < n - i - 1; j++) {
+        for (int k = 0; k < n - i - 1; k++) {
+          Ap[j][k] = B[j+1][k+1];
+        }
+      }
+    } else {
+      Ap.SetDims(n - i - 1, n - i - 1);
+    }
+  }
+}
+
+void MPCEnv::OrthonormalBasis(Mat<ZZ_p>& Q, Mat<ZZ_p>& A) {
+  if (debug) tcout() << "OrthonormalBasis: " << A.NumRows() << ", " << A.NumCols() << endl;
+
+  assert(A.NumCols() >= A.NumRows());
+
+  int c = A.NumRows();
+  int n = A.NumCols();
+
+  Vec< Vec<ZZ_p> > v_list;
+  v_list.SetLength(c);
+
+  Mat<ZZ_p> Ap;
+  if (pid == 0) {
+    Ap.SetDims(c, n);
+  } else {
+    Ap = A;
+  }
+
+  ZZ_p one;
+  DoubleToFP(one, 1, Param::NBIT_K, Param::NBIT_F);
+
+  for (int i = 0; i < c; i++) {
+    Mat<ZZ_p> v;
+    v.SetDims(1, Ap.NumCols());
+    Householder(v[0], Ap[0]);
+
+    if (pid == 0) {
+      v_list[i].SetLength(Ap.NumCols());
+    } else {
+      v_list[i] = v[0];
+    }
+
+    Mat<ZZ_p> vt;
+    if (pid == 0) {
+      vt.SetDims(Ap.NumCols(), 1);
+    } else {
+      transpose(vt, v);
+    }
+
+    Mat<ZZ_p> Apv;
+    MultMat(Apv, Ap, vt);
+    Trunc(Apv);
+
+    Mat<ZZ_p> B;
+    MultMat(B, Apv, v);
+    Trunc(B);
+    if (pid > 0) {
+      B *= -2;
+      B += Ap;
+    }
+
+    Ap.SetDims(B.NumRows() - 1, B.NumCols() - 1);
+    if (pid > 0) {
+      for (int j = 0; j < B.NumRows() - 1; j++) {
+        for (int k = 0; k < B.NumCols() - 1; k++) {
+          Ap[j][k] = B[j+1][k+1];
+        }
+      }
+    }
+  }
+
+  Q.SetDims(c, n);
+  if (pid > 0) {
+    clear(Q);
+    if (pid == 1) {
+      for (int i = 0; i < c; i++) {
+        Q[i][i] = one;
+      }
+    }
+  }
+
+  for (int i = c - 1; i >= 0; i--) {
+    Mat<ZZ_p> v;
+    v.SetDims(1, v_list[i].length());
+    if (pid > 0) {
+      v[0] = v_list[i];
+    }
+
+    Mat<ZZ_p> vt;
+    if (pid == 0) {
+      vt.SetDims(v.NumCols(), 1);
+    } else {
+      transpose(vt, v);
+    }
+
+    Mat<ZZ_p> Qsub;
+    Qsub.SetDims(c, n - i);
+    if (pid > 0) {
+      for (int j = 0; j < c; j++) {
+        for (int k = 0; k < n - i; k++) {
+          Qsub[j][k] = Q[j][k+i];
+        }
+      }
+    }
+
+    Mat<ZZ_p> Qv;
+    MultMat(Qv, Qsub, vt);
+    Trunc(Qv);
+
+    Mat<ZZ_p> Qvv;
+    MultMat(Qvv, Qv, v);
+    Trunc(Qvv);
+    if (pid > 0) {
+      Qvv *= -2;
+    }
+
+    if (pid > 0) {
+      for (int j = 0; j < c; j++) {
+        for (int k = 0; k < n - i; k++) {
+          Q[j][k+i] += Qvv[j][k];
+        }
+      }
+    }
+  }
+}
+
+void MPCEnv::Tridiag(Mat<ZZ_p>& T, Mat<ZZ_p>& Q, Mat<ZZ_p>& A) {
+  if (debug) tcout() << "Tridiag: " << A.NumRows() << ", " << A.NumCols() << endl;
+
+  assert(A.NumRows() == A.NumCols());
+  assert(A.NumRows() > 2);
+
+  int n = A.NumRows();
+
+  ZZ_p one;
+  DoubleToFP(one, 1, Param::NBIT_K, Param::NBIT_F);
+
+  Q.SetDims(n, n);
+  T.SetDims(n, n);
+  if (pid > 0) {
+    clear(Q);
+    clear(T);
+    if (pid == 1) {
+      for (int i = 0; i < n; i++) {
+        Q[i][i] = one;
+      }
+    }
+  }
+
+  Mat<ZZ_p> Ap;
+  if (pid == 0) {
+    Ap.SetDims(n, n);
+  } else {
+    Ap = A;
+  }
+
+  for (int i = 0; i < n - 2; i++) {
+    Vec<ZZ_p> x;
+    x.SetLength(Ap.NumCols() - 1);
+    if (pid > 0) {
+      for (int j = 0; j < Ap.NumCols() - 1; j++) {
+        x[j] = Ap[0][j+1];
+      }
+    }
+
+    Mat<ZZ_p> v;
+    v.SetDims(1, x.length());
+    Householder(v[0], x);
+
+    Mat<ZZ_p> vt;
+    if (pid == 0) {
+      vt.SetDims(x.length(), 1);
+    } else {
+      transpose(vt, v);
+    }
+
+    Mat<ZZ_p> vv;
+    MultMat(vv, vt, v);
+    Trunc(vv);
+
+    Mat<ZZ_p> P;
+    P.SetDims(Ap.NumCols(), Ap.NumCols());
+    if (pid > 0) {
+      P[0][0] = (pid == 1) ? one : ZZ_p(0);
+      for (int j = 1; j < Ap.NumCols(); j++) {
+        for (int k = 1; k < Ap.NumCols(); k++) {
+          P[j][k] = -2 * vv[j-1][k-1];
+          if (pid == 1 && j == k) {
+            P[j][k] += one;
+          }
+        }
+      }
+    }
+
+    // TODO: parallelize? (minor improvement)
+    Mat<ZZ_p> PAp;
+    MultMat(PAp, P, Ap);
+    Trunc(PAp);
+
+    Mat<ZZ_p> B;
+    MultMat(B, PAp, P);
+    Trunc(B);
+
+    Mat<ZZ_p> Qsub;
+    Qsub.SetDims(n, n - i);
+    if (pid > 0) {
+      for (int j = 0; j < n; j++) {
+        for (int k = 0; k < n - i; k++) {
+          Qsub[j][k] = Q[j][k+i];
+        }
+      }
+    }
+
+    MultMat(Qsub, Qsub, P);
+    Trunc(Qsub);
+    if (pid > 0) {
+      for (int j = 0; j < n; j++) {
+        for (int k = 0; k < n - i; k++) {
+          Q[j][k+i] = Qsub[j][k];
+        }
+      }
+    }
+
+    if (pid > 0) {
+      T[i][i] = B[0][0];
+      T[i+1][i] = B[1][0];
+      T[i][i+1] = B[0][1];
+      if (i == n - 3) {
+        T[i+1][i+1] = B[1][1];
+        T[i+1][i+2] = B[1][2];
+        T[i+2][i+1] = B[2][1];
+        T[i+2][i+2] = B[2][2];
+      }
+    }
+
+    Ap.SetDims(B.NumRows() - 1, B.NumCols() - 1);
+    if (pid > 0) {
+      for (int j = 0; j < B.NumRows() - 1; j++) {
+        for (int k = 0; k < B.NumCols() - 1; k++) {
+          Ap[j][k] = B[j+1][k+1];
+        }
+      }
+    }
+  }
+}
+
+void MPCEnv::EigenDecomp(Mat<ZZ_p>& V, Vec<ZZ_p>& L, Mat<ZZ_p>& A) {
+  if (debug) tcout() << "EigenDecomp: " << A.NumRows() << ", " << A.NumCols() << endl;
+
+  assert(A.NumRows() == A.NumCols());
+  int n = A.NumRows();
+
+  L.SetLength(n);
+  clear(L);
+
+  Mat<ZZ_p> Ap, Q;
+  Tridiag(Ap, Q, A);
+
+  if (pid == 0) {
+    V.SetDims(n, n);
+  } else {
+    transpose(V, Q);
+  }
+
+  for (int i = n - 1; i >= 1; i--) {
+    tcout() << "EigenDecomp: " << i << "-th eigenvalue" << endl;
+    for (int it = 0; it < Param::ITER_PER_EVAL; it++) {
+      ZZ_p shift = Ap[i][i];
+      if (pid > 0) {
+        for (int j = 0; j < Ap.NumCols(); j++) {
+          Ap[j][j] -= shift;
+        }
+      }
+
+      Mat<ZZ_p> R;
+      QRFactSquare(Q, R, Ap);
+
+      MultMat(Ap, Q, R);
+      Trunc(Ap);
+
+      if (pid > 0) {
+        for (int j = 0; j < Ap.NumCols(); j++) {
+          Ap[j][j] += shift;
+        }
+      }
+
+      Mat<ZZ_p> Vsub;
+      Vsub.SetDims(i + 1, n);
+      if (pid > 0) {
+        for (int j = 0; j < i + 1; j++) {
+          Vsub[j] = V[j];
+        }
+      }
+
+      MultMat(Vsub, Q, Vsub);
+      Trunc(Vsub);
+
+      if (pid > 0) {
+        for (int j = 0; j < i + 1; j++) {
+          V[j] = Vsub[j];
+        }
+      }
+    }
+
+    L[i] = Ap[i][i];
+    if (i == 1) {
+      L[0] = Ap[0][0];
+    }
+
+    Mat<ZZ_p> Ap_copy = Ap;
+    Ap.SetDims(i, i);
+    if (pid > 0) {
+      for (int j = 0; j < i; j++) {
+        for (int k = 0; k < i; k++) {
+          Ap[j][k] = Ap_copy[j][k];
+        }
+      }
+    }
+  }
+  tcout() << "EigenDecomp: complete" << endl;
+}
 
 void MPCEnv::LessThanBitsAux(Vec<ZZ>& c, Mat<ZZ>& a, Mat<ZZ>& b, int public_flag, int fid) {
   if (debug) tcout() << "LessThanBitsAux: " << a.NumRows() << ", " << a.NumCols() << endl;
@@ -634,6 +1142,7 @@ void MPCEnv::LessThanBitsAux(Vec<ZZ>& c, Mat<ZZ>& a, Mat<ZZ>& b, int public_flag
   /* Calculate XOR */
   Mat<ZZ> x;
   x.SetDims(n, L);
+
   if (public_flag == 0) {
     MultElem(x, a, b, fid);
     if (pid > 0) {
@@ -702,7 +1211,6 @@ void MPCEnv::LessThanBitsAux(Vec<ZZ>& c, Mat<ZZ>& a, Mat<ZZ>& b, int public_flag
         c[i] = c_arr[i][0][0];
       }
     }
-
   }
 }
 
@@ -1323,7 +1831,7 @@ void MPCEnv::LessThanPublic(Vec<ZZ_p>& c, Vec<ZZ_p>& a, ZZ_p bpub) {
 //TODO
 void MPCEnv::IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a) {
   Vec<ZZ_p> av, bv;
-  int size = a.NumRows() * a.NumCols();
+//  int size = a.NumRows() * a.NumCols();
   b.SetDims(a.NumRows(), a.NumCols());
 //  Init(av, size); Init(bv, size);
   Reshape(av, a);
@@ -1354,7 +1862,7 @@ void MPCEnv::IsPositive(ublas::vector<myType>& b, ublas::vector<myType>& a) {
   }
 
 
-  if ((pid) == 1)
+  if (Param::DEBUG && pid == 1)
     tcout() << "Done" << endl;
 }
 
@@ -1620,7 +2128,7 @@ void MPCEnv::FPSqrt(Vec<ZZ_p>& b, Vec<ZZ_p>& b_inv, Vec<ZZ_p>& a) {
   b_inv = 2 * h_and_g[0][0];
   b = h_and_g[1][0];
 }
-//
+
 void MPCEnv::FPSqrt(Mat<ZZ_p>& b, Mat<ZZ_p>& b_inv, Mat<ZZ_p>& a) {
 
   Vec<ZZ_p> bv, bv_inv, av;
@@ -1632,6 +2140,123 @@ void MPCEnv::FPSqrt(Mat<ZZ_p>& b, Mat<ZZ_p>& b_inv, Mat<ZZ_p>& a) {
   Reshape(b_inv, bv_inv, a.NumRows(), a.NumCols());
 }
 
+
+void MPCEnv::FPDiv(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b) {
+  if (true) tcout() << "FPDiv: " << a.length() << endl;
+
+  assert(a.length() == b.length());
+
+  int n = a.length();
+  if (n > Param::DIV_MAX_N) {
+    int nbatch = ceil(n / ((double) Param::DIV_MAX_N));
+    c.SetLength(n);
+    for (int i = 0; i < nbatch; i++) {
+      int start = Param::DIV_MAX_N * i;
+      int end = start + Param::DIV_MAX_N;
+      if (end > n) {
+        end = n;
+      }
+      int batch_size = end - start;
+
+      tcout() << "FPDiv on large vector: " << i + 1 << "/" << nbatch << ", n = " << batch_size << endl;
+
+      Vec<ZZ_p> a_copy, b_copy;
+      a_copy.SetLength(batch_size);
+      b_copy.SetLength(batch_size);
+      for (int j = 0; j < batch_size; j++) {
+        a_copy[j] = a[start + j];
+        b_copy[j] = b[start + j];
+      }
+      Vec<ZZ_p> c_copy;
+      FPDiv(c_copy, a_copy, b_copy);
+      for (int j = 0; j < batch_size; j++) {
+        c[start + j] = c_copy[j];
+      }
+    }
+    return;
+  }
+
+  int niter = 2 * ceil(log2(((double) Param::NBIT_K) / 3.5)) + 1;
+
+  /* Initial approximation: 1 / x_scaled ~= 5.9430 - 10 * x_scaled + 5 * x_scaled^2 */
+  Vec<ZZ_p> s, s_sqrt;
+  NormalizerEvenExp(s, s_sqrt, b);
+
+  Vec<ZZ_p> b_scaled;
+  MultElem(b_scaled, b, s);
+  Trunc(b_scaled, Param::NBIT_K, Param::NBIT_K - Param::NBIT_F);
+
+  Vec<ZZ_p> b_scaled_sq;
+  MultElem(b_scaled_sq, b_scaled, b_scaled);
+  Trunc(b_scaled_sq);
+
+  Vec<ZZ_p> scaled_est;
+  if (pid == 0) {
+    scaled_est.SetLength(n);
+  } else {
+    scaled_est = - 10 * b_scaled + 5 * b_scaled_sq;
+    if (pid == 1) {
+      ZZ_p coeff;
+      DoubleToFP(coeff, 5.9430, Param::NBIT_K, Param::NBIT_F);
+      AddScalar(scaled_est, coeff);
+    }
+  }
+
+  Vec<ZZ_p> w;
+  MultElem(w, scaled_est, s);
+  // scaled_est has bit length <= NBIT_F + 2, and s has bit length <= NBIT_K
+  // so the bit length of w is at most NBIT_K + NBIT_F + 2
+  Trunc(w, Param::NBIT_K + Param::NBIT_F + 2, Param::NBIT_K - Param::NBIT_F);
+
+  Vec<ZZ_p> x;
+  MultElem(x, w, b);
+  Trunc(x);
+
+  ZZ_p one;
+  IntToFP(one, 1, Param::NBIT_K, Param::NBIT_F);
+
+  x *= -1;
+  if (pid == 1) {
+    for (int i = 0; i < x.length(); i++) {
+      x[i] += one;
+    }
+  }
+
+  Vec<ZZ_p> y;
+  MultElem(y, a, w);
+  Trunc(y);
+
+  for (int i = 0; i < niter; i++) {
+    Vec<ZZ_p> xr, xm, yr, ym;
+    BeaverPartition(xr, xm, x);
+    BeaverPartition(yr, ym, y);
+
+    Vec<ZZ_p> xpr = xr;
+    if (pid > 0) {
+      AddScalar(xpr, one);
+    }
+
+    Init(x, n);
+    Init(y, n);
+
+    BeaverMultElem(y, yr, ym, xpr, xm);
+    BeaverMultElem(x, xr, xm, xr, xm);
+    BeaverReconstruct(x);
+    BeaverReconstruct(y);
+
+    Trunc(x);
+    Trunc(y);
+  }
+
+  if (pid == 1) {
+    for (int i = 0; i < x.length(); i++) {
+      x[i] += one;
+    }
+  }
+
+  MultElem(c, y, x);
+  Trunc(c);
+}
 
 void MPCEnv::Trunc(ublas::matrix<myType>& a) {
 
@@ -1856,12 +2481,15 @@ void MPCEnv::PrefixOr(Mat<ZZ>& b, Mat<ZZ>& a, int fid) {
       }
     }
   }
+
   Reshape(a_padded, n * L, L);
 
   Vec<ZZ> x;
   FanInOr(x, a_padded, fid);
+
   Mat<ZZ> xpre;
   xpre.SetDims(n * L, L);
+
   if (pid > 0) {
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < L; j++) {
@@ -1911,6 +2539,7 @@ void MPCEnv::PrefixOr(Mat<ZZ>& b, Mat<ZZ>& a, int fid) {
     }
   }
   a_padded.kill();
+
   Vec< Mat<ZZ> > c;
   MultMatParallel(c, f, tmp, fid); // c is a concatenation of n 1-by-L matrices
   tmp.kill();
@@ -1928,6 +2557,7 @@ void MPCEnv::PrefixOr(Mat<ZZ>& b, Mat<ZZ>& a, int fid) {
     }
   }
   c.kill();
+
   Vec<ZZ> bdot_vec;
   FanInOr(bdot_vec, cpre, fid);
   cpre.kill();
@@ -1992,6 +2622,7 @@ void MPCEnv::FanInOr(Vec<ZZ>& b, Mat<ZZ>& a, int fid) {
     }
     Mod(a_sum, fid);
   }
+
   Mat<ZZ> coeff;
   coeff.SetDims(1, d + 1);
   pair<int, int> key = make_pair(d + 1, fid);
@@ -2006,6 +2637,7 @@ void MPCEnv::FanInOr(Vec<ZZ>& b, Mat<ZZ>& a, int fid) {
     lagrange_interp_simple(coeff[0], y, fid); // OR function
     or_lagrange_cache[key] = coeff[0];
   }
+
   Mat<ZZ> bmat;
   EvaluatePoly(bmat, a_sum, coeff, fid);
   b = bmat[0];
@@ -2074,10 +2706,9 @@ void MPCEnv::TableLookup(Mat<ZZ_p>& b, Vec<ZZ>& a, int table_id, int fid) {
   EvaluatePoly(b, a_exp, lagrange_cache[table_id]);
 }
 
-
 // Base field index 1
 void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
-  if (true) tcout() << "NormalizerEvenExp: " << a.length() << endl;
+  if (debug) tcout() << "NormalizerEvenExp: " << a.length() << endl;
 
   int n = a.length();
   int fid = 1;
@@ -2104,6 +2735,9 @@ void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
   }
   e.kill();
 
+
+//  auto cl_start1 = chrono::steady_clock::now();
+
   Vec<ZZ> c;
   LessThanBitsPublic(c, rbits, ebits, fid);
   if (pid > 0) {
@@ -2115,6 +2749,10 @@ void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
     }
     Mod(c, fid);
   }
+
+//  auto cl_end1 = chrono::steady_clock::now();
+//  int duration1 = chrono::duration_cast<chrono::milliseconds>(cl_end1 - cl_start1).count();
+//  tcout() << "LessThanBitsPublic Elapsed time is " << duration1 / 1000.0 << " secs" << endl;
 
   Mat<ZZ> ep;
   ep.SetDims(n, Param::NBIT_K + 1);
@@ -2132,9 +2770,15 @@ void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
   }
   c.kill();
 
+//  auto cl_start2 = chrono::steady_clock::now();
+
   Mat<ZZ> E;
   PrefixOr(E, ep, fid);
   ep.kill();
+
+//  auto cl_end2 = chrono::steady_clock::now();
+//  int duration2 = chrono::duration_cast<chrono::milliseconds>(cl_end2 - cl_start2).count();
+//  tcout() << "PrefixOr Elapsed time is " << duration2 / 1000.0 << " secs" << endl;
 
   Mat<ZZ> tpneg;
   tpneg.SetDims(n, Param::NBIT_K);
@@ -2165,10 +2809,16 @@ void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
   ebits.kill();
   rbits.kill();
 
+//  auto cl_start = chrono::steady_clock::now();
+
   Vec<ZZ> double_flag;
   LessThanBits(double_flag, efir, rfir, fid);
   efir.kill();
   rfir.kill();
+
+//  auto cl_end = chrono::steady_clock::now();
+//  int duration = chrono::duration_cast<chrono::milliseconds>(cl_end - cl_start).count();
+//  tcout() << "less than bits Elapsed time is " << duration / 1000.0 << " secs" << endl;
 
   Mat<ZZ> odd_bits, even_bits;
   odd_bits.SetDims(n, half_len);
@@ -2240,7 +2890,6 @@ void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
     b_sqrt.SetLength(n);
     b.SetLength(n);
   }
-  tcout() << "NormalizerEvenExp: end"  << endl;
 }
 void MPCEnv::ReadFromFile(ZZ_p& a, ifstream& ifs) {
   Vec<ZZ_p> avec;
@@ -2308,8 +2957,6 @@ void MPCEnv::Read(Vec<ZZ_p>& a, ifstream& ifs, int n) {
   Read(tmp, ifs, 1, n);
   a = tmp[0];
 }
-
-
 
 void MPCEnv::ReadWithFilter(Vec<ZZ_p>& a, ifstream& ifs, Vec<ZZ_p>& filt) {
   assert(ifs.is_open());
@@ -2675,7 +3322,6 @@ void MPCEnv::BeaverMultElem(Vec<ZZ_p>& ab, Vec<ZZ_p>& ar, Vec<ZZ_p>& am, Vec<ZZ_
   }
 }
 
-
 void MPCEnv::BeaverMult(Mat<ZZ_p>& ab, Mat<ZZ_p>& ar, Mat<ZZ_p>& am, Mat<ZZ_p>& br, Mat<ZZ_p>& bm, bool elem_wise, int fid) {
   if (pid == 0) {
     Mat<ZZ_p> ambm;
@@ -2693,17 +3339,17 @@ void MPCEnv::BeaverMult(Mat<ZZ_p>& ab, Mat<ZZ_p>& ar, Mat<ZZ_p>& am, Mat<ZZ_p>& 
 
       NTL_GEXEC_RANGE(ab.NumRows() > Param::PAR_THRES, ab.NumRows(), first, last)
 
-            context.restore();
+      context.restore();
 
-            for (int i = first; i < last; i++) {
-              for (int j = 0; j < ab.NumCols(); j++) {
-                ab[i][j] += ar[i][j] * bm[i][j];
-                ab[i][j] += am[i][j] * br[i][j];
-                if (pid == 1) {
-                  ab[i][j] += ar[i][j] * br[i][j];
-                }
-              }
-            }
+      for (int i = first; i < last; i++) {
+        for (int j = 0; j < ab.NumCols(); j++) {
+          ab[i][j] += ar[i][j] * bm[i][j];
+          ab[i][j] += am[i][j] * br[i][j];
+          if (pid == 1) {
+            ab[i][j] += ar[i][j] * br[i][j];
+          }
+        }
+      }
 
       NTL_GEXEC_RANGE_END
 

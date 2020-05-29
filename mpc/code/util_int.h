@@ -64,6 +64,22 @@ void AddScalar(Mat<T>& a, T b) {
 }
 
 template<class T>
+void AddScalar(ublas::vector<T>& a, T b) {
+  for (int i = 0; i < a.size(); i++) {
+    a[i] += b;
+  }
+}
+
+template<class T>
+void AddScalar(ublas::matrix<T>& a, T b) {
+  for (int i = 0; i < a.size1(); i++) {
+    for (int j = 0; j < a.size2(); j++) {
+      a(i, j) += b;
+    }
+  }
+}
+
+template<class T>
 static T Sum(ublas::vector<T>& a) {
   T val;
   val = 0;
@@ -120,6 +136,28 @@ static inline RandomStream NewRandomStream(unsigned char *key) {
   return rs;
 }
 
+static inline void IntToFP(ZZ_p& b, long a, int k, int f) {
+  ZZ az(a);
+  long sn = (a >= 0) ? 1 : -1;
+
+  ZZ az_shift;
+  LeftShift(az_shift, az, f);
+
+  ZZ az_trunc;
+  trunc(az_trunc, az_shift, k - 1);
+
+  b = conv<ZZ_p>(az_trunc * sn);
+}
+
+static inline void IntToFP(Mat<ZZ_p>& b, Mat<long>& a, int k, int f) {
+  b.SetDims(a.NumRows(), a.NumCols());
+  for (int i = 0; i < a.NumRows(); i++) {
+    for (int j = 0; j < a.NumCols(); j++) {
+      IntToFP(b[i][j], a[i][j], k, f);
+    }
+  }
+}
+
 static inline myType DoubleToFP(double a) {
   return static_cast<myType>(static_cast<myTypeSigned>(a * (1 << FIXED_POINT_FRACTIONAL_BITS)));
 }
@@ -139,6 +177,7 @@ static inline long double FPToDouble(myType a) {
 
 template<class T>
 static inline void FPToDouble(ublas::vector<double>& b, ublas::vector<T>& a) {
+  b.resize(a.size());
   for (int i = 0; i < a.size(); i++) {
     b[i] = FPToDouble(a[i]);
   }
@@ -520,12 +559,25 @@ static T Sum(Mat<T>& a) {
   return val;
 }
 
-
+//
 static inline void zToString(const ZZ& z, string& s) {
   std::stringstream buffer;
   buffer << z;
   s = buffer.str();
 }
+//
+//static inline string zToString(ZZ num)
+//{
+//  long len = ceil(log(num)/log(128));
+//  char str[len];
+//  for(long i = len-1; i >= 0; i--)
+//  {
+//    str[i] = conv<int>(num % 128);
+//    num /= 128;
+//  }
+//
+//  return (string) str;
+//}
 
 static inline void to_zz(Vec<ZZ_p>& c, ublas::vector<myType>& x) {
   for (int i = 0; i < x.size(); i++) {
@@ -545,7 +597,7 @@ static inline void to_zz(Mat<ZZ_p>& c, ublas::matrix<myType>& x) {
 
 static inline void to_mytype(ublas::vector<myType>& x, Vec<ZZ_p>& c) {
   string str;
-  for (int i = 0; i < x.size(); i++) {
+  for (size_t i = 0; i < x.size(); ++i) {
     zToString(rep(c[i]), str);
     x[i] = boost::lexical_cast<myType>(str);
   }
@@ -553,9 +605,9 @@ static inline void to_mytype(ublas::vector<myType>& x, Vec<ZZ_p>& c) {
 
 
 static inline void to_mytype(ublas::matrix<myType>& x, Mat<ZZ_p>& c) {
+  string str;
   for (size_t i = 0; i < x.size1(); i++) {
     for (size_t j = 0; j < x.size2(); j++) {
-      string str;
       zToString(rep(c[i][j]), str);
       x(i, j) = boost::lexical_cast<myType>(str);
     }

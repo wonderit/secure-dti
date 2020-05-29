@@ -207,7 +207,7 @@ int main(int argc, char* argv[]) {
     fs.open(fname.c_str(), ios::out | ios::binary);
     if (!fs.is_open()) {
       tcout() << "Error: could not open " << fname << endl;
-      return false;
+      success = false;
     }
     mpc.SwitchSeed(3);
     mpc.ExportSeed(fs);

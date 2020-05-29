@@ -19,7 +19,7 @@ using namespace std;
   typedef int64_t myTypeSigned;
   #define IS_INT true
   const string BASE_PRIME_NUMBER = "18446744073709551557";
-  #define FIXED_POINT_FRACTIONAL_BITS 20
+  #define FIXED_POINT_FRACTIONAL_BITS 18
 #elif INT_TYPE == 32
   typedef uint32_t myType;
   #define IS_INT true
@@ -40,10 +40,11 @@ using namespace std;
 
 typedef uint8_t smallType;
 
-const int BIT_SIZE = (sizeof(myType) * CHAR_BIT);
+const int BYTE_SIZE = sizeof(myType);
+const int BIT_SIZE = (BYTE_SIZE * CHAR_BIT);
 const myType LARGEST_NEG = ((myType)1 << (BIT_SIZE - 1));
 const myType MINUS_ONE = (myType)-1;
-const myType FIELD_L_BIT = BIT_SIZE - 2;
+const myType FIELD_L_BIT = BIT_SIZE/2;
 const myType FIELD_L_1 = ((myType)1 << FIELD_L_BIT) - 1;
 const myType FIELD = ((myType)1 << (BIT_SIZE - 2));
 

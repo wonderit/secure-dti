@@ -23,8 +23,11 @@ args = parser.parse_args()
 
 N_HIDDEN = 5
 LOSS = 'mse'
-MEAN = 59.3
+# MEAN = 59.3
+# STD = 10.6
+MEAN = 61.9
 STD = 10.6
+
 result_path = 'result'
 # epoch = args.epoch
 # batch = args.batch
@@ -67,7 +70,7 @@ def report_scores(X, y, W, b, act):
     y_pred = []
     # y_score = []
 
-    X = scale(X, mean_x, std_x)
+    # X = scale(X, mean_x, std_x)
     # print('Example : X - ', X[0, 0:3], 'y - ', y[0])
 
     torchX = torch.from_numpy(np.array(X))

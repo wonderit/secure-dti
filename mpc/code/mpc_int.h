@@ -87,7 +87,7 @@ public:
   void FPSqrt(Mat<ZZ_p>& b, Mat<ZZ_p>& b_inv, Mat<ZZ_p>& a);
 
   // Assumes b is strictly positive
-//  void FPDiv(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b);
+  void FPDiv(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b);
 
   // k is the bit-length of the underlying data range
   // m is the number of bits to truncate
@@ -130,6 +130,8 @@ public:
   void Quicksort(Mat<ZZ_p>& a, int column);
   void Quicksort(Mat<ZZ_p>& a, int column,
                  int depth, int start, int end);
+  void QuicksortPartition(int& p, Mat<ZZ_p>& a, int column,
+                          int start, int end);
 
   // The i-th column of b contains 0,1,...,pow powers of a[i]
   template<class T>
@@ -260,24 +262,25 @@ public:
   // Each row of output b is prefix-OR of the corresponding row of a
   void PrefixOr(Mat<ZZ>& b, Mat<ZZ>& a, int fid);
 
-//  template<class T>
-//  void RevealSym(T& a, int fid = 0) {
-//    if (pid == 0) {
-//      return;
-//    }
-//
-//    T b;
-//    if (pid == 1) {
-//      SendElem(a, 3 - pid, fid);
-//      ReceiveElem(b, 3 - pid, fid);
-//    } else {
-//      ReceiveElem(b, 3 - pid, fid);
-//      SendElem(a, 3 - pid, fid);
-//    }
-//
-//    a += b;
-//    Mod(a, fid);
-//  }
+  //TODO CHECK THIS OUT
+  template<class T>
+  void RevealSym(T& a, int fid = 0) {
+    if (pid == 0) {
+      return;
+    }
+
+    T b;
+    if (pid == 1) {
+      SendElem(a, 3 - pid, fid);
+      ReceiveElem(b, 3 - pid, fid);
+    } else {
+      ReceiveElem(b, 3 - pid, fid);
+      SendElem(a, 3 - pid, fid);
+    }
+
+    a += b;
+    Mod(a, fid);
+  }
 
   template<class T>
   void RevealSym(ublas::vector<T>& a, int fid = 0) {
@@ -498,23 +501,66 @@ public:
     PrintFP(a, maxlen, cout);
   }
 
-  template<class T>
-  void PrintFP(ublas::vector<T>& a, ostream& os) {
-    ublas::vector<T> a_copy(a);
+//  void PrintFP(ublas::vector<myType>& a, int maxlen) {
+//    PrintFP(a, maxlen, cout);
+//  }
+
+//  void PrintFP(ublas::vector<myType>& a, int maxlen, ostream& os) {
+//    ublas::vector<myType> a_copy = a;
+//    if (a.size() < maxlen) {
+//      maxlen = a.size();
+//    }
+//    a_copy.resize(maxlen);
+//    RevealSym(a_copy);
+//    ublas::vector<double> ad;
+//    FPToDouble(ad, a_copy);
+//
+//    if (pid == 2) {
+//      for (int i = 0; i < ad.size(); i++) {
+//        os << ad[i];
+//        if (i == ad.size() - 1) {
+//          os << endl;
+//        } else {
+//          os << '\t';
+//        }
+//      }
+//    }
+//  }
+//
+//  void PrintFP(ublas::vector<myType>& a, ostream& os) {
+//    ublas::vector<myType> a_copy = a;
+//    RevealSym(a_copy);
+//    ublas::vector<double> ad;
+//    FPToDouble(ad, a_copy);
+//
+//    if (pid == 2) {
+//      for (int i = 0; i < ad.size(); i++) {
+//        os << ad[i];
+//        if (i == ad.size() - 1) {
+//          os << endl;
+//        } else {
+//          os << '\t';
+//        }
+//      }
+//    }
+//  }
+//
+  void PrintFP(ublas::vector<myType>& a, ostream& os) {
+    ublas::vector<myType> a_copy = a;
     ublas::vector<double> ad(a.size());
     RevealSym(a_copy);
     FPToDouble(ad, a_copy);
-    for (int i = 0; i < ad.size(); i++) {
-      if (i > 5)
-        break;
-      os << ad[i];
-      if (i == ad.size() - 1) {
-        os << endl;
-      } else {
-        os << '\t';
+    if (pid == 2) {
+      for (int i = 0; i < ad.size(); i++) {
+        os << ad[i];
+        if (i == ad.size() - 1) {
+          os << endl;
+        } else {
+          os << '\t';
+        }
       }
+      os << endl;
     }
-    os << endl;
   }
 
   template<class T>
@@ -623,7 +669,7 @@ public:
     }
   }
   void PrintFP(ublas::matrix<myType>& a, ostream& os) {
-    ublas::matrix<myType> a_copy(a);
+    ublas::matrix<myType> a_copy = a;
     RevealSym(a_copy);
     ublas::matrix<double> ad(a.size1(), a.size2());
 
@@ -689,10 +735,10 @@ public:
   template<class T>
   void Print(ublas::vector<T>& a, ostream& os, int fid = 0) {
 
-    ublas::vector<T> a_copy(a);
+    ublas::vector<T> a_copy = a;
     RevealSym(a_copy, fid);
 
-    if (pid > 0) {
+    if (pid == 2) {
       os << "Print : ";
       for (int i = 0; i < a_copy.size(); i++) {
         if (i > 5)
@@ -709,10 +755,10 @@ public:
   template<class T>
   void Print(ublas::matrix<T>& a, ostream& os, int fid = 0) {
 
-    ublas::matrix<T> a_copy(a);
+    ublas::matrix<T> a_copy = a;
     RevealSym(a_copy, fid);
 
-    if (pid > 0) {
+    if (pid == 2) {
       os << "Print matrix : ";
       for (int i = 0; i < a_copy.size1(); i++) {
         for (int j = 0; j < a_copy.size2(); j++) {
@@ -732,9 +778,9 @@ public:
   template<class T>
   void Print(ublas::vector<ublas::vector<T>>& a, ostream& os, int fid = 0) {
 
-//    ublas::vector<T> a_copy(a);
-//    RevealSym(a_copy, fid);
-    if (pid > -1) {
+    ublas::vector<T> a_copy = a;
+    RevealSym(a_copy, fid);
+    if (pid == 2) {
       os << "Print : ";
       for (int i = 0; i < a.size(); i++) {
         for (int j = 0; j < a[i].size(); j++) {
@@ -833,7 +879,7 @@ public:
       RestoreSeed();
 
       ab -= mask;
-//      Mod(ab, fid);
+      Mod(ab, fid);
 
       SendVec(ab, 2, fid);
     } else {
@@ -847,7 +893,7 @@ public:
       }
 
       ab += ambm;
-//      Mod(ab, fid);
+      Mod(ab, fid);
     }
   }
   template<class T>
@@ -904,7 +950,6 @@ public:
     }
   }
 
-
   template<class T>
   void BeaverReconstruct(Vec< Mat<T> >& ab, int fid = 0) {
     int nmat = ab.length();
@@ -953,20 +998,20 @@ public:
     }
   }
 
-//  template<class T>
-//  void BeaverMult(T& ab, T& ar, T& am, T& br, T& bm, int fid = 0) {
-//    if (pid == 0) {
-//      ab += am * bm;
-//    } else {
-//      ab += ar * bm;
-//      ab += am * br;
-//      if (pid == 1) {
-//        ab += ar * br;
-//      }
-//    }
-//
-//    Mod(ab, fid);
-//  }
+  // CHECK THIS OUT
+  void BeaverMult(ZZ_p& ab, ZZ_p& ar, ZZ_p& am, ZZ_p& br, ZZ_p& bm, int fid = 0) {
+    if (pid == 0) {
+      ab += am * bm;
+    } else {
+      ab += ar * bm;
+      ab += am * br;
+      if (pid == 1) {
+        ab += ar * br;
+      }
+    }
+
+    Mod(ab, fid);
+  }
 
   template<class T>
   void BeaverMult(Vec<T>& ab, Vec<T>& ar, Vec<T>& am, T& br, T& bm, int fid = 0) {
@@ -1338,6 +1383,20 @@ public:
   }
 
   template<class T>
+  void AddPublic(ublas::vector<T>& a, T b) {
+    if (pid == 1) {
+      AddScalar(a, b);
+    }
+  }
+
+  template<class T>
+  void AddPublic(ublas::matrix<T>& a, T b) {
+    if (pid == 1) {
+      AddScalar(a, b);
+    }
+  }
+
+  template<class T>
   void Add(Vec<T>& a, T b) {
     if (pid > 0) {
       AddScalar(a, b);
@@ -1494,7 +1553,7 @@ public:
     BeaverPartition(br, bm, b, fid);
 
 
-//    Init(c, a.length());
+    Init(c, a.length());
     BeaverMult(c, ar, am, br, bm, fid);
 
     BeaverReconstruct(c, fid);
@@ -1609,7 +1668,6 @@ public:
     }
   }
 
-
   template<class T>
   void Reshape(ublas::matrix<T>& b, ublas::vector<T>& a, int nrows, int ncols) {
     if (pid == 0) {
@@ -1686,13 +1744,13 @@ public:
   void SkipData(ifstream& ifs, int nrows, int ncols);
 
   /* Communication */
-
+  //TODO CHECK THIS FUNC
   template<class T>
   void ReceiveElem(T& a, int from_pid, int fid = 0) {
     unsigned char *buf_ptr = buf;
-    sockets.find(from_pid)->second.ReceiveSecure(buf, ZZ_bytes[fid]);
+    sockets.find(from_pid)->second.ReceiveSecure(buf, BYTE_SIZE);
 //    ConvertBytes(a, buf_ptr, fid);
-    memcpy((char *)&a, buf_ptr, ZZ_bytes[fid]);
+    memcpy((char *)&a, buf_ptr, BYTE_SIZE);
   }
 
   template<class T>
@@ -1707,23 +1765,23 @@ public:
 
         if (stored_in_buf == 0) {
           uint64_t count;
-          if (remaining < ZZ_per_buf[fid]) {
+          if (remaining < myType_per_buf) {
             count = remaining;
           } else {
-            count = ZZ_per_buf[fid];
+            count = myType_per_buf;
           }
-          sockets.find(from_pid)->second.ReceiveSecure(buf, count * ZZ_bytes[fid]);
+          sockets.find(from_pid)->second.ReceiveSecure(buf, count * BYTE_SIZE);
           stored_in_buf += count;
           remaining -= count;
           buf_ptr = buf;
         }
 
-        memcpy((char *)&a[i][j], buf_ptr, ZZ_bytes[fid]);
+        memcpy((char *)&a[i][j], buf_ptr, BYTE_SIZE);
 
         cout << "i/j = " << i << "/" << j << ":" << a[i][j] << "\t";
       }
       cout << endl;
-      buf_ptr += ZZ_bytes[fid];
+      buf_ptr += BYTE_SIZE;
       stored_in_buf--;
     }
   }
@@ -1737,19 +1795,19 @@ public:
     for (size_t i = 0; i < a.size(); i++) {
       if (stored_in_buf == 0) {
         uint64_t count;
-        if (remaining < ZZ_per_buf[fid]) {
+        if (remaining < myType_per_buf) {
           count = remaining;
         } else {
-          count = ZZ_per_buf[fid];
+          count = myType_per_buf;
         }
-        sockets.find(from_pid)->second.ReceiveSecure(buf, count * ZZ_bytes[fid]);
+        sockets.find(from_pid)->second.ReceiveSecure(buf, count * BYTE_SIZE);
         stored_in_buf += count;
         remaining -= count;
         buf_ptr = buf;
       }
 
 //      a[i] = *(myType *)buf_ptr; // worked in uint16_t
-      memcpy((char *)&a[i], buf_ptr, ZZ_bytes[fid]);
+      memcpy((char *)&a[i], buf_ptr, BYTE_SIZE);
 
 //      printf("receive buffer : %02X %02X %02X %02X",buf_ptr[0],buf_ptr[1], buf_ptr[2], buf_ptr[3]);
 //      printf(" %02X %02X %02X %02X",buf_ptr[4],buf_ptr[5], buf_ptr[6], buf_ptr[7]);
@@ -1761,7 +1819,7 @@ public:
 //      }
 //      cout <<endl;
 
-      buf_ptr += ZZ_bytes[fid];
+      buf_ptr += BYTE_SIZE;
       stored_in_buf--;
     }
   }
@@ -1839,7 +1897,7 @@ public:
         remaining -= count;
         buf_ptr = buf;
       }
-//      memcpy((char *)&a[i], buf_ptr, ZZ_bytes[fid]);
+
       ConvertBytes(a[i], buf_ptr, fid);
       buf_ptr += ZZ_bytes[fid];
       stored_in_buf--;
@@ -1867,8 +1925,6 @@ public:
           buf_ptr = buf;
         }
 
-
-//        memcpy((char *)&a[i][j], buf_ptr, ZZ_bytes[fid]);
         ConvertBytes(a[i][j], buf_ptr, fid);
         buf_ptr += ZZ_bytes[fid];
         stored_in_buf--;
@@ -1885,21 +1941,21 @@ public:
       for (int j = 0; j < a.size2(); j++) {
         if (stored_in_buf == 0) {
           uint64_t count;
-          if (remaining < ZZ_per_buf[fid]) {
+          if (remaining < myType_per_buf) {
             count = remaining;
           } else {
-            count = ZZ_per_buf[fid];
+            count = myType_per_buf;
           }
-          sockets.find(from_pid)->second.ReceiveSecure(buf, count * ZZ_bytes[fid]);
+          sockets.find(from_pid)->second.ReceiveSecure(buf, count * BYTE_SIZE);
           stored_in_buf += count;
           remaining -= count;
           buf_ptr = buf;
         }
 
 
-        memcpy((char *)&a(i, j), buf_ptr, ZZ_bytes[fid]);
+        memcpy((char *)&a(i, j), buf_ptr, BYTE_SIZE);
 //        ConvertBytes(a[i][j], buf_ptr, fid);
-        buf_ptr += ZZ_bytes[fid];
+        buf_ptr += BYTE_SIZE;
         stored_in_buf--;
       }
     }
@@ -1910,8 +1966,8 @@ public:
     unsigned char *buf_ptr = buf;
 //    BytesFromZZ(buf_ptr, AsZZ(a), ZZ_bytes[fid]);
 
-    memcpy(buf_ptr, (char*) &a, ZZ_bytes[fid]);
-    sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid]);
+    memcpy(buf_ptr, (char*) &a, BYTE_SIZE);
+    sockets.find(to_pid)->second.SendSecure(buf, BYTE_SIZE);
   }
 
   template<class T>
@@ -1923,9 +1979,9 @@ public:
     // TODO change to_ZZ to native longtoByte - finished
 //    BytesFromZZ(buf_ptr, to_ZZ((unsigned long)a), ZZ_bytes[fid]);
 
-    memcpy(buf_ptr, (char*) &a, ZZ_bytes[fid]);
+    memcpy(buf_ptr, (char*) &a, BYTE_SIZE);
 
-    sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid]);
+    sockets.find(to_pid)->second.SendSecure(buf, BYTE_SIZE);
   }
 
   template<class T>
@@ -1958,20 +2014,20 @@ public:
 
       for (size_t j = 0; j < a[i].size(); j++) {
 
-        if (stored_in_buf == ZZ_per_buf[fid]) {
-          sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid] * stored_in_buf);
+        if (stored_in_buf == myType_per_buf) {
+          sockets.find(to_pid)->second.SendSecure(buf, BYTE_SIZE * stored_in_buf);
           stored_in_buf = 0;
           buf_ptr = buf;
         }
 
-        memcpy(buf_ptr, (char*)&a[i][j], ZZ_bytes[fid]);
+        memcpy(buf_ptr, (char*)&a[i][j], BYTE_SIZE);
         stored_in_buf++;
-        buf_ptr += ZZ_bytes[fid];
+        buf_ptr += BYTE_SIZE;
       }
     }
 
     if (stored_in_buf > 0) {
-      sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid] * stored_in_buf);
+      sockets.find(to_pid)->second.SendSecure(buf, BYTE_SIZE * stored_in_buf);
     }
   }
 
@@ -1981,8 +2037,8 @@ public:
     uint64_t stored_in_buf = 0;
     for (int i = 0; i < a.size(); i++) {
 
-      if (stored_in_buf == ZZ_per_buf[fid]) {
-        sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid] * stored_in_buf);
+      if (stored_in_buf == myType_per_buf) {
+        sockets.find(to_pid)->second.SendSecure(buf, BYTE_SIZE * stored_in_buf);
         stored_in_buf = 0;
         buf_ptr = buf;
       }
@@ -1995,7 +2051,7 @@ public:
 //      cout << endl;
 
       // TODO get rid of ZZ - finished
-      memcpy(buf_ptr, (char*)&a[i], ZZ_bytes[fid]);
+      memcpy(buf_ptr, (char*)&a[i], BYTE_SIZE);
 //      BytesFromZZ(buf_ptr, to_ZZ((unsigned long)a[i]), ZZ_bytes[fid]);
 
 
@@ -2004,13 +2060,13 @@ public:
 //      printf(" %02X %02X %02X %02X \n",buf_ptr[8],buf_ptr[9], buf_ptr[10], buf_ptr[11]);
 
       stored_in_buf++;
-      buf_ptr += ZZ_bytes[fid];
+      buf_ptr += BYTE_SIZE;
 
       // TODO CHECK BUFFERS - finished
     }
 
     if (stored_in_buf > 0) {
-      sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid] * stored_in_buf);
+      sockets.find(to_pid)->second.SendSecure(buf, BYTE_SIZE * stored_in_buf);
     }
   }
 
@@ -2044,21 +2100,21 @@ public:
     uint64_t stored_in_buf = 0;
     for (int i = 0; i < a.size1(); i++) {
       for (int j = 0; j < a.size2(); j++) {
-        if (stored_in_buf == ZZ_per_buf[fid]) {
-          sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid] * stored_in_buf);
+        if (stored_in_buf == myType_per_buf) {
+          sockets.find(to_pid)->second.SendSecure(buf, BYTE_SIZE * stored_in_buf);
           stored_in_buf = 0;
           buf_ptr = buf;
         }
 
-        memcpy(buf_ptr, (char*)&a(i, j), ZZ_bytes[fid]);
+        memcpy(buf_ptr, (char*)&a(i, j), BYTE_SIZE);
 //        BytesFromZZ(buf_ptr, AsZZ(a[i][j]), ZZ_bytes[fid]);
         stored_in_buf++;
-        buf_ptr += ZZ_bytes[fid];
+        buf_ptr += BYTE_SIZE;
       }
     }
 
     if (stored_in_buf > 0) {
-      sockets.find(to_pid)->second.SendSecure(buf, ZZ_bytes[fid] * stored_in_buf);
+      sockets.find(to_pid)->second.SendSecure(buf, BYTE_SIZE * stored_in_buf);
     }
   }
 
@@ -2390,6 +2446,7 @@ private:
   Vec<uint32_t> ZZ_bytes;
   Vec<uint32_t> ZZ_bits;
   Vec<uint64_t> ZZ_per_buf;
+  uint64_t myType_per_buf;
 
   /* Logging */
   ofstream logfs;
@@ -2543,11 +2600,11 @@ private:
 
     NTL_GEXEC_RANGE(c.length() > Param::PAR_THRES, c.length(), first, last)
 
-          context.restore();
+    context.restore();
 
-          for (int i = first; i < last; i++) {
-            mul(c[i], a[i], b[i]);
-          }
+    for (int i = first; i < last; i++) {
+      mul(c[i], a[i], b[i]);
+    }
 
     NTL_GEXEC_RANGE_END
   }
@@ -2558,9 +2615,9 @@ private:
 
     NTL_GEXEC_RANGE(c.length() > Param::PAR_THRES, c.length(), first, last)
 
-          for (int i = first; i < last; i++) {
-            mul(c[i], a[i], b[i]);
-          }
+    for (int i = first; i < last; i++) {
+      mul(c[i], a[i], b[i]);
+    }
 
     NTL_GEXEC_RANGE_END
   }
@@ -2586,13 +2643,13 @@ private:
 
     NTL_GEXEC_RANGE(c.NumRows() > Param::PAR_THRES, c.NumRows(), first, last)
 
-          context.restore();
+    context.restore();
 
-          for (int i = first; i < last; i++) {
-            for (int j = 0; j < c.NumCols(); j++) {
-              mul(c[i][j], a[i][j], b[i][j]);
-            }
-          }
+    for (int i = first; i < last; i++) {
+      for (int j = 0; j < c.NumCols(); j++) {
+        mul(c[i][j], a[i][j], b[i][j]);
+      }
+    }
 
     NTL_GEXEC_RANGE_END
   }
@@ -2603,11 +2660,11 @@ private:
 
     NTL_GEXEC_RANGE(c.NumRows() > Param::PAR_THRES, c.NumRows(), first, last)
 
-          for (int i = first; i < last; i++) {
-            for (int j = 0; j < c.NumCols(); j++) {
-              mul(c[i][j], a[i][j], b[i][j]);
-            }
-          }
+    for (int i = first; i < last; i++) {
+      for (int j = 0; j < c.NumCols(); j++) {
+        mul(c[i][j], a[i][j], b[i][j]);
+      }
+    }
 
     NTL_GEXEC_RANGE_END
   }
