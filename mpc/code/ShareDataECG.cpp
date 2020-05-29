@@ -32,14 +32,11 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
 
   /* Read in matrix. */
   ublas::matrix<myType> matrix (n_rows, n_cols);
-//  Mat<ZZ_p> matrix;
-//  Init(matrix, n_rows, n_cols);
-  
+
   string line;
   int i = 0;
   while(getline(fin, line)) {
 //    if (i  < 10) {
-//
 //      stringstream ss(line);
 //      tcout() << "Reading line " << line << endl;
 //      for(float k; ss >> k;)
@@ -65,8 +62,6 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
       if (j % 500 == 0)
         tcout() << "Read Column k " << k << endl;
 
-//      ZZ_p val_fp;
-//      DoubleToFP(val_fp, k, Param::NBIT_K, Param::NBIT_F);
       myType val_mytype;
       val_mytype = DoubleToFP(k);
       matrix(i, j) = val_mytype;
@@ -75,7 +70,6 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
     }
     i++;
   }
-//  tcout() << "NAMEEEE:: " << fname << i << n_rows << endl;
   if (i != n_rows) {
     tcout() << "Error: Invalid number of rows ecg: " << i << " :: " << n_rows << endl;
     return false;
@@ -84,7 +78,6 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
 
   /* Mask matrix. */
   ublas::matrix<myType> mask(n_rows, n_cols);
-//  Mat<ZZ_p> mask;
   mpc.RandMat(mask, n_rows, n_cols);
   matrix -= mask; /* Masked `matrix' should be sent to CP2. */
 
@@ -95,7 +88,6 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
   mpc.WriteToFile(matrix, fs);
   fs.close();
   tcout() << "Finished writing to file." << endl;
-
   return true;
 }
 

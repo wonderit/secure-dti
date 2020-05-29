@@ -265,7 +265,7 @@ bool unit_test_combined(MPCEnv& mpc, int pid) {
 
 
 bool unit_test(MPCEnv& mpc, int pid) {
-  myType x, y, z;
+  myType x;
   size_t size = 3;
   ublas::vector<myType> xv(size, 0), yv(size, 0);
   boost::numeric::ublas::vector<myType> xv1(size, 0), yv1(size, 0), zv(size, 0), wv, pc(size, 0);
@@ -424,11 +424,8 @@ bool unit_test(MPCEnv& mpc, int pid) {
   }
 
 //  Time MULT START
-  time_t start, end;
-  double total_time;
   if (pid == 2) {
     tic();
-
   }
   mpc.MultElem(zv, xv, yv);  // (1 2 3) * (1 2 -4) -> (1 4 -12)
   mpc.Trunc(zv);
@@ -437,7 +434,6 @@ bool unit_test(MPCEnv& mpc, int pid) {
     toc();
   }
 //  Time MULT END
-//
   if (pid > 0) {
     mpc.PrintFP(zv);
   }
