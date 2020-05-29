@@ -23,19 +23,19 @@ parser.add_argument("-t", "--is_test", help="Set isTest", action='store_true')
 parser.add_argument("-c", "--is_comet", help="Set isTest", action='store_true')
 parser.add_argument("-f", "--cache_folder", help="Set folder name", type=str, default='cache')
 parser.add_argument("-p", "--comet_project", help="Set project name", type=str, default='secure-ecg-c')
-parser.add_argument("-s", "--seed", help="Set random seed", type=int, default=1234)
+parser.add_argument("-seed", "--seed", help="Set random seed", type=int, default=1234)
+parser.add_argument("-m", "--mean", help="Set mean of Y", type=float, default=61.9)
+parser.add_argument("-s", "--std", help="Set std of Y", type=float, default=10.6)
 args = parser.parse_args()
 
 N_HIDDEN = 5
 LOSS = 'mse'
 
-# previous one
-# MEAN = 61.9
-# STD = 10.6
 # threshold maxabs<64
-MEAN = 61.9
-STD = 10.6
+MEAN = args.mean
+STD = args.std
 
+print('mean', MEAN, 's', STD)
 # outlier removed one
 # MEAN = 61.6
 # STD = 9.8

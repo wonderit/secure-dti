@@ -1,3 +1,38 @@
+# Secure ECG
+
+## Setup
+
+### Dependencies
+- Boost : `brew install boost`
+- comet (for logging)
+
+### RUN
+
+1. fetch data and convert into text (edit mean, std of y in `./ecg_evaluate.sh`)
+```
+./ecg_fetch_data.sh
+```
+
+2. share data
+```
+./ecg_share_data.sh
+```
+
+3. train
+```
+./ecg_train.sh
+```
+
+4. evaluate
+```
+./ecg_evaluate.sh
+```
+
+5. remove cache
+```
+./ecg_remove_cache.sh
+```
+
 # Secure DTI
 
 ## Realizing private and practical pharmacological collaboration
@@ -170,38 +205,3 @@ output the model parameters at the end of model training.
 
 Brian Hie, brianhie@mit.edu  
 Hoon Cho, hhcho@mit.edu
-
-
-###
-brew install boost
-brew install cmake
-pip install conan
-conan remote add ess-dmsc https://api.bintray.com/conan/ess-dmsc/conan
-conan remote add bincrafters https://api.bintray.com/conan/bincrafters/public-conan
-
-### manual for secure-ecg
-
-1. fetch data and convert into text
-```
-./fetch_data.sh
-```
-
-2. share data
-```
-./ecg_share_data.sh
-```
-
-3. train
-```
-./ecg_train.sh
-```
-
-4. evaluate
-```
-./ecg_evaluate.sh
-```
-
-5. remove cache
-```
-./ecg_remove_cache.sh
-```
