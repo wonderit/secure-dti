@@ -88,11 +88,17 @@ def report_scores(X, y, trained_model):
 
 
 def load_model(model, epoch, batch):
+    wait_count = 0
     file_name_check = 'mpc/{}/ecg_P1_{}_{}_W0.bin'.format(args.cache_folder, epoch, batch)
 
     while not os.path.exists(file_name_check):
-        print('Waiting 60s for the file to be generated : ', file_name_check)
-        time.sleep(60)
+        wait_count = wait_count + 1
+        if wait_count > 10:
+            print('exit process')
+            exit(0)
+        else:
+            print('Waiting 60s for the file to be generated : ', file_name_check)
+            time.sleep(60)
 
     W = [[] for _ in range(N_HIDDEN + 1)]
     for l in range(N_HIDDEN + 1):
