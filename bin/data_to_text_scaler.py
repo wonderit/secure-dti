@@ -158,7 +158,7 @@ for i in range(x.shape[1]):
                                           sampling_rate=100)
         part_x = filtered
         # maxabs added to filtered
-        part_x = scale_maxabs(part_x, np.max(np.abs(part_x)))
+        # part_x = scale_maxabs(part_x, np.max(np.abs(part_x)))
 
 
     # plt.close()
@@ -178,6 +178,17 @@ for i in range(x.shape[1]):
 
 x = x.reshape(x.shape[0], -1)
 
+
+# filter again
+for i in range(x.shape[0]):
+    for j in range(x.shape[1]):
+        if x[i, j] > 500:
+            x[i, j] = 500
+        elif x[i, j] < -500:
+            x[i, j] = -500
+
+scale_maxabs(x, np.max(np.abs(x)))
+# filter again
 
 total_lengths = [args.n_train_items, args.n_test_items]
 
