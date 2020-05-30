@@ -15,6 +15,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--seed", help="Set random seed", type=int, default=1234)
 parser.add_argument("-tr", "--n_train_items", help="Set log interval", type=int, default=5000)
 parser.add_argument("-te", "--n_test_items", help="Set log interval", type=int, default=500)
+parser.add_argument("-max", "--max", help="Set max for maxabs", type=int, default=32)
 parser.add_argument("-sc", "--scaler", help="Set scaler", type=str, default='fir')
 parser.add_argument("-x", "--is_remove_outlier_x", help="Set remove outlier x", action='store_true')
 parser.add_argument("-y", "--is_remove_outlier_y", help="Set remove outlier y", action='store_true')
@@ -64,7 +65,7 @@ def scale_minmax(arr, min, max):
 
 # 1000 to 1
 def scale_maxabs(arr, maxabs):
-    arr = (arr / maxabs) * 64
+    arr = (arr / maxabs) * args.max
     return arr
 
 
