@@ -74,6 +74,10 @@ def scale_robust(arr, q1, q3):
     arr = (arr - q1) / (q3-q1)
     return arr
 
+def apply_threshold(arr, thres):
+    arr[arr > thres] = thres
+    arr[arr < -thres] = thres
+    return arr
 
 def scale_div(arr, denom):
     arr = arr / denom
@@ -159,8 +163,7 @@ for i in range(x.shape[1]):
         # maxabs added to filtered
         # part_x = scale_maxabs(part_x, np.max(np.abs(part_x)))
         # filter again
-        part_x[part_x > 500] = 500
-        part_x[part_x< -500] = -500
+        part_x = apply_threshold(part_x, 300)
         part_x = scale_maxabs(part_x, np.max(np.abs(part_x)))
 
     x[:, i, :] = part_x
