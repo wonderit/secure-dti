@@ -23,19 +23,19 @@ parser.add_argument("-t", "--is_test", help="Set isTest", action='store_true')
 parser.add_argument("-c", "--is_comet", help="Set isTest", action='store_true')
 parser.add_argument("-f", "--cache_folder", help="Set folder name", type=str, default='cache')
 parser.add_argument("-p", "--comet_project", help="Set project name", type=str, default='secure-ecg-c')
-parser.add_argument("-s", "--seed", help="Set random seed", type=int, default=1234)
+parser.add_argument("-seed", "--seed", help="Set random seed", type=int, default=1234)
+parser.add_argument("-m", "--mean", help="Set mean of Y", type=float, default=61.9)
+parser.add_argument("-s", "--std", help="Set std of Y", type=float, default=10.6)
 args = parser.parse_args()
 
 N_HIDDEN = 5
 LOSS = 'mse'
 
-# previous one
-# MEAN = 61.9
-# STD = 10.6
-# threshold maxabs<1000
-MEAN = 61.8
-STD = 10.5
+# threshold maxabs<64
+MEAN = args.mean
+STD = args.std
 
+print('mean', MEAN, 's', STD)
 # outlier removed one
 # MEAN = 61.6
 # STD = 9.8
@@ -88,11 +88,17 @@ def report_scores(X, y, trained_model):
 
 
 def load_model(model, epoch, batch):
+    wait_count = 0
     file_name_check = 'mpc/{}/ecg_P1_{}_{}_W0.bin'.format(args.cache_folder, epoch, batch)
 
     while not os.path.exists(file_name_check):
-        print('Waiting 60s for the file to be generated : ', file_name_check)
-        time.sleep(60)
+        wait_count = wait_count + 1
+        if wait_count > 10:
+            print('exit process')
+            exit(0)
+        else:
+            print('Waiting 60s for the file to be generated : ', file_name_check)
+            time.sleep(60)
 
     W = [[] for _ in range(N_HIDDEN + 1)]
     for l in range(N_HIDDEN + 1):
