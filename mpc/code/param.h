@@ -66,6 +66,8 @@ class Param {
     static string TEST_SUFFIXES;
     static int ITER_PER_EVAL;
     static int RAND_SEED;
+    static int LOG_INTERVAL;
+    static string OPTIMIZER;
     
     /* Software parameters */
     static uint64_t MPC_BUF_SIZE; // size of data buffer in bytes

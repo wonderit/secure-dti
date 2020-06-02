@@ -791,137 +791,139 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
   assert(act.size() == 0);
   assert(relus.size() == 0);
 
-  //  if (pid == 2)
-  //    if (Param::DEBUG) tcout() << "Momentum update." << endl;
-  //  /* Update the model using Nesterov momentum. */
-  //  /* Compute constants that update various parameters. */
-  //  ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
-  //                             Param::NBIT_K, Param::NBIT_F);
-  //  ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
-  //                                   Param::NBIT_K, Param::NBIT_F);
-  //  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
-  //                               Param::NBIT_K, Param::NBIT_F);
-  //
-  //  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-  //    /* Update the weights. */
-  //    Mat<ZZ_p> vW_prev = vW[l];
-  //    vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
-  //    mpc.Trunc(vW[l]);
-  //    Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
-  //    mpc.Trunc(W_update);
-  //    W[l] += W_update;
-  //
-  //    /* Update the biases. */
-  //    Vec<ZZ_p> vb_prev = vb[l];
-  //    vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
-  //    mpc.Trunc(vb[l]);
-  //    Vec<ZZ_p> b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
-  //    mpc.Trunc(b_update);
-  //    b[l] += b_update;
-  //
-  //  }
-  //
-  //
-  if (pid == 2)
-    if (Param::DEBUG)
-      tcout() << "Adam update." << endl;
-  /* Update the model using Adam. */
-  /* Compute constants that update various parameters. */
+  // ADAM START
+  if (Param::OPTIMIZER == "adam") {
+    if (pid == 2)
+      if (Param::DEBUG)
+        tcout() << "Adam update." << endl;
+    /* Update the model using Adam. */
+    /* Compute constants that update various parameters. */
 
-  double beta_1 = 0.9;
-  double beta_2 = 0.999;
-  double eps = 1e-7;
-  ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE, Param::NBIT_K, Param::NBIT_F);
+    double beta_1 = 0.9;
+    double beta_2 = 0.999;
+    double eps = 1e-7;
+    ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE, Param::NBIT_K, Param::NBIT_F);
 
-  ZZ_p fp_b1 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
-  ZZ_p fp_b2 = DoubleToFP(beta_2, Param::NBIT_K, Param::NBIT_F);
-  ZZ_p fp_1_b1 = DoubleToFP(1 - beta_1, Param::NBIT_K, Param::NBIT_F);
-  ZZ_p fp_1_b2 = DoubleToFP(1 - beta_2, Param::NBIT_K, Param::NBIT_F);
-  ZZ_p eps_fp = DoubleToFP(eps, Param::NBIT_K, Param::NBIT_F);
-  double new_double_learn_rate =
-      Param::LEARN_RATE *
-      (sqrt(1.0 - pow(beta_2, step)) / (1.0 - pow(beta_1, step)));
-  ZZ_p fp_new_learn_rate =
-      DoubleToFP(new_double_learn_rate, Param::NBIT_K, Param::NBIT_F);
+    ZZ_p fp_b1 = DoubleToFP(beta_1, Param::NBIT_K, Param::NBIT_F);
+    ZZ_p fp_b2 = DoubleToFP(beta_2, Param::NBIT_K, Param::NBIT_F);
+    ZZ_p fp_1_b1 = DoubleToFP(1 - beta_1, Param::NBIT_K, Param::NBIT_F);
+    ZZ_p fp_1_b2 = DoubleToFP(1 - beta_2, Param::NBIT_K, Param::NBIT_F);
+    ZZ_p eps_fp = DoubleToFP(eps, Param::NBIT_K, Param::NBIT_F);
+    double new_double_learn_rate =
+        Param::LEARN_RATE *
+        (sqrt(1.0 - pow(beta_2, step)) / (1.0 - pow(beta_1, step)));
+    ZZ_p fp_new_learn_rate =
+        DoubleToFP(new_double_learn_rate, Param::NBIT_K, Param::NBIT_F);
 
-  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+    for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
 
-    Mat<ZZ_p> dW2;
-    mpc.MultElem(dW2, dW[l], dW[l]);
-    mpc.Trunc(dW2);
+      Mat<ZZ_p> dW2;
+      mpc.MultElem(dW2, dW[l], dW[l]);
+      mpc.Trunc(dW2);
 
-    if (Param::DEBUG && pid > 0) {
+      if (Param::DEBUG && pid > 0) {
         tcout() << "dW [l] = " << l << endl;
         mpc.PrintFP(dW[l]);
+      }
+      /* Update the weights. */
+      mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
+      vW[l] = fp_b2 * vW[l] + fp_1_b2 * dW2;
+      mpc.Trunc(mW[l]);
+      mpc.Trunc(vW[l]);
+      mpc.AddPublic(vW[l], eps_fp);
+
+      //  Check Infinite error
+      //    if (pid > 0) {
+      //      tcout() << "print mW" << endl;
+      //      mpc.PrintFP(mW[l][0]);
+      //      tcout() << "print vW" << endl;
+      //      mpc.PrintFP(vW[l][0]);
+      //    }
+
+      Mat<ZZ_p> W_update;
+      Mat<ZZ_p> vWsqrt, inv_vWsqrt;
+      mpc.FPSqrt(vWsqrt, inv_vWsqrt, vW[l]);
+      mpc.MultElem(W_update, mW[l], inv_vWsqrt);
+      mpc.Trunc(W_update);
+      W_update *= -fp_new_learn_rate;
+      mpc.Trunc(W_update);
+      W[l] += W_update;
+
+      //    if (pid > 0) {
+      //      tcout() << "print fp_new_learn_rate" << endl;
+      //      mpc.PrintFP(fp_new_learn_rate);
+      //
+      //      tcout() << "print W_Update" << endl;
+      //      mpc.PrintFP(W_update[0]);
+      //        tcout() << "print W l" << l << endl;
+      //        mpc.PrintFP(W[l][0]);
+      //    }
+
+      /* Update the biases. */
+      Vec<ZZ_p> db2;
+      mpc.MultElem(db2, db[l], db[l]);
+      mpc.Trunc(db2);
+      mb[l] = fp_b1 * mb[l] + fp_1_b1 * db[l];
+      mpc.Trunc(mb[l]);
+      vb[l] = fp_b2 * vb[l] + fp_1_b2 * db2;
+      mpc.Trunc(vb[l]);
+      mpc.AddPublic(vb[l], eps_fp);
+
+      //  Check Infinite error
+      //    if (pid > 0) {
+      //      tcout() << "print mb" << endl;
+      //      mpc.PrintFP(mb[l][0]);
+      //
+      //        tcout() << "print vb" << endl;
+      //        mpc.PrintFP(vb[l][0]);
+      //    }
+
+      Vec<ZZ_p> b_update;
+      Vec<ZZ_p> vbsqrt, inv_vbsqrt;
+      mpc.FPSqrt(vbsqrt, inv_vbsqrt, vb[l]);
+      mpc.MultElem(b_update, mb[l], inv_vbsqrt);
+      mpc.Trunc(b_update);
+      b_update *= -fp_new_learn_rate;
+      mpc.Trunc(b_update);
+      b[l] += b_update;
+
+      //    if (pid > 0) {
+      //        tcout() << "print b_update" << endl;
+      //        mpc.PrintFP(b_update[0]);
+      //        tcout() << "print b l" << l << endl;
+      //        mpc.PrintFP(b[l][0]);
+      //    }
     }
-    /* Update the weights. */
-    mW[l] = fp_b1 * mW[l] + fp_1_b1 * dW[l];
-    vW[l] = fp_b2 * vW[l] + fp_1_b2 * dW2;
-    mpc.Trunc(mW[l]);
-    mpc.Trunc(vW[l]);
-    mpc.AddPublic(vW[l], eps_fp);
+  } else {
+    if (pid == 2)
+        if (Param::DEBUG) tcout() << "Momentum update." << endl;
+    /* Update the model using Nesterov momentum. */
+    /* Compute constants that update various parameters. */
+    ZZ_p MOMENTUM = DoubleToFP(Param::MOMENTUM,
+                               Param::NBIT_K, Param::NBIT_F);
+    ZZ_p MOMENTUM_PLUS1 = DoubleToFP(Param::MOMENTUM + 1,
+                                     Param::NBIT_K, Param::NBIT_F);
+    ZZ_p LEARN_RATE = DoubleToFP(Param::LEARN_RATE,
+                                 Param::NBIT_K, Param::NBIT_F);
 
-    //  Check Infinite error
-//    if (pid > 0) {
-//      tcout() << "print mW" << endl;
-//      mpc.PrintFP(mW[l][0]);
-//      tcout() << "print vW" << endl;
-//      mpc.PrintFP(vW[l][0]);
-//    }
+    for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+      /* Update the weights. */
+      Mat<ZZ_p> vW_prev = vW[l];
+      vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
+      mpc.Trunc(vW[l]);
+      Mat<ZZ_p> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
+      mpc.Trunc(W_update);
+      W[l] += W_update;
 
-    Mat<ZZ_p> W_update;
-    Mat<ZZ_p> vWsqrt, inv_vWsqrt;
-    mpc.FPSqrt(vWsqrt, inv_vWsqrt, vW[l]);
-    mpc.MultElem(W_update, mW[l], inv_vWsqrt);
-    mpc.Trunc(W_update);
-    W_update *= -fp_new_learn_rate;
-    mpc.Trunc(W_update);
-    W[l] += W_update;
+      /* Update the biases. */
+      Vec<ZZ_p> vb_prev = vb[l];
+      vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
+      mpc.Trunc(vb[l]);
+      Vec<ZZ_p> b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
+      mpc.Trunc(b_update);
+      b[l] += b_update;
 
-//    if (pid > 0) {
-//      tcout() << "print fp_new_learn_rate" << endl;
-//      mpc.PrintFP(fp_new_learn_rate);
-//
-//      tcout() << "print W_Update" << endl;
-//      mpc.PrintFP(W_update[0]);
-//        tcout() << "print W l" << l << endl;
-//        mpc.PrintFP(W[l][0]);
-//    }
-
-    /* Update the biases. */
-    Vec<ZZ_p> db2;
-    mpc.MultElem(db2, db[l], db[l]);
-    mpc.Trunc(db2);
-    mb[l] = fp_b1 * mb[l] + fp_1_b1 * db[l];
-    mpc.Trunc(mb[l]);
-    vb[l] = fp_b2 * vb[l] + fp_1_b2 * db2;
-    mpc.Trunc(vb[l]);
-    mpc.AddPublic(vb[l], eps_fp);
-
-    //  Check Infinite error
-    //    if (pid > 0) {
-    //      tcout() << "print mb" << endl;
-    //      mpc.PrintFP(mb[l][0]);
-    //
-    //        tcout() << "print vb" << endl;
-    //        mpc.PrintFP(vb[l][0]);
-    //    }
-
-    Vec<ZZ_p> b_update;
-    Vec<ZZ_p> vbsqrt, inv_vbsqrt;
-    mpc.FPSqrt(vbsqrt, inv_vbsqrt, vb[l]);
-    mpc.MultElem(b_update, mb[l], inv_vbsqrt);
-    mpc.Trunc(b_update);
-    b_update *= -fp_new_learn_rate;
-    mpc.Trunc(b_update);
-    b[l] += b_update;
-
-    //    if (pid > 0) {
-    //        tcout() << "print b_update" << endl;
-    //        mpc.PrintFP(b_update[0]);
-    //        tcout() << "print b l" << l << endl;
-    //        mpc.PrintFP(b[l][0]);
-    //    }
+    }
   }
 
   Mat<ZZ_p> mse;
@@ -1133,7 +1135,7 @@ void model_update(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
               << minute << ":" << second << endl;
     }
 
-    if (pid > 0 && (mse_score > 100000 || mse_score < -100000)) {
+    if (pid > 0 && (mse_score > 1000 || mse_score < -1000)) {
       tcout() << "OVER FLOW ERROR OCCURED : " << mse_score << endl;
       for (int pn = 0; pn < 3; pn++) {
         string fname =
@@ -1148,6 +1150,16 @@ void model_update(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
         fs.close();
       }
       exit(0);
+    }
+    /* Save state every LOG_INTERVAL batches. */
+    if (i % Param::LOG_INTERVAL == 0) {
+      if (pid == 2) {
+        tcout() << "save parameters of W, b into .bin files." << endl;
+      }
+      for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+        reveal(W[l], cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "W" + to_string(l)), mpc);
+        reveal(b[l], cache(pid, to_string(epoch) + "_" + to_string(i) + "_" + "b" + to_string(l)), mpc);
+      }
     }
 
     /* Update reference to training epoch. FOR TEST */

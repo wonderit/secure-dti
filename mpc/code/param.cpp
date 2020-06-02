@@ -69,6 +69,10 @@ bool Param::ParseFile(const char *param_file) {
       ret = Convert(v, Param::MPC_BUF_SIZE, k);
     } else if (k == "ITER_PER_EVAL") {
       ret = Convert(v, Param::ITER_PER_EVAL, k);
+    } else if (k == "LOG_INTERVAL") {
+      ret = Convert(v, Param::LOG_INTERVAL, k);
+    } else if (k == "OPTIMIZER") {
+      ret = Convert(v, Param::OPTIMIZER, k);
     } else if (k == "RAND_SEED") {
       ret = Convert(v, Param::RAND_SEED, k);
     } else if (k == "OUTPUT_FILE_PREFIX") {
@@ -186,6 +190,8 @@ double Param::REG = 0.001;
 double Param::DROPOUT = 0;
 //string Param::LOSS = "hinge";
 string Param::LOSS = "mse";
+string Param::OPTIMIZER = "sgd";
+int Param::LOG_INTERVAL = 10;
 int Param::N_FILE_BATCH = 20000;
 int Param::N_NEURONS = 16;
 int Param::N_NEURONS_2 = 64;
