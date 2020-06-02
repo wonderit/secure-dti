@@ -845,9 +845,7 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
       mpc.Trunc(vW[l]);
 
-      ublas::matrix<myType> W_update;
-      Init(W_update, vW_prev.size1(), vW_prev.size2());
-      W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
+      ublas::matrix<myType> W_update = (-MOMENTUM * vW_prev) + (MOMENTUM_PLUS1 * vW[l]);
 
       if (Param::DEBUG) {
         tcout() << "W_update s = " << W_update.size1() << "/" << W_update.size2() << endl;
@@ -855,25 +853,21 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         tcout() << "W[l] s = " << W[l].size1() << "/" << W[l].size2() << endl;
       }
       mpc.Trunc(W_update);
-
-      W[l] += W_update;
+      W[l] -= W_update;
 
       /* Update the biases. */
       ublas::vector<myType> vb_prev = vb[l];
       vb[l] = (MOMENTUM * vb[l]) - (LEARN_RATE * db[l]);
       mpc.Trunc(vb[l]);
 
-      ublas::vector<myType> b_update;
-      Init(b_update, vb[l].size());
-
+      ublas::vector<myType> b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
       if (Param::DEBUG) {
         tcout() << "b_update s = " << b_update.size() << endl;
         tcout() << "db[l] s = " << db[l].size()  << endl;
         tcout() << "b[l] s = " << b[l].size()  << endl;
       }
-      b_update = (-MOMENTUM * vb_prev) + (MOMENTUM_PLUS1 * vb[l]);
       mpc.Trunc(b_update);
-      b[l] += b_update;
+      b[l] -= b_update;
     }
 
     if (pid == 2)
