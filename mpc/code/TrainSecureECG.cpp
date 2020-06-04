@@ -617,6 +617,13 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     }
     mpc.Trunc(dW[l]);
 
+    /* Add regularization term to weights. */
+    myType reg;
+    reg = DoubleToFP(Param::REG);
+    ublas::matrix<myType> reg_mat = W[l] * reg;
+    mpc.Trunc(reg_mat);
+    dW[l] += reg_mat;
+
 //    /* Add regularization term to weights. */
 ////    ZZ_p REG;
 //    myType REG;
