@@ -79,7 +79,7 @@ bool unit_test_combined(MPCEnv& mpc, int pid) {
   Mat<ZZ> am, bm, cm, dm;
 
   double d;
-  double eps = 1e-2;
+  double eps = 1e-1;
 
   tcout() << "1. [Fixed-point ZZ_p <-> Double conversion] " << endl;
   tcout() << ">> ZZ_p : " << endl;

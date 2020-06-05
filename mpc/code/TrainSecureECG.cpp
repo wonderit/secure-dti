@@ -358,7 +358,7 @@ void initialize_model(
   }
 }
 
-double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
+void gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
                         vector<ublas::matrix<myType>>& W, vector<ublas::vector<myType>>& b,
                         vector<ublas::matrix<myType>>& dW, vector<ublas::vector<myType>>& db,
                         vector<ublas::matrix<myType>>& vW, vector<ublas::vector<myType>>& vb,
@@ -886,16 +886,16 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
 
   // ADAM END
-  ublas::matrix<myType> mse;
-  ublas::matrix<double> mse_double;
-  ublas::matrix<double> dscore_double;
-  double mse_score_double;
-  mpc.MultElem(mse, dscores, dscores);
-  mpc.Trunc(mse);
-  mpc.RevealSym(mse);
-  FPToDouble(mse_double, mse);
-  mse_score_double = Sum(mse_double);
-  return mse_score_double * Param::BATCH_SIZE;
+//  ublas::matrix<myType> mse;
+//  ublas::matrix<double> mse_double;
+//  ublas::matrix<double> dscore_double;
+//  double mse_score_double;
+//  mpc.MultElem(mse, dscores, dscores);
+//  mpc.Trunc(mse);
+//  mpc.RevealSym(mse);
+//  FPToDouble(mse_double, mse);
+//  mse_score_double = Sum(mse_double);
+//  return mse_score_double * Param::BATCH_SIZE;
 }
 
 void load_X_y(string suffix, ublas::matrix<myType>& X, ublas::matrix<myType>& y,
@@ -1026,47 +1026,47 @@ void model_update(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     }
 
     /* Do one round of mini-batch gradient descent. */
-    double mse_score = gradient_descent(X_batch, y_batch,
+    gradient_descent(X_batch, y_batch,
                      W, b, dW, db, vW, vb, mW, mb, act, relus,
                      epoch, epoch * batches_in_file + i + 1 , pid, mpc);
 
 
 
-    if (pid == 2) {
-      end = time(NULL);
-      laptime = (double)end - check;
-      total_laptime = (int) end - start;
-
-      hour = total_laptime / 3600;
-      second = total_laptime % 3600;
-      minute = second / 60;
-      second %= 60;
-      check = end;
-
-      tcout() << "epoch: " << epoch
-              << " batch: " << i+1  << "/" << batches_in_file
-              << " loss : " << mse_score
-              << " laptime : " << laptime
-              << " total time: " << hour << ":" << minute << ":" << second << endl;
-
-    }
-
-    if (pid > 0 && (mse_score > 1000 || mse_score < -1000)) {
-      tcout() << "OVER FLOW ERROR OCCURED : " << mse_score << endl;
-      for (int pn = 0; pn < 3; pn++) {
-        string fname =
-            cache(pn, to_string(epoch) + "_" + to_string(i) + "_seed");
-        fstream fs;
-        fs.open(fname.c_str(), ios::out | ios::binary);
-        if (!fs.is_open()) {
-          tcout() << "Error: could not open " << fname << endl;
-        }
-        mpc.SwitchSeed(pn);
-        mpc.ExportSeed(fs);
-        fs.close();
-      }
-      exit(0);
-    }
+//    if (pid == 2) {
+//      end = time(NULL);
+//      laptime = (double)end - check;
+//      total_laptime = (int) end - start;
+//
+//      hour = total_laptime / 3600;
+//      second = total_laptime % 3600;
+//      minute = second / 60;
+//      second %= 60;
+//      check = end;
+//
+//      tcout() << "epoch: " << epoch
+//              << " batch: " << i+1  << "/" << batches_in_file
+//              << " loss : " << mse_score
+//              << " laptime : " << laptime
+//              << " total time: " << hour << ":" << minute << ":" << second << endl;
+//
+//    }
+//
+//    if (pid > 0 && (mse_score > 1000 || mse_score < -1000)) {
+//      tcout() << "OVER FLOW ERROR OCCURED : " << mse_score << endl;
+//      for (int pn = 0; pn < 3; pn++) {
+//        string fname =
+//            cache(pn, to_string(epoch) + "_" + to_string(i) + "_seed");
+//        fstream fs;
+//        fs.open(fname.c_str(), ios::out | ios::binary);
+//        if (!fs.is_open()) {
+//          tcout() << "Error: could not open " << fname << endl;
+//        }
+//        mpc.SwitchSeed(pn);
+//        mpc.ExportSeed(fs);
+//        fs.close();
+//      }
+//      exit(0);
+//    }
 
     /* Save state every LOG_INTERVAL batches. */
     if (i % Param::LOG_INTERVAL == 0) {

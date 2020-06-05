@@ -20,7 +20,7 @@ using namespace std;
   typedef int64_t myTypeSigned;
   #define IS_INT true
   const string BASE_PRIME_NUMBER = "18446744073709551557";
-  #define FIXED_POINT_FRACTIONAL_BITS 18
+  #define FIXED_POINT_FRACTIONAL_BITS 14
 #elif INT_TYPE == 32
   typedef uint32_t myType;
   #define IS_INT true
