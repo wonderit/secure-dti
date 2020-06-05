@@ -981,10 +981,11 @@ void model_update(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
 
 //  Time
-  time_t start, check, end;
-  double laptime;
-  int total_laptime;
-  int hour, second, minute;
+  time_t start, check;
+//  , end;
+//  double laptime;
+//  int total_laptime;
+//  int hour, second, minute;
 
   start = time(NULL);
   check = time(NULL);
