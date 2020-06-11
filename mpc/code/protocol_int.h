@@ -61,6 +61,74 @@ string outname(string desc) {
   return oss.str();
 }
 
+
+bool unit_test_generate_integers(MPCEnv& mpc, int pid) {
+  int size = 3;
+  ublas::vector<myType> maskxv(size, 0), maskyv(size, 0);
+  ublas::vector<myType> xv(size, 0), yv(size, 0);
+  if (pid == 2) {
+    for(size_t i = 0; i < size; i++) {
+      if (i % 3 == 0) {
+        xv[i] = DoubleToFP(-1.25);
+        yv[i] = DoubleToFP(100.0);
+      } else if (i % 3 == 1) {
+        xv[i] = DoubleToFP(2.5);
+        yv[i] = DoubleToFP(-1.0);
+      } else {
+        xv[i] = DoubleToFP(3.14);
+        yv[i] = DoubleToFP(-0.0001);
+      }
+
+    }
+    mpc.SwitchSeed(1);
+    mpc.RandVec(maskxv);
+    mpc.RandVec(maskyv);
+    mpc.RestoreSeed();
+
+    xv -= maskxv;
+    yv -= maskyv;
+//    xv = maskxv;
+//    yv = maskyv;
+
+  } else if (pid == 1) {
+    mpc.SwitchSeed(2);
+    mpc.RandVec(maskxv);
+    mpc.RandVec(maskyv);
+    mpc.RestoreSeed();
+    xv = maskxv;
+    yv = maskyv;
+  }
+
+  if (pid > 0) {
+    for (size_t i = 0; i < size; ++i) {
+      tcout() << "pid : " << pid << " xv : " << xv[i] << endl;
+      tcout() << "pid : -----" << pid << " xv : " << -xv[i] << endl;
+    }
+
+    mpc.PrintFP(xv);
+  }
+
+//  use int to test multiply
+//  xv += yv; // 2
+//  if (pid > 0){
+//    mpc.PrintFP(xv);
+//  }
+
+//  Time MULT START
+  if (pid == 1) {
+
+    tcout() << MINUS_ONE << endl;
+//    tcout() << FIELD_L_1 << endl;
+    tcout() << BYTE_SIZE << endl;
+    tcout() << "byte-size:" << sizeof(myType) << " char_bit:" << CHAR_BIT << " bit_size:" << BIT_SIZE << endl;
+    tcout() << BIT_SIZE << endl;
+    tcout() << LARGEST_NEG << endl;
+    tcout() << FIELD << endl;
+    tcout() << FIELD_BIT << endl;
+    printf("----------");
+  }
+}
+
 bool unit_test_combined(MPCEnv& mpc, int pid) {
   myType int_x;
   ZZ_p zzp_x, zzp_y, zzp_z;
@@ -365,9 +433,9 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  for(int i = BIT_SIZE-1; i >= 0; i--) cout << bBits[i];
 //  cout << endl;
 //  cout << b << endl;
-  x = DoubleToFP(0.0221364);
+  x = DoubleToFP(-0.0221364);
   tcout() << "DoubleToFP x : " << x << endl;
-  d = ABS(FPToDouble(x) - (0.0221364));
+  d = ABS(FPToDouble(x) - (-0.0221364));
   tcout() << "double: " << FPToDouble(x) << " d :: " << d << " / " << FIXED_POINT_FRACTIONAL_BITS << endl;
   assert(d < eps);
   tcout() << "Success" << endl;
@@ -466,7 +534,7 @@ bool unit_test(MPCEnv& mpc, int pid) {
   if (pid == 1) {
 
     tcout() << MINUS_ONE << endl;
-    tcout() << FIELD_L_1 << endl;
+//    tcout() << FIELD_L_1 << endl;
     tcout() << BIT_SIZE << endl;
     tcout() << LARGEST_NEG << endl;
     tcout() << FIELD << endl;
@@ -513,6 +581,17 @@ bool unit_test(MPCEnv& mpc, int pid) {
     printf("----------print int -----");
     mpc.PrintFP(vp);
   }
+
+  ublas::vector<myType> vp_copy(vp);
+  mpc.RevealSym(vp_copy);
+  ublas::vector<double> X_double(vp.size(), 0);
+  fstream fs;
+  fs.open("VP_PRINT_INT_final.bin", ios::out);
+  FPToDouble(X_double, vp_copy);
+  for (int i = 0; i < vp_copy.size(); i++) {
+    fs << X_double[i] << '\t';
+  }
+  fs.close();
 
   return true;
 }

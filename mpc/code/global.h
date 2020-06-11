@@ -7,17 +7,19 @@
 using namespace boost::multiprecision;
 using namespace std;
 
-#define INT_TYPE 64
+#define INT_TYPE 128
 
 #if INT_TYPE == 128
   typedef uint128_t myType;
   typedef int128_t myTypeSigned;
-  #define FIXED_POINT_FRACTIONAL_BITS 35
+  typedef uint128_t myTypeunSigned;
+  #define FIXED_POINT_FRACTIONAL_BITS 30
   const string BASE_PRIME_NUMBER = "340282366920938463463374607431768211297";
   #define IS_INT true
 #elif INT_TYPE == 64
-  typedef uint64_t myType;
+  typedef int64_t myType;
   typedef int64_t myTypeSigned;
+  typedef uint64_t myTypeunSigned;
   #define IS_INT true
   const string BASE_PRIME_NUMBER = "18446744073709551557";
   #define FIXED_POINT_FRACTIONAL_BITS 18
@@ -46,7 +48,8 @@ const int BIT_SIZE = (BYTE_SIZE * CHAR_BIT);
 const myType LARGEST_NEG = ((myType)1 << (BIT_SIZE - 1));
 const myType MINUS_ONE = (myType)-1;
 const myType FIELD_L_BIT = BIT_SIZE/2;
-const myType FIELD_L_1 = ((myType)1 << FIELD_L_BIT) - 1;
+const int FIELD_BIT = BIT_SIZE - 2;
+//const myType FIELD_L_1 = ((myType)1 << FIELD_L_BIT) - 1;
 const myType FIELD = ((myType)1 << (BIT_SIZE - 2));
 
 #define PRIME_NUMBER 67

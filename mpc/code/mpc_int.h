@@ -348,7 +348,8 @@ public:
       using std::swap;
       random_index = RandElemBnd(i+1);
 //      tcout() << "pid : " << pid << ", rand : " << random_index << "\t";
-      swap(a[i], a[random_index]);
+      // TODO SWAPP
+//      boost::multiprecision::swap(a[i], a[random_index]);
     }
 //    cout << endl;
 
@@ -545,8 +546,9 @@ public:
 //    }
 //  }
 //
-  void PrintFP(ublas::vector<myType>& a, ostream& os) {
-    ublas::vector<myType> a_copy = a;
+  template<class T>
+  void PrintFP(ublas::vector<T>& a, ostream& os) {
+    ublas::vector<T> a_copy = a;
     ublas::vector<double> ad(a.size());
     RevealSym(a_copy);
     FPToDouble(ad, a_copy);
@@ -1825,59 +1827,6 @@ public:
   }
 
 
-
-  template<class T>
-  void GetShare(ublas::vector<T>& a, ublas::vector<T>& a_sh, myType L) {
-
-    if (pid == 0) {
-      ublas::vector<T> a_sh_2(a_sh.size());
-//      RandVecBnd(a, FIELD_L_1);
-      RandVecBnd(a_sh, L);
-
-
-      for(size_t i = 0; i < a.size(); i++) {
-        a_sh_2[i] = (a[i] - a_sh[i]) % L;
-      }
-      SendVec(a_sh, 1);
-      SendVec(a_sh_2, 2);
-      tcout() << "::: pid = " << pid << " GetShare a  ::: "<< a[0]  << endl;
-//      tcout() << "::: pid = " << pid << " compute msb a1  ::: "<< a[1]  << endl;
-//      tcout() << "::: pid = " << pid << " compute msb a2  ::: "<< a[2]  << endl;
-      tcout() << "::: pid = " << pid << " GetShare a_sh  ::: "<< a_sh[0]  << endl;
-      tcout() << "::: pid = " << pid << " GetShare a_sh  ::: "<< a_sh_2[0]  << endl;
-//      tcout() << "::: pid = " << pid << " compute msb a2  ::: "<< a[2]  << endl;
-//      tcout() << "::: pid = " << pid << " compute msb a2  ::: "<< a[2]  << endl;
-    } else {
-      ReceiveVec(a_sh, 0);
-      tcout() << "::: pid = " << pid << " GetShare a_sh 0  ::: "<< a_sh[0]  << endl;
-      tcout() << "::: pid = " << pid << " GetShare a_sh 1  ::: "<< a_sh[1]  << endl;
-      tcout() << "::: pid = " << pid << " GetShare a_sh 2  ::: "<< a_sh[2]  << endl;
-    }
-  }
-
-  template<class T>
-  void GetShare(ublas::vector<ublas::vector<T>>& a, ublas::vector<ublas::vector<T>>& a_sh, myType L) {
-
-    if (pid == 0) {
-
-      ublas::vector<ublas::vector<T>> a_sh_2(a_sh.size(), ublas::vector<T>(INT_TYPE, 0));
-
-      RandVecBnd(a_sh, L);
-
-      for(size_t i = 0; i < a.size(); i++) {
-        for(size_t j = 0; j < a[i].size(); j++) {
-          a_sh_2[i][j] = (a[i][j] - a_sh[i][j]) % L;
-        }
-      }
-
-
-      SendVec(a_sh, 1);
-      SendVec(a_sh_2, 2);
-    } else {
-      ReceiveVec(a_sh, 0);
-    }
-  }
-
   template<class T>
   void ReceiveVec(Vec<T>& a, int from_pid, int n, int fid = 0) {
     a.SetLength(n);
@@ -2257,7 +2206,8 @@ public:
   }
 
   static myType RandElem() {
-    return RandomBits_long(INT_FIELD-1);
+    return RandomBits_myType(INT_FIELD-1);
+//    return RandomBits_long(INT_FIELD-1);
   }
 
   void RandVec(Vec<ZZ>& a, int n, int fid) {
@@ -2272,28 +2222,59 @@ public:
       random(a[i]);
   }
 
+  static void RandVecBits_mytype_L_1(ublas::vector<myType>& a) {
+
+    for (int i = 0; i < a.size(); i++) {
+      a[i] = RandomBits_myType(INT_FIELD-2);
+//      if(a[i] > 0)
+//        a[i] = a[i] - 1;
+    }
+
+  }
+
   static void RandVecBits_long(ublas::vector<myType>& a, long l) {
 
     for (int i = 0; i < a.size(); i++)
       a[i] = RandomWord();
+//      a[i] = RandomBits_myType(l);
 //      a[i] = RandomBits_long(l);
   }
 
   static void RandVec(ublas::vector<myType>& a, int fid = 0) {
 
     for (int i = 0; i < a.size(); i++)
-      a[i] = RandomBits_long(INT_FIELD-1);
+      a[i] = RandomBits_myType(INT_FIELD-1);  // for int64
+//      a[i] = RandomBits_myType(INT_FIELD);  // for uint128
+//      a[i] = RandomBits_long(INT_FIELD-1);
 //      a[i] = RandomBnd(max_field_L_1);
 //      a[i] = RandomBits_long(l);
   }
 
-  static void RandVecBnd(ublas::vector<myType>& a, myType l) {
+//  static void RandVec128(ublas::vector<uint128_t>& a, int fid = 0) {
+//
+//    for (int i = 0; i < a.size(); i++) {
+//      a[i] = RandomBits_128(128);
+//    }
+//
+//  }
+
+//  static void RandVecBnd(ublas::vector<myType>& a, myType l) {
+//
+//    for (size_t i = 0; i < a.size(); i++)
+//      if (l == FIELD_L_1)
+//        a[i] = RandomBits_myType(INT_TYPE);
+////        a[i] = RandomBits_myType(FIELD_L_BIT);
+//      else if (l == FIELD_L_BIT)
+//        a[i] = RandomBits_myType(INT_TYPE);
+////        a[i] = RandomBits_myType(FIELD_L_BIT);
+//  }
+
+  static void RandVecBnd(ublas::vector<myType>& a, long l) {
 
     for (size_t i = 0; i < a.size(); i++)
-      if (l == FIELD_L_1)
-        a[i] = RandomBits_ulong(FIELD_L_BIT);
-      else if (l == FIELD_L_BIT)
-        a[i] = RandomBits_ulong(FIELD_L_BIT);
+      if (l == FIELD_L_BIT)
+        a[i] = RandomBits_myType(INT_FIELD-1);
+//        a[i] = RandomBits_ulong(FIELD_L_BIT);
       else if (l == PRIME_NUMBER)
         a[i] = RandomBnd(l-1)+1;
       else
@@ -2338,18 +2319,18 @@ public:
 //
 ////      RandomBnd(a[i]);
 //  }
-
-  static void RandVec(Vec<myType>& a, int fid = 0) {
-
-    for (int i = 0; i < a.length(); i++)
-      RandomBnd(a[i]);
-  }
+//
+//  static void RandVec(Vec<myType>& a, int fid = 0) {
+//
+//    for (int i = 0; i < a.length(); i++)
+//      RandomBnd(a[i]);
+//  }
 
   static void RandMat(ublas::matrix<myType>& a, int nrows, int ncols, int fid = 0) {
     a.resize(nrows, ncols);
     for (int i = 0; i < nrows; i++)
       for (int j = 0; j < ncols; j++)
-        a(i, j) = RandomBits_long(INT_FIELD-1);
+        a(i, j) = RandomBits_myType(INT_FIELD-1);
   }
 
   void RandMat(Mat<ZZ>& a, int nrows, int ncols, int fid) {

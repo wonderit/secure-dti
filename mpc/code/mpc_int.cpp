@@ -1251,11 +1251,13 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
   if (pid == 0) {
     // TODO   Test with FIXed X
     SwitchSeed(1);
-    RandVecBnd(x1, FIELD_L_1);
+//    RandVecBnd(x1, FIELD_L_1);
+    RandVecBits_mytype_L_1(x1);
     RestoreSeed();
 
     SwitchSeed(2);
-    RandVecBnd(x2, FIELD_L_1);
+    RandVecBits_mytype_L_1(x2);
+//    RandVecBnd(x2, FIELD_L_1);
     RestoreSeed();
 // TEST x1, x2
 //    x1[0] = 15906016132161401040;
@@ -1270,24 +1272,21 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
 
     // Log x1 and x2
     if (Param::DEBUG) {
-      tcout() << "::: pid = 0 x1 ::: " << endl;
       Print(x1);
-
-      tcout() << "::: pid = 0 x2 ::: " << endl;
       Print(x2);
-      tcout() << "::: pid = 0 x ::: " << endl;
       Print(x);
     }
     for (int i = 0; i < x_bit.size(); i++) {
-      bitset<INT_TYPE> x_bitset = bitset<INT_TYPE> (x[i]);
-      bitset_to_vector(x_bit[i], x_bitset);
-      x_bit_0[i] = x[i] % 2; //x[i][0]
+      int_to_vector(x_bit[i], x[i]);
+      x_bit_0[i] = x_bit[i][0]; //x[i] % 2; //x_bit[i][0]
     }
+
 
     SwitchSeed(1);
     beta = RandElemBnd(2);
     RandVecBnd(x_bit_sh, PRIME_NUMBER);
-    RandVecBnd(x_bit_sh_0, FIELD_L_BIT);
+    RandVec(x_bit_sh_0);
+//    RandVecBnd(x_bit_sh_0, FIELD_L_BIT);
     u = RandElem();
 //    RandVecBnd(u_v_sh, FIELD_L);
     RestoreSeed();
@@ -1325,7 +1324,8 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
 
   } else {
     SwitchSeed(0);
-    RandVecBnd(x_sh, FIELD_L_1);
+    RandVecBits_mytype_L_1(x_sh);
+//    RandVecBnd(x_sh, FIELD_L_1);
     RestoreSeed();
 
 
@@ -1334,7 +1334,8 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
 
       beta = RandElemBnd(2);
       RandVecBnd(x_bit_sh, PRIME_NUMBER);
-      RandVecBnd(x_bit_sh_0, FIELD_L_BIT);
+      RandVec(x_bit_sh_0);
+//      RandVecBnd(x_bit_sh_0, FIELD_L_BIT);
       u = RandElem();
 //      RandVecBnd(u_v_sh, FIELD_L);
       RestoreSeed();
@@ -1492,7 +1493,7 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
 
 myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType beta) {
 
-  myType L = FIELD;
+//  myType L = FIELD;
   ublas::vector<myType> s(INT_FIELD, 0);
   ublas::vector<myType> u(INT_FIELD, 0);
 
@@ -1538,7 +1539,8 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
 //    tcout() << "::: pid = 1 s ::: " << endl;
   }
 
-  myType t = (r+1) % L;
+//  myType t = (r+1) % L;
+  myType t = (r+1);
   ublas::vector<myType> t_bit(INT_FIELD, 0);
   ublas::vector<myType> r_bit(INT_FIELD, 0);
 
@@ -1562,14 +1564,24 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
   ublas::vector<myType> c(INT_FIELD, 0);
   ublas::vector<myType> mask(INT_FIELD, 0);
 
-  bitset<INT_FIELD> t_bitset = bitset<INT_FIELD> (t);
-  bitset<INT_FIELD> r_bitset = bitset<INT_FIELD> (r);
+
+//  bitset<INT_TYPE> t_bitset;
+//  bitset<INT_TYPE> r_bitset;
+//  if (INT_TYPE == 128) {
+//
+//    t_bitset = bitset<INT_TYPE>(t.str());
+//    r_bitset = bitset<INT_TYPE>(r.str());
+//  } else {
+//
+//    t_bitset = bitset<INT_TYPE>((uint64_t)t);
+//    r_bitset = bitset<INT_TYPE>((uint64_t)r);
+//  }
 
   myType beta_prime = 0;
 
   // 1)
-  bitset_to_vector(t_bit, t_bitset);
-  bitset_to_vector(r_bit, r_bitset);
+  int_to_vector(t_bit, t);
+  int_to_vector(r_bit, r);
 
   if (pid > 0) {
 
@@ -1710,7 +1722,9 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     //  # Mask for the case r == 2^l −1
     //  r_mask = (r == (L - 1)).long()
     //  r_mask = r_mask.unsqueeze(-1)
-    myType r_mask = (r == (L - 1));
+//    myType r_mask = (r == (L - 1));
+    myType r_mask = (r == (myType)(- 1));
+//    myType r_mask = (r == (pow(2, INT_TYPE-1) - 1));
 
     //  # Mask combination to execute the if / else statements of 4), 7), 10)
     //  c = (1 - beta) * c_beta0 + (beta * (1 - r_mask)) * c_beta1 + (beta * r_mask) * c_else
@@ -2012,7 +2026,11 @@ void MPCEnv::FlipBit(ublas::vector<myType>& b, ublas::vector<myType>& a) {
 
 //    b.size(a.size());
   } else {
-    b = -a;
+
+    for (int i = 0; i < b.size(); i++) {
+      b[i] = - a[i];
+    }
+//    b = -a;
   }
 
   if (pid == 1) {

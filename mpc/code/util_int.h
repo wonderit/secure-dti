@@ -161,18 +161,50 @@ static inline void IntToFP(Mat<ZZ_p>& b, Mat<long>& a, int k, int f) {
 static inline myType DoubleToFP(double a) {
   return static_cast<myType>(static_cast<myTypeSigned>(a * (1 << FIXED_POINT_FRACTIONAL_BITS)));
 }
+//
+//static inline double FPToDouble(myType a) {
+//
+//  long gate = 0;
+//  if (a < 0) { // negative number
+//    gate = 1;
+//  }
+////  if (a > LARGEST_NEG) { // negative number
+////    gate = 1;
+////  }
+//
+////  long double value = a % FIELD;
+//  double value = (double)a;
+//  //  negative + positive
+////  value = gate * (value - FIELD) + (1 - gate) * (value);
+//  value = gate * (value) + (1 - gate) * (value);
+//  return ((double)value / (double)(1 << FIXED_POINT_FRACTIONAL_BITS));
+//}
 
-static inline long double FPToDouble(myType a) {
+//static inline myType DoubleToFP(double a) {
+//  return static_cast<myType>(static_cast<myTypeSigned>(a * (pow(2 , FIXED_POINT_FRACTIONAL_BITS))));
+////  return static_cast<myType>(a * (1 << FIXED_POINT_FRACTIONAL_BITS));
+////  return static_cast<myType>(static_cast<myTypeSigned>(a * ((int64_t)1 << FIXED_POINT_FRACTIONAL_BITS)));
+//}
+
+template<class T>
+static inline double FPToDouble(T a) {
 
   long gate = 0;
   if (a > LARGEST_NEG) { // negative number
     gate = 1;
+    a = -1 * a;
   }
+//  if (a < 0) {
+//    gate = 1;
+//    a = -a;
+//  }
 
-  long double value = a % FIELD;
-  //  negative + positive
-  value = gate * (value - FIELD) + (1 - gate) * (value);
-  return ((long double)value / (double)(1 << FIXED_POINT_FRACTIONAL_BITS));
+  double value = (double) a;
+//  value = gate * value + (1-gate) * value;
+//
+  value = ((double)value / pow(2, FIXED_POINT_FRACTIONAL_BITS));
+//  return value / (double) pow(2, FIXED_POINT_FRACTIONAL_BITS);
+  return (1 - 2 * gate) * value;
 }
 
 template<class T>
@@ -383,10 +415,10 @@ void multScalar(ublas::vector<T>& result, ublas::vector<T>& a, T b, myType L) {
 }
 
 template<class T>
-static inline void bitset_to_vector(ublas::vector<T>&x, bitset<INT_FIELD>& a)
+static inline void int_to_vector(ublas::vector<T>&x, T a)
 {
   for (int i = 0; i < x.size(); i++) {
-    x[i] = a[i];
+    x[i] = 1 & (a >> i);
   }
 }
 
@@ -580,7 +612,13 @@ static inline void zToString(const ZZ& z, string& s) {
 
 static inline void to_zz(Vec<ZZ_p>& c, ublas::vector<myType>& x) {
   for (int i = 0; i < x.size(); i++) {
-    string str_x(std::to_string(x[i]));
+    string str_x;
+    if (INT_TYPE == 64) {
+      str_x = std::to_string((uint64_t)x[i]);
+    } else if (INT_TYPE == 128) {
+      str_x = ((uint128_t)x[i]).str();
+    }
+
     c[i] = to_ZZ_p(conv<ZZ>(str_x.c_str()));
   }
 }
@@ -588,7 +626,14 @@ static inline void to_zz(Vec<ZZ_p>& c, ublas::vector<myType>& x) {
 static inline void to_zz(Mat<ZZ_p>& c, ublas::matrix<myType>& x) {
   for (size_t i = 0; i < x.size1(); i++) {
     for (size_t j = 0; j < x.size2(); j++) {
-      string str_x(std::to_string(x(i, j)));
+//      string str_x(std::to_string(x(i, j)));
+      string str_x;
+      if (INT_TYPE == 64) {
+        str_x = std::to_string((uint64_t)x(i, j));
+      } else if (INT_TYPE == 128) {
+        str_x = ((uint128_t)x(i, j)).str();
+      }
+//      string str_x(x(i, j).str());
       c[i][j] = to_ZZ_p(conv<ZZ>(str_x.c_str()));
     }
   }
@@ -598,7 +643,7 @@ static inline void to_mytype(ublas::vector<myType>& x, Vec<ZZ_p>& c) {
   string str;
   for (size_t i = 0; i < x.size(); ++i) {
     zToString(rep(c[i]), str);
-    x[i] = boost::lexical_cast<myType>(str);
+    x[i] = static_cast<myType>(boost::lexical_cast<myTypeunSigned>(str.c_str()));
   }
 }
 
@@ -608,9 +653,32 @@ static inline void to_mytype(ublas::matrix<myType>& x, Mat<ZZ_p>& c) {
   for (size_t i = 0; i < x.size1(); i++) {
     for (size_t j = 0; j < x.size2(); j++) {
       zToString(rep(c[i][j]), str);
-      x(i, j) = boost::lexical_cast<myType>(str);
+      x(i, j) = static_cast<myType>(boost::lexical_cast<myTypeunSigned>(str.c_str()));
+//      x(i, j) = boost::lexical_cast<myType>(str.c_str());
     }
   }
 }
+
+static inline myType RandomBits_myType(long l)
+{
+  if (l <= 0) return 0;
+
+  if (l > INT_TYPE)
+    ResourceError("RandomBits: length too big");
+
+  RandomStream& stream = GetCurrentRandomStream();
+  long nb = (l+7)/8;
+  myType res;
+  stream.get((unsigned char*) &res, nb);
+
+  if (l < INT_TYPE) {
+    myType filter = (((myType)1) << l) -1;
+    res = res & filter;
+  }
+
+  return res;
+}
+
+static inline uint128_t operator - (const uint128_t & a) { return -1 * a; }
 
 #endif

@@ -97,7 +97,8 @@ bool text_to_matrix(ublas::matrix<myType>& matrix, ifstream& ifs, string fname, 
     for(int j = 0; stream >> x; j ++) {
       if (Param::DEBUG) printf("%f", x);
       matrix(i,j) = DoubleToFP(x);
-      if (Param::DEBUG) printf("%llu", matrix(i,j));
+      if (Param::DEBUG) cout << matrix(i, j);
+//      if (Param::DEBUG) printf("%llu", matrix(i,j));
     }
     if (Param::DEBUG) printf("-- \n");
   }
@@ -119,7 +120,8 @@ bool text_to_vector(ublas::vector<myType>& vec, ifstream& ifs, string fname) {
     for(int j = 0; stream >> x; j ++) {
       if (Param::DEBUG) printf(" : %f", x);
       vec[j] = DoubleToFP(x);
-      if (Param::DEBUG) printf(" : %llu", vec[j]);
+      if (Param::DEBUG) cout << vec[j];
+//      if (Param::DEBUG) printf(" : %llu", vec[j]);
     }
     if (Param::DEBUG) printf("-- \n");
   }
@@ -1128,6 +1130,11 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
     }
   }
 
+  if (Param::DEBUG && pid > 0) {
+    tcout() << "Print x, y" << endl;
+    mpc.PrintFP(X);
+    mpc.PrintFP(y);
+  }
 
   /* Do gradient descent over multiple training epochs. */
   for (int epoch = 0; epoch < Param::MAX_EPOCHS;
