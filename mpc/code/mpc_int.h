@@ -298,16 +298,7 @@ public:
       ReceiveVec(b, 3 - pid, fid);
       SendVec(a, 3 - pid, fid);
     }
-
-//    for (int i = 0; i < a.size(); i++) {
-    ////      cout << "a[i]/b[i] :: " << a[i] << "/" << b[i] << endl;
-    ////    }
     a += b;
-
-
-//    for (int i = 0; i < a.size(); i++) {
-//      cout << "a[i] before :: " << a[i] << endl;
-//    }
   }
 
   template<class T>
@@ -319,7 +310,6 @@ public:
     }
 
     ublas::matrix<T> b(a.size1(), a.size2());
-//    ublas::vector<T> b(a.size(), 0);
     if (pid == 1) {
       SendMat(a, 3 - pid, fid);
       ReceiveMat(b, 3 - pid, fid);
@@ -335,36 +325,23 @@ public:
   void shuffle(ublas::vector<T>& a, int fid = 0) {
     if (pid == 0)
       return;
-    T random_index;
-//    T limit;
+    size_t random_index;
     size_t n = a.size();
 
     SwitchSeed(3 - pid);
-//    limit = RandElemBnd(n-2);
     for (size_t i = n-1; i > 0; --i) {
-//      if (i < limit)
-//        break;
 
-      using std::swap;
       random_index = RandElemBnd(i+1);
-//      tcout() << "pid : " << pid << ", rand : " << random_index << "\t";
-      // TODO SWAPP
-//      boost::multiprecision::swap(a[i], a[random_index]);
+
+      std::swap(a[i], a[random_index]);
+
     }
-//    cout << endl;
 
     RestoreSeed();
-
-
   }
 
   template<class T>
   void RevealPC(ublas::vector<T>& a, int fid = 0) {
-//    if (debug) cout << "RevealPC: " << a.size() << endl;
-
-//    if (pid == 0) {
-//      return;
-//    }
 
     ublas::vector<T> b(a.size(), 0);
     ublas::vector<T> b2(a.size(), 0);
@@ -381,28 +358,13 @@ public:
 
     if (pid == 0) {
 
-//      for (int i = 0; i < b.size(); i++) {
-//        cout << "b[i]/b2[i] :: " << b[i] << "/" << b2[i] << endl;
-//      }
       for (int i = 0; i < b.size(); i++) {
-        b[i] = mod_c(b[i] + b2[i], (myType)PRIME_NUMBER);
-//        b[i] = ( b[i] + b2[i] ) % PRIME_NUMBER;
+        b[i] = mod_c(b[i] + b2[i], (myType) PRIME_NUMBER);
       }
 
-//      b += b2;
     }
     a = b;
 
-//    for (int i = 0; i < a.size(); i++) {
-//      cout << "a[i] before :: " << a[i] << endl;
-//    }
-//
-//
-//    if (pid == 0) {
-//      mpc.ReceiveBool(2);
-//    } else if (pid == 2) {
-//      mpc.SendBool(true, 0);
-//    }
   }
 
   template<class T>
@@ -502,50 +464,6 @@ public:
     PrintFP(a, maxlen, cout);
   }
 
-//  void PrintFP(ublas::vector<myType>& a, int maxlen) {
-//    PrintFP(a, maxlen, cout);
-//  }
-
-//  void PrintFP(ublas::vector<myType>& a, int maxlen, ostream& os) {
-//    ublas::vector<myType> a_copy = a;
-//    if (a.size() < maxlen) {
-//      maxlen = a.size();
-//    }
-//    a_copy.resize(maxlen);
-//    RevealSym(a_copy);
-//    ublas::vector<double> ad;
-//    FPToDouble(ad, a_copy);
-//
-//    if (pid == 2) {
-//      for (int i = 0; i < ad.size(); i++) {
-//        os << ad[i];
-//        if (i == ad.size() - 1) {
-//          os << endl;
-//        } else {
-//          os << '\t';
-//        }
-//      }
-//    }
-//  }
-//
-//  void PrintFP(ublas::vector<myType>& a, ostream& os) {
-//    ublas::vector<myType> a_copy = a;
-//    RevealSym(a_copy);
-//    ublas::vector<double> ad;
-//    FPToDouble(ad, a_copy);
-//
-//    if (pid == 2) {
-//      for (int i = 0; i < ad.size(); i++) {
-//        os << ad[i];
-//        if (i == ad.size() - 1) {
-//          os << endl;
-//        } else {
-//          os << '\t';
-//        }
-//      }
-//    }
-//  }
-//
   template<class T>
   void PrintFP(ublas::vector<T>& a, ostream& os) {
     ublas::vector<T> a_copy = a;
@@ -2158,56 +2076,16 @@ public:
     random(a);
   }
 
-//  static myType RandElem() {
-//    return RandomWord();
+//  static myType RandElemBnd(myType l) {
+//    return RandomWord() % l;
 //  }
 
-  inline smallType wrapAround(myType a, myType b)
-  {return (a > MINUS_ONE - b);}
-  void wrapAround(const ublas::vector<myType> &a, const ublas::vector<myType> &b,
-                  ublas::vector<myType> &c, size_t size)
-  {
-    for (size_t i = 0; i < size; ++i)
-      c[i] = wrapAround(a[i], b[i]);
-  }
-
-
-
-  template<typename T1, typename T2>
-  void addModuloOdd(const ublas::vector<T1> &a, const ublas::vector<T2> &b, ublas::vector<myType> &c, size_t size)
-  {
-    assert((sizeof(T1) == sizeof(myType) or sizeof(T2) == sizeof(myType)) && "At least one type should be myType for typecast to work");
-
-    for (size_t i = 0; i < size; ++i)
-    {
-      if (a[i] == MINUS_ONE and b[i] == MINUS_ONE)
-        c[i] = 0;
-      else
-        c[i] = (a[i] + b[i] + wrapAround(a[i], b[i])) % MINUS_ONE;
-    }
-  }
-
-  template<typename T1, typename T2>
-  void subtractModuloOdd(const ublas::vector<T1> &a, const ublas::vector<T2> &b, ublas::vector<myType> &c, size_t size)
-  {
-    ublas::vector<myType> temp(size);
-    for (size_t i = 0; i < size; ++i)
-      temp[i] = MINUS_ONE - b[i];
-
-    addModuloOdd<T1, myType>(a, temp, c, size);
-  }
-
-//  static void RandElemBnd(myType a, long l) {
-//    a = RandomBnd(l);
-//  }
-
-  static myType RandElemBnd(myType l) {
+  static size_t RandElemBnd(size_t l) {
     return RandomWord() % l;
   }
 
   static myType RandElem() {
     return RandomBits_myType(INT_FIELD-1);
-//    return RandomBits_long(INT_FIELD-1);
   }
 
   void RandVec(Vec<ZZ>& a, int n, int fid) {
@@ -2226,56 +2104,20 @@ public:
 
     for (int i = 0; i < a.size(); i++) {
       a[i] = RandomBits_myType(INT_FIELD-2);
-//      if(a[i] > 0)
-//        a[i] = a[i] - 1;
     }
 
-  }
-
-  static void RandVecBits_long(ublas::vector<myType>& a, long l) {
-
-    for (int i = 0; i < a.size(); i++)
-      a[i] = RandomWord();
-//      a[i] = RandomBits_myType(l);
-//      a[i] = RandomBits_long(l);
   }
 
   static void RandVec(ublas::vector<myType>& a, int fid = 0) {
 
     for (int i = 0; i < a.size(); i++)
       a[i] = RandomBits_myType(INT_FIELD-1);  // for int64
-//      a[i] = RandomBits_myType(INT_FIELD);  // for uint128
-//      a[i] = RandomBits_long(INT_FIELD-1);
-//      a[i] = RandomBnd(max_field_L_1);
-//      a[i] = RandomBits_long(l);
   }
-
-//  static void RandVec128(ublas::vector<uint128_t>& a, int fid = 0) {
-//
-//    for (int i = 0; i < a.size(); i++) {
-//      a[i] = RandomBits_128(128);
-//    }
-//
-//  }
-
-//  static void RandVecBnd(ublas::vector<myType>& a, myType l) {
-//
-//    for (size_t i = 0; i < a.size(); i++)
-//      if (l == FIELD_L_1)
-//        a[i] = RandomBits_myType(INT_TYPE);
-////        a[i] = RandomBits_myType(FIELD_L_BIT);
-//      else if (l == FIELD_L_BIT)
-//        a[i] = RandomBits_myType(INT_TYPE);
-////        a[i] = RandomBits_myType(FIELD_L_BIT);
-//  }
 
   static void RandVecBnd(ublas::vector<myType>& a, long l) {
 
     for (size_t i = 0; i < a.size(); i++)
-      if (l == FIELD_L_BIT)
-        a[i] = RandomBits_myType(INT_FIELD-1);
-//        a[i] = RandomBits_ulong(FIELD_L_BIT);
-      else if (l == PRIME_NUMBER)
+      if (l == PRIME_NUMBER)
         a[i] = RandomBnd(l-1)+1;
       else
         a[i] = RandomBnd(l);
@@ -2286,45 +2128,9 @@ public:
     for (size_t i = 0; i < a.size(); i++) {
       for (size_t j = 0; j < a[i].size(); j++) {
         a[i][j] = RandomBnd(l);
-//        cout << a[i][j] << " ";
       }
     }
-//    cout << endl;
   }
-
-
-
-//  static void RandVec(Vec<myType>& a, int fid = 0) {
-//
-//    for (int i = 0; i < a.length(); i++) {
-////      a[i] = RandomBits_ulong(BIT_SIZE);
-//      a[i] = RandomWord();
-//    }
-//
-////      RandomBnd(a[i]);
-//  }
-
-//  static void RandVec(ublas::vector<myType>& a) {
-//
-//    for (int i = 0; i < a.size(); i++)
-//      a[i] = RandomWord();
-//  }
-
-//  static void RandVec(Vec<myType>& a, int fid = 0) {
-//
-//    for (int i = 0; i < a.length(); i++) {
-////      a[i] = RandomBits_ulong(BIT_SIZE);
-//      a[i] = RandomWord();
-//    }
-//
-////      RandomBnd(a[i]);
-//  }
-//
-//  static void RandVec(Vec<myType>& a, int fid = 0) {
-//
-//    for (int i = 0; i < a.length(); i++)
-//      RandomBnd(a[i]);
-//  }
 
   static void RandMat(ublas::matrix<myType>& a, int nrows, int ncols, int fid = 0) {
     a.resize(nrows, ncols);
@@ -2358,7 +2164,7 @@ public:
   void TableLookup(Mat<ZZ_p>& b, Vec<ZZ_p>& a, int cache_id);
   void TableLookup(Mat<ZZ_p>& b, Vec<ZZ>& a, int cache_id, int fid);
 
-  myType ModShare(myType a, myType mask, myType L = FIELD) {
+  myType ModShare(myType a, myType mask, myType L) {
     cout << "MODSHARE T " << a << mask << endl;
     if (a < mask) {
       a = a + (L - mask);
@@ -2369,19 +2175,18 @@ public:
   }
 
   template<class T>
-  void ModShare(ublas::vector<T>& a, ublas::vector<T>& mask, myType L = FIELD) {
+  void ModShare(ublas::vector<T>& a, ublas::vector<T>& mask, myType L) {
     for (int i = 0; i < a.size(); i++) {
       if (a[i] < mask[i]) {
         a[i] = a[i] + (L - mask[i]);
       } else {
         a[i] = a[i] - mask[i];
       }
-//      a[i] = (a[i] - mask[i]) % L;
     }
   }
 
   template<class T>
-  void ModShare(ublas::vector<ublas::vector<T>>& a, ublas::vector<ublas::vector<T>>& mask, myType L = FIELD) {
+  void ModShare(ublas::vector<ublas::vector<T>>& a, ublas::vector<ublas::vector<T>>& mask, myType L) {
     for (int i = 0; i < a.size(); i++) {
       for (int j = 0; j < a[i].size(); j++) {
         if (a[i][j] < mask[i][j]) {
@@ -2539,9 +2344,7 @@ private:
   }
 
   void Mod(ublas::vector<myType>& a, long L) {
-//    tcout() << "p : " << primes_mytype[fid] << endl;
     for (int i = 0; i < a.size(); i++) {
-//      a[i] %= primes_mytype[fid];
       a[i] %= L;
     }
   }
@@ -2567,9 +2370,6 @@ private:
   void mul_elem(ublas::vector<myType>& c, ublas::vector<myType>& a, ublas::vector<myType>& b) {
     cout << a.size() << " a//b " << b.size() << endl;
     c = ublas::element_prod(a, b);
-//    for (int i = 0; i < c.size(); i++) {
-//      c[i] = a[i] * b[i];
-//    }
   }
 
   void mul_elem(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b) {
@@ -2607,12 +2407,6 @@ private:
     assert(a.size1() == b.size1() && a.size2() == b.size2());
     c.resize(a.size1(), a.size2());
     c = ublas::element_prod(a, b);
-//    for (int i = 0; i < c.size1(); i++) {
-//      for (int j = 0; j < c.size2(); j++) {
-//
-//        mul(c[i][j], a[i][j], b[i][j]);
-//      }
-//    }
   }
 
   void mul_elem(Mat<ZZ_p>& c, Mat<ZZ_p>& a, Mat<ZZ_p>& b) {

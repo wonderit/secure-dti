@@ -11,7 +11,6 @@
 #include <fstream>
 #include <iostream>
 #include <stdio.h>
-//#include <vector>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <cstring>
@@ -161,49 +160,26 @@ static inline void IntToFP(Mat<ZZ_p>& b, Mat<long>& a, int k, int f) {
 static inline myType DoubleToFP(double a) {
   return static_cast<myType>(static_cast<myTypeSigned>(a * (1 << FIXED_POINT_FRACTIONAL_BITS)));
 }
-//
-//static inline double FPToDouble(myType a) {
-//
-//  long gate = 0;
-//  if (a < 0) { // negative number
-//    gate = 1;
-//  }
-////  if (a > LARGEST_NEG) { // negative number
-////    gate = 1;
-////  }
-//
-////  long double value = a % FIELD;
-//  double value = (double)a;
-//  //  negative + positive
-////  value = gate * (value - FIELD) + (1 - gate) * (value);
-//  value = gate * (value) + (1 - gate) * (value);
-//  return ((double)value / (double)(1 << FIXED_POINT_FRACTIONAL_BITS));
-//}
-
-//static inline myType DoubleToFP(double a) {
-//  return static_cast<myType>(static_cast<myTypeSigned>(a * (pow(2 , FIXED_POINT_FRACTIONAL_BITS))));
-////  return static_cast<myType>(a * (1 << FIXED_POINT_FRACTIONAL_BITS));
-////  return static_cast<myType>(static_cast<myTypeSigned>(a * ((int64_t)1 << FIXED_POINT_FRACTIONAL_BITS)));
-//}
 
 template<class T>
 static inline double FPToDouble(T a) {
 
   long gate = 0;
+
+#if INT_TYPE == 128
   if (a > LARGEST_NEG) { // negative number
     gate = 1;
     a = -1 * a;
   }
-//  if (a < 0) {
-//    gate = 1;
-//    a = -a;
-//  }
+#else
+  if (a < 0) {
+      gate = 1;
+      a = -a;
+    }
+#endif
 
   double value = (double) a;
-//  value = gate * value + (1-gate) * value;
-//
   value = ((double)value / pow(2, FIXED_POINT_FRACTIONAL_BITS));
-//  return value / (double) pow(2, FIXED_POINT_FRACTIONAL_BITS);
   return (1 - 2 * gate) * value;
 }
 
@@ -221,12 +197,8 @@ static inline void FPToDouble(ublas::matrix<double>& b, ublas::matrix<T>& a) {
   for (int i = 0; i < a.size1(); i++) {
     for (int j = 0; j < a.size2(); j++) {
       b(i, j) = FPToDouble(a(i, j));
-//      tcout() << "a -> b : " << a(i, j) << "-> " << b(i, j) << "\t";
     }
-//    cout << endl;
   }
-//  tcout() << "a -> b : " << a(0, 0) << "-> " << b(0, 0) << endl;
-//  cout << endl;
 }
 
 template<class T>
@@ -266,14 +238,11 @@ template<class T>
 static inline void ReshapeMat(ublas::matrix<T>& b, ublas::vector<T>& a, int nrows, int ncols) {
   assert(a.size() == nrows * ncols);
   Init(b, nrows, ncols);
-//  b.resize(nrows, ncols);
-//  b.SetDims(nrows, ncols);
 
   int ai = 0;
   for (int i = 0; i < nrows; i++) {
     for (int j = 0; j < ncols; j++) {
       b(i, j) = a[ai];
-//      b[i][j] = a[ai];
       ai++;
     }
   }
@@ -317,21 +286,6 @@ static inline void ReshapeMat(Mat<T>& a, int nrows, int ncols) {
   a = b;
 }
 
-
-//template<class T>
-//inline ublas::vector<T>& operator*(ublas::vector<T>& x, ublas::vector<T>& a)
-//{
-//  ublas::vector<T> result(x.size(), 0);
-//  cout<< "* start:";
-//  for (int i = 0; i < x.size(); i++) {
-//    result[i] = x[i] * a[i];
-//    cout << result[i];
-//  }
-//  cout << endl;
-//  return result;
-//}
-
-
 template<class T>
 static inline T sumifzero(ublas::vector<T>& x)
 {
@@ -346,12 +300,9 @@ static inline T sumifzero(ublas::vector<T>& x)
 template<class T>
 static inline void multvec(ublas::vector<T>& result, ublas::vector<T>& x, ublas::vector<T>& a, myType L)
 {
-//  cout<< "* start:";
   for (int i = 0; i < x.size(); i++) {
     result[i] =  ( x[i] * a[i] ) % L;
-//    cout << result[i] << "\t";
   }
-//  cout << endl;
 }
 
 template<class T>
@@ -679,6 +630,6 @@ static inline myType RandomBits_myType(long l)
   return res;
 }
 
-static inline uint128_t operator - (const uint128_t & a) { return -1 * a; }
+static inline uint128_t operator -(const uint128_t & a) { return -1 * a; }
 
 #endif

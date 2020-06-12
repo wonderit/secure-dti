@@ -117,16 +117,13 @@ bool unit_test_generate_integers(MPCEnv& mpc, int pid) {
 //  Time MULT START
   if (pid == 1) {
 
-    tcout() << MINUS_ONE << endl;
-//    tcout() << FIELD_L_1 << endl;
     tcout() << BYTE_SIZE << endl;
     tcout() << "byte-size:" << sizeof(myType) << " char_bit:" << CHAR_BIT << " bit_size:" << BIT_SIZE << endl;
     tcout() << BIT_SIZE << endl;
     tcout() << LARGEST_NEG << endl;
-    tcout() << FIELD << endl;
-    tcout() << FIELD_BIT << endl;
     printf("----------");
   }
+  return true;
 }
 
 bool unit_test_combined(MPCEnv& mpc, int pid) {
@@ -338,9 +335,6 @@ bool unit_test(MPCEnv& mpc, int pid) {
   ublas::vector<myType> xv(size, 0), yv(size, 0);
   boost::numeric::ublas::vector<myType> xv1(size, 0), yv1(size, 0), zv(size, 0), wv, pc(size, 0);
   boost::numeric::ublas::vector<double> xdv(size, 0), ydv, zdv(size, 0), wdv;
-//  boost::numeric::ublas::matrix<myType> xm, ym, zm;
-//  boost::numeric::ublas::vector<myType> av, bv, cv, dv;
-//  boost::numeric::ublas::matrix<myType> am, bm, cm, dm;
   double d;
 //  double eps = 1e-6;
   double eps = 1e-1;
@@ -533,12 +527,8 @@ bool unit_test(MPCEnv& mpc, int pid) {
 
   if (pid == 1) {
 
-    tcout() << MINUS_ONE << endl;
-//    tcout() << FIELD_L_1 << endl;
     tcout() << BIT_SIZE << endl;
     tcout() << LARGEST_NEG << endl;
-    tcout() << FIELD << endl;
-    tcout() << FIELD_L_BIT << endl;
     printf("----------");
   }
   if (pid > 0) {

@@ -46,11 +46,6 @@ typedef uint8_t smallType;
 const int BYTE_SIZE = sizeof(myType);
 const int BIT_SIZE = (BYTE_SIZE * CHAR_BIT);
 const myType LARGEST_NEG = ((myType)1 << (BIT_SIZE - 1));
-const myType MINUS_ONE = (myType)-1;
-const myType FIELD_L_BIT = BIT_SIZE/2;
-const int FIELD_BIT = BIT_SIZE - 2;
-//const myType FIELD_L_1 = ((myType)1 << FIELD_L_BIT) - 1;
-const myType FIELD = ((myType)1 << (BIT_SIZE - 2));
 
 #define PRIME_NUMBER 67
 #define INT_FIELD INT_TYPE

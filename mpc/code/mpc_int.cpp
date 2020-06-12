@@ -7,15 +7,9 @@
 #include <NTL/ZZ.h>
 #include <cmath>
 #include <iostream>
-#include <boost/range/adaptor/reversed.hpp>
-#include <boost/range/algorithm/copy.hpp>
 #include <boost/range/algorithm.hpp>
 #include <boost/assign.hpp>
-#include <fstream>
-#include <sstream>
-#include <typeinfo>
 
-using namespace boost::adaptors;
 using namespace boost::assign;
 using namespace NTL;
 using namespace std;
@@ -1249,15 +1243,12 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
 
 //  # 1
   if (pid == 0) {
-    // TODO   Test with FIXed X
     SwitchSeed(1);
-//    RandVecBnd(x1, FIELD_L_1);
     RandVecBits_mytype_L_1(x1);
     RestoreSeed();
 
     SwitchSeed(2);
     RandVecBits_mytype_L_1(x2);
-//    RandVecBnd(x2, FIELD_L_1);
     RestoreSeed();
 // TEST x1, x2
 //    x1[0] = 15906016132161401040;
@@ -1286,14 +1277,11 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
     beta = RandElemBnd(2);
     RandVecBnd(x_bit_sh, PRIME_NUMBER);
     RandVec(x_bit_sh_0);
-//    RandVecBnd(x_bit_sh_0, FIELD_L_BIT);
     u = RandElem();
-//    RandVecBnd(u_v_sh, FIELD_L);
     RestoreSeed();
 
     ModShare(x_bit, x_bit_sh, PRIME_NUMBER);
     x_bit_0 -= x_bit_sh_0;
-//    u_v -= u_v_sh;
     u = 0 - u;
 
     SendElem(beta, 2);
@@ -1301,7 +1289,6 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
       SendVec(x_bit[i], 2);
     }
     SendVec(x_bit_0, 2);
-//    SendVec(u_v, 2);
     SendElem(u, 2);
 
 //    tcout() << "::: pid = 0 x_bit_share for pid 2 ::: " << endl;
@@ -1325,7 +1312,6 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
   } else {
     SwitchSeed(0);
     RandVecBits_mytype_L_1(x_sh);
-//    RandVecBnd(x_sh, FIELD_L_1);
     RestoreSeed();
 
 
@@ -1335,9 +1321,7 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
       beta = RandElemBnd(2);
       RandVecBnd(x_bit_sh, PRIME_NUMBER);
       RandVec(x_bit_sh_0);
-//      RandVecBnd(x_bit_sh_0, FIELD_L_BIT);
       u = RandElem();
-//      RandVecBnd(u_v_sh, FIELD_L);
       RestoreSeed();
 
 //      cout << "PID = 1 : RAND BETA : " << beta << endl;
@@ -1367,7 +1351,6 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
       }
       ReceiveVec(x_bit_sh_0, 0);
       ReceiveElem(u, 0);
-//      ReceiveVec(u_v_sh, 0);
 
 //      cout << "PID = 2 : RAND BETA : " << beta << endl;
 //      cout << "PID = 2 : RAND u : " << u << endl;
@@ -1391,14 +1374,11 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
     y_sh = a_sh * 2;
     r_sh = y_sh + x_sh;
 
-//    Print(x_bit_sh);
-
     RevealSym(r_sh);
 
     for (size_t i = 0; i < r_sh.size(); i++) {
       r_0[i] = r_sh[i] % 2;
     }
-//    tcout() << "::: pid = " << pid << ", reconstruct r:" << r_sh[0] << endl;
   }
 
   //  # 4)
@@ -1486,18 +1466,13 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
   for (size_t i = 0; i < size; ++i)
     b[i] = gamma[i] + delta[i] - (theta[i] * 2) + u;
 
-//  RevealSym(b);
-
 }
 
 
 myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType beta) {
 
-//  myType L = FIELD;
   ublas::vector<myType> s(INT_FIELD, 0);
   ublas::vector<myType> u(INT_FIELD, 0);
-
-//  tcout() << "::: BETAAAAAA = 2 s ::: " << beta << endl;
 
   // j = 0 for pid = 1, j = 1 for pid = 2
   myType j = 0;
@@ -1512,16 +1487,10 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
 
     RandVecBnd(s, PRIME_NUMBER);
     RandVecBnd(u, PRIME_NUMBER);
-//    RandVecBits_long(s, INT_FIELD);
-//    RandVecBits_long(u, INT_FIELD);
     RestoreSeed();
 
-//    tcout() << "::: pid = 2 s ::: " << endl;
-//    Print(s);
-//    tcout() << "::: pid = 2 s ::: " << endl;
   } else if (pid == 1) {
 
-//    TODO
 //    x_bit_sh[0] = 46;
 //    x_bit_sh[1] = 55;
 //    x_bit_sh[2] = 6;
@@ -1531,15 +1500,9 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
 
     RandVecBnd(s, PRIME_NUMBER);
     RandVecBnd(u, PRIME_NUMBER);
-//    RandVecBits_long(s, INT_FIELD);
-//    RandVecBits_long(u, INT_FIELD);
     RestoreSeed();
-//    tcout() << "::: pid = 1 s ::: " << endl;
-//    Print(s);
-//    tcout() << "::: pid = 1 s ::: " << endl;
   }
 
-//  myType t = (r+1) % L;
   myType t = (r+1);
   ublas::vector<myType> t_bit(INT_FIELD, 0);
   ublas::vector<myType> r_bit(INT_FIELD, 0);
@@ -1563,19 +1526,6 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
   ublas::vector<myType> c_else(INT_FIELD, 0);
   ublas::vector<myType> c(INT_FIELD, 0);
   ublas::vector<myType> mask(INT_FIELD, 0);
-
-
-//  bitset<INT_TYPE> t_bitset;
-//  bitset<INT_TYPE> r_bitset;
-//  if (INT_TYPE == 128) {
-//
-//    t_bitset = bitset<INT_TYPE>(t.str());
-//    r_bitset = bitset<INT_TYPE>(r.str());
-//  } else {
-//
-//    t_bitset = bitset<INT_TYPE>((uint64_t)t);
-//    r_bitset = bitset<INT_TYPE>((uint64_t)r);
-//  }
 
   myType beta_prime = 0;
 
@@ -1676,7 +1626,6 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
 //      cout << endl;
 //    }
 
-
     //  # else
     //  # 11)
     //    c_igt1 = (1 - j) * (u + 1) - (j * u)
@@ -1722,9 +1671,7 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     //  # Mask for the case r == 2^l −1
     //  r_mask = (r == (L - 1)).long()
     //  r_mask = r_mask.unsqueeze(-1)
-//    myType r_mask = (r == (L - 1));
     myType r_mask = (r == (myType)(- 1));
-//    myType r_mask = (r == (pow(2, INT_TYPE-1) - 1));
 
     //  # Mask combination to execute the if / else statements of 4), 7), 10)
     //  c = (1 - beta) * c_beta0 + (beta * (1 - r_mask)) * c_beta1 + (beta * r_mask) * c_else
@@ -1740,31 +1687,16 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
 //      cout << endl;
 //    }
 
-
     //# 14)
     //# Hide c values
     //  mask = s * c
     multvec(mask, s, c, PRIME_NUMBER);
 
-//    if (Param::DEBUG) {
-//
-//      tcout() << " mask : ";
-//      Print(mask);
-//      cout << endl;
-//    }
-
   }
   // 15)
-  // TODO RANDOM SHUFFLE with same index between CP1 and CP2
   shuffle(mask);
-//
   RevealPC(mask);
-//  RevealSym(mask);
-//  if (pid == 0 && Param::DEBUG){
-//    tcout() << " mask : ";
-//    Print(mask);
-//    cout << endl;
-//  }
+
   if (pid == 0) {
     beta_prime = sumifzero(mask);
   }
@@ -1830,26 +1762,11 @@ void MPCEnv::LessThanPublic(Vec<ZZ_p>& c, Vec<ZZ_p>& a, ZZ_p bpub) {
   FlipBit(c);
 }
 
-//void MPCEnv::IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a) {
-//  b.SetDims(a.NumRows(), a.NumCols());
-//  for (int i = 0; i < a.NumRows(); i++) {
-//    if ((pid) == 69)
-//      tcout() << "Row " << i << endl;
-//
-//    tcout() << "Row " << i << endl;
-//    IsPositive(b[i], a[i]);
-//  }
-//}
-
-//TODO
 void MPCEnv::IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a) {
   Vec<ZZ_p> av, bv;
-//  int size = a.NumRows() * a.NumCols();
   b.SetDims(a.NumRows(), a.NumCols());
-//  Init(av, size); Init(bv, size);
   Reshape(av, a);
   IsPositive(bv, av);
-//  Reshape(b, bv, b.NumRows(), b.NumCols());
 }
 
 void MPCEnv::IsPositive(ublas::matrix<myType>& b, ublas::matrix<myType>& a) {
@@ -2021,16 +1938,13 @@ void MPCEnv::FlipBit(Vec<ZZ_p>& b, Vec<ZZ_p>& a) {
 
 void MPCEnv::FlipBit(ublas::vector<myType>& b, ublas::vector<myType>& a) {
   if (debug) tcout() << "FlipBit: " << a.size() << endl;
-//  b = ublas::vector(a);
   if (pid == 0) {
 
-//    b.size(a.size());
   } else {
 
     for (int i = 0; i < b.size(); i++) {
       b[i] = - a[i];
     }
-//    b = -a;
   }
 
   if (pid == 1) {
@@ -2302,56 +2216,10 @@ void MPCEnv::Trunc(ublas::vector<myType>& a) {
     // get rid of k lower bits : 12014 -> 12000
     for (int i = 0; i < a.size(); i++) {
 
-//      bitset<64> aBits = bitset<64>(a[i]);
-//      if (i == 0) {
-//        cout << "before : pid : " << pid << " i >> " << i << " >> ";
-//        for(int i = 63; i >= 0; i--) cout << aBits[i];
-//        cout << endl;
-//      }
-
-//      a[i] = a[i] % FIELD;
-
-//      if (pid == 1)
-//        a[i] = (myType) (a[i] / (1 << FIXED_POINT_FRACTIONAL_BITS));
-//      else
-//        a[i] = (myType) (a[i] - FIELD) / (1 << FIXED_POINT_FRACTIONAL_BITS) + FIELD;
-
-
-//      if (a[i] > LARGEST_NEG) { // negative number
-//        a[i] = (myType)((a[i] - FIELD) / (1 << FIXED_POINT_FRACTIONAL_BITS) + FIELD);
-//      } else {
-//        a[i] = (myType)(a[i] / (1 << FIXED_POINT_FRACTIONAL_BITS));
-//      }
-//
-//      if (a[i] > LARGEST_NEG)
-//        a[i] = - static_cast<myType>(static_cast<int64_t>(- a[i]) >> FIXED_POINT_FRACTIONAL_BITS);
-//      else
-//        a[i] = static_cast<myType>(static_cast<int64_t>(a[i]) >> FIXED_POINT_FRACTIONAL_BITS);
-//
-
       if (pid == 1)
         a[i] = static_cast<myType>(static_cast<myTypeSigned>(a[i]) >> FIXED_POINT_FRACTIONAL_BITS);
       else
         a[i] = - static_cast<myType>(static_cast<myTypeSigned>(- a[i]) >> FIXED_POINT_FRACTIONAL_BITS);
-//
-//      if (i == 0) {
-//
-//        aBits = bitset<64>(a[i]);
-//        cout << "after : pid : " << pid << " i >> " << i << " >> ";
-//        for(int i = 63; i >= 0; i--) cout << aBits[i];
-//        cout << endl;
-//      }
-
-//        a[i] = - a[i];
-//
-//
-//        if (i == 0) {
-//
-//          aBits = bitset<64>(a[i]);
-//          cout << "after -1 pid : " << pid << " i >> " << i << " >> ";
-//          for(int i = 63; i >= 0; i--) cout << aBits[i];
-//          cout << endl;
-//        }
 
     }
 
@@ -2372,106 +2240,9 @@ void MPCEnv::Trunc(Mat<ZZ_p>& a, int k, int m) {
           a[i][j] = - conv<ZZ_p>(rep(-a[i][j]) >> m);
       }
     }
-
-
-    // shift: 12000 -> 12
-//    ZZ_p twoinvm;
-//    map<int, ZZ_p>::iterator it = invpow_cache.find(m);
-//    if (it == invpow_cache.end()) {
-//      ZZ_p two(2);
-//      ZZ_p twoinv;
-//      inv(twoinv, two);
-//      power(twoinvm, twoinv, m);
-//      invpow_cache[m] = twoinvm;
-//
-//    } else {
-//      twoinvm = it->second;
-//    }
-//
-//    a *= twoinvm;
   }
 
 }
-//
-//void MPCEnv::Trunc(Mat<ZZ_p>& a, int k, int m) {
-//  if (debug) tcout() << "Trunc: " << a.NumRows() << ", " << a.NumCols() << endl;
-//
-//  Mat<ZZ_p> r;
-//  Mat<ZZ_p> r_low;
-//  if (pid == 0) {
-//    RandMatBits(r, a.NumRows(), a.NumCols(), k + Param::NBIT_V);
-//
-//    r_low.SetDims(a.NumRows(), a.NumCols());
-//    for (int i = 0; i < a.NumRows(); i++) {
-//      for (int j = 0; j < a.NumCols(); j++) {
-//        r_low[i][j] = conv<ZZ_p>(trunc_ZZ(rep(r[i][j]), m));
-//      }
-//    }
-//
-//    Mat<ZZ_p> r_mask;
-//    Mat<ZZ_p> r_low_mask;
-//    SwitchSeed(1);
-//    RandMat(r_mask, a.NumRows(), a.NumCols());
-//    RandMat(r_low_mask, a.NumRows(), a.NumCols());
-//    RestoreSeed();
-//
-//    r -= r_mask;
-//    r_low -= r_low_mask;
-//
-//    SendMat(r, 2);
-//    SendMat(r_low, 2);
-//  } else if (pid == 2) {
-//    ReceiveMat(r, 0, a.NumRows(), a.NumCols());
-//    ReceiveMat(r_low, 0, a.NumRows(), a.NumCols());
-//  } else {
-//    SwitchSeed(0);
-//    RandMat(r, a.NumRows(), a.NumCols());
-//    RandMat(r_low, a.NumRows(), a.NumCols());
-//    RestoreSeed();
-//  }
-//
-//  Mat<ZZ_p> c;
-//  if (pid > 0) {
-//    c = a + r;
-//  } else {
-//    c.SetDims(a.NumRows(), a.NumCols());
-//  }
-//
-//  RevealSym(c);
-//
-//  Mat<ZZ_p> c_low;
-//  c_low.SetDims(a.NumRows(), a.NumCols());
-//  if (pid > 0) {
-//    for (int i = 0; i < a.NumRows(); i++) {
-//      for (int j = 0; j < a.NumCols(); j++) {
-//        c_low[i][j] = conv<ZZ_p>(trunc_ZZ(rep(c[i][j]), m));
-//      }
-//    }
-//  }
-//
-//  if (pid > 0) {
-//    a += r_low;
-//    if (pid == 1) {
-//      a -= c_low;
-//    }
-//
-//    ZZ_p twoinvm;
-//    map<int, ZZ_p>::iterator it = invpow_cache.find(m);
-//    if (it == invpow_cache.end()) {
-//      ZZ_p two(2);
-//      ZZ_p twoinv;
-//      inv(twoinv, two);
-//      power(twoinvm, twoinv, m);
-//      invpow_cache[m] = twoinvm;
-//
-//    } else {
-//      twoinvm = it->second;
-//    }
-//    tcout() << "twoinvm: " << twoinvm << endl;
-//
-//    a *= twoinvm;
-//  }
-//}
 
 void MPCEnv::PrefixOr(Mat<ZZ>& b, Mat<ZZ>& a, int fid) {
   if (debug) tcout() << "PrefixOr: " << a.NumRows() << ", " << a.NumCols() << endl;
@@ -3116,7 +2887,6 @@ void MPCEnv::Read(Mat<ZZ_p>& a, ifstream& ifs, int nrows, int ncols) {
 void MPCEnv::Read(ublas::matrix<myType>& a, ifstream& ifs) {
   assert(ifs.is_open());
 
-//  a.SetDims(nrows, ncols);
   unsigned char *buf_ptr = buf;
   uint64_t stored_in_buf = 0;
   uint64_t remaining = a.size1() * a.size2();
@@ -3250,68 +3020,20 @@ void MPCEnv::BeaverWriteToFile(Mat<ZZ_p>& ar, Mat<ZZ_p>& am, fstream& ofs) {
 
 void MPCEnv::BeaverMultElem(ublas::vector<myType>& ab, ublas::vector<myType>& ar, ublas::vector<myType>& am, ublas::vector<myType>& br, ublas::vector<myType>& bm, int fid) {
   if (pid == 0) {
-//    tcout() << "BeaverMultElem 1 - pid = 0 s" << endl;
     ublas::vector<myType> ambm(am.size(), 0);
 
     ambm = ublas::element_prod(am, bm);
-//    mul_elem(ambm, am, bm);
     ab += ambm;
 
-//    tcout() << "BeaverMultElem 1 - pid = 0 e" << endl;
   } else {
-//    tcout() << "BeaverMultElem 1 - pid = 1/2 s" << endl;
 
     ab += ublas::element_prod(ar, bm);
     ab += ublas::element_prod(am, br);
     if (pid == 1)
       ab += ublas::element_prod(ar, br);
 
-//    for (int i = 0; i < ab.size(); i++) {
-//      ab[i] += ar[i] * bm[i];
-//      ab[i] += am[i] * br[i];
-//      if (pid == 1) {
-//        ab[i] += ar[i] * br[i];
-//      }
-//    }
-
-//    tcout() << "BeaverMultElem 1 - pid = 1/2 e" << endl;
-
   }
 }
-
-//void MPCEnv::BeaverMultElem(Vec<myType>& ab, Vec<myType>& ar, Vec<myType>& am, Vec<myType>& br, Vec<myType>& bm, int fid) {
-//  if (pid == 0) {
-//    tcout() << "BeaverMultElem 1 - pid = 0 s" << endl;
-//    Vec<myType> ambm(am.length(), 0);
-////    Init(ambm);
-//    mul_elem(ambm, am, bm);
-//    ab += ambm;
-//
-//    tcout() << "BeaverMultElem 1 - pid = 0 e" << endl;
-//  } else {
-//    tcout() << "BeaverMultElem 1 - pid = 1/2 s" << endl;
-////    ZZ_pContext context;
-////    context.save();
-////
-////    NTL_GEXEC_RANGE(ab.length() > Param::PAR_THRES, ab.length(), first, last)
-////
-////          context.restore();
-//
-//    for (int i = 0; i < ab.length(); i++) {
-//      ab[i] += ar[i] * bm[i];
-//      ab[i] += am[i] * br[i];
-//      if (pid == 1) {
-//        ab[i] += ar[i] * br[i];
-//      }
-//    }
-//
-//    tcout() << "BeaverMultElem 1 - pid = 1/2 e" << endl;
-////    NTL_GEXEC_RANGE_END
-//
-//  }
-//
-////  Mod(ab, fid);
-//}
 
 void MPCEnv::BeaverMultElem(Vec<ZZ_p>& ab, Vec<ZZ_p>& ar, Vec<ZZ_p>& am, Vec<ZZ_p>& br, Vec<ZZ_p>& bm, int fid) {
   if (pid == 0) {
@@ -3383,9 +3105,6 @@ void MPCEnv::BeaverMult(Mat<ZZ_p>& ab, Mat<ZZ_p>& ar, Mat<ZZ_p>& am, Mat<ZZ_p>& 
 void MPCEnv::BeaverMult(ublas::matrix<myType>& ab, ublas::matrix<myType>& ar,
                         ublas::matrix<myType>& am, ublas::matrix<myType>& br,
                         ublas::matrix<myType>& bm, bool elem_wise, int fid) {
-//  tcout() << "BeaverMult check" << endl;
-//  tcout() << "ab : " << ab.size1() << "/" << ab.size2() << endl;
-
   if (pid == 0) {
     ublas::matrix<myType> ambm;
     if (elem_wise) {
@@ -3403,26 +3122,12 @@ void MPCEnv::BeaverMult(ublas::matrix<myType>& ab, ublas::matrix<myType>& ar,
       ab += ublas::element_prod(am, br);
       if (pid == 1)
         ab += ublas::element_prod(ar, br);
-//      for (int i = 0; i < ab.size1(); i++) {
-//        for (int j = 0; j < ab.size2(); j++) {
-//          ab[i][j] += ar[i][j] * bm[i][j];
-//          ab[i][j] += am[i][j] * br[i][j];
-//          if (pid == 1) {
-//            ab[i][j] += ar[i][j] * br[i][j];
-//          }
-//        }
-//      }
     } else {
       ab += ublas::prod(ar, bm);
       ab += ublas::prod(am, br);
       if (pid == 1)
         ab += ublas::prod(ar, br);
 
-//      ab += ar * bm;
-//      ab += am * br;
-//      if (pid == 1) {
-//        ab += ar * br;
-//      }
     }
   }
 }
