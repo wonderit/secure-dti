@@ -163,6 +163,8 @@ def r_squared_mse(y_true, y_pred, mse):
     # mse = mean_squared_error(y_true, y_pred,
     #                          sample_weight=sample_weight,
     #                          multioutput=multioutput)
+
+    r2 = r ** 2
     # Output aggregated scores.
     try:
         sys.stdout.write(str(datetime.datetime.now()) + ' | ')
@@ -174,14 +176,14 @@ def r_squared_mse(y_true, y_pred, mse):
         print('mean \t {0:.2f} \t\t {1:.2f}'.format(np.mean(y_true), np.mean(y_pred)))
         print('MSE \t {0:.4f}'.format(mse))
         print('RMSE \t {0:.4f}'.format(math.sqrt(mse)))
-        print('Correlation R \t {0:.4f}'.format(r))
+        print('R2 \t {0:.4f}'.format(r2))
 
     except Exception as e:
         sys.stderr.write(str(e))
         sys.stderr.write('\n')
 
-    result_message = 'r:{:.3f}, mse:{:.3f}, std:{:.3f},{:.3f}'.format(r, mse, np.std(y_true), np.std(y_pred))
-    return result_message, r
+    result_message = 'r2:{:.3f}, mse:{:.3f}, std:{:.3f},{:.3f}'.format(r2, mse, np.std(y_true), np.std(y_pred))
+    return result_message, r2
 
 
 def scatter_plot(y_true, y_pred, message, epoch, batch):
@@ -278,13 +280,13 @@ if __name__ == '__main__':
             y_true, y_pred, test_mse_loss = report_scores(X_test, y_test, model)
             print('Testing mse_loss: {0:.4f}'.format(test_mse_loss))
 
-            _, train_r = r_squared_mse(y_true_train, y_pred_train, train_mse_loss)
-            rm, test_r = r_squared_mse(y_true, y_pred, test_mse_loss)
+            _, train_r2 = r_squared_mse(y_true_train, y_pred_train, train_mse_loss)
+            rm, test_r2 = r_squared_mse(y_true, y_pred, test_mse_loss)
 
             if args.is_comet:
                 experiment.log_metric("train_mse", train_mse_loss, epoch=e + 1, step=step)
                 experiment.log_metric("test_mse", test_mse_loss, epoch=e + 1, step=step)
-                experiment.log_metric("train_r", train_r, epoch=e + 1, step=step)
-                experiment.log_metric("test_r", test_r, epoch=e + 1, step=step)
+                experiment.log_metric("train_r2", train_r2, epoch=e + 1, step=step)
+                experiment.log_metric("test_r2", test_r2, epoch=e + 1, step=step)
 
             scatter_plot(y_true, y_pred, rm, e, i * args.log_interval)
