@@ -41,8 +41,6 @@ using namespace std;
   #define IS_INT false
 #endif
 
-typedef uint8_t smallType;
-
 const int BYTE_SIZE = sizeof(myType);
 const int BIT_SIZE = (BYTE_SIZE * CHAR_BIT);
 const myType LARGEST_NEG = ((myType)1 << (BIT_SIZE - 1));

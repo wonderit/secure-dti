@@ -3,7 +3,8 @@ import numpy as np
 from comet_ml import Experiment
 from sklearn import metrics
 import sys
-from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.metrics import r2_score
+from scipy import stats
 import math
 import os
 import time
@@ -26,6 +27,8 @@ parser.add_argument("-p", "--comet_project", help="Set project name", type=str, 
 parser.add_argument("-seed", "--seed", help="Set random seed", type=int, default=1234)
 parser.add_argument("-m", "--mean", help="Set mean of Y", type=float, default=61.9)
 parser.add_argument("-s", "--std", help="Set std of Y", type=float, default=10.6)
+parser.add_argument("-r", "--spearman", help="Set std of Y", action='store_true')
+
 args = parser.parse_args()
 
 N_HIDDEN = 5
@@ -151,8 +154,12 @@ def load_model(model, epoch, batch):
     return model
 
 
-def r_squared_mse(y_true, y_pred, mse, sample_weight=None, multioutput=None):
-    r2 = r2_score(y_true, y_pred, multioutput='uniform_average')
+def r_squared_mse(y_true, y_pred, mse):
+    if args.spearman:
+        print('calculate spearman r')
+        r = stats.spearmanr(y_true, y_pred)[0]
+    else:
+        r = stats.pearsonr(y_true, y_pred)[0]
     # mse = mean_squared_error(y_true, y_pred,
     #                          sample_weight=sample_weight,
     #                          multioutput=multioutput)
@@ -167,14 +174,14 @@ def r_squared_mse(y_true, y_pred, mse, sample_weight=None, multioutput=None):
         print('mean \t {0:.2f} \t\t {1:.2f}'.format(np.mean(y_true), np.mean(y_pred)))
         print('MSE \t {0:.4f}'.format(mse))
         print('RMSE \t {0:.4f}'.format(math.sqrt(mse)))
-        print('R2 \t {0:.4f}'.format(r2))
+        print('Correlation R \t {0:.4f}'.format(r))
 
     except Exception as e:
         sys.stderr.write(str(e))
         sys.stderr.write('\n')
 
-    result_message = 'r2:{:.3f}, mse:{:.3f}, std:{:.3f},{:.3f}'.format(r2, mse, np.std(y_true), np.std(y_pred))
-    return result_message, r2
+    result_message = 'r:{:.3f}, mse:{:.3f}, std:{:.3f},{:.3f}'.format(r, mse, np.std(y_true), np.std(y_pred))
+    return result_message, r
 
 
 def scatter_plot(y_true, y_pred, message, epoch, batch):
@@ -271,13 +278,13 @@ if __name__ == '__main__':
             y_true, y_pred, test_mse_loss = report_scores(X_test, y_test, model)
             print('Testing mse_loss: {0:.4f}'.format(test_mse_loss))
 
-            _, train_r2 = r_squared_mse(y_true_train, y_pred_train, train_mse_loss)
-            rm, test_r2 = r_squared_mse(y_true, y_pred, test_mse_loss)
+            _, train_r = r_squared_mse(y_true_train, y_pred_train, train_mse_loss)
+            rm, test_r = r_squared_mse(y_true, y_pred, test_mse_loss)
 
             if args.is_comet:
                 experiment.log_metric("train_mse", train_mse_loss, epoch=e + 1, step=step)
                 experiment.log_metric("test_mse", test_mse_loss, epoch=e + 1, step=step)
-                experiment.log_metric("train_r2", train_r2, epoch=e + 1, step=step)
-                experiment.log_metric("test_r2", test_r2, epoch=e + 1, step=step)
+                experiment.log_metric("train_r", train_r, epoch=e + 1, step=step)
+                experiment.log_metric("test_r", test_r, epoch=e + 1, step=step)
 
             scatter_plot(y_true, y_pred, rm, e, i * args.log_interval)

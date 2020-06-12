@@ -19,16 +19,6 @@
 
 using namespace NTL;
 using namespace std;
-//
-//void reveal(ZZ_p X, string fname, MPCEnv& mpc) {
-//  mpc.RevealSym(X);
-//  double X_double;
-//  fstream fs;
-//  fs.open(fname.c_str(), ios::out);
-//  X_double = FPToDouble(X, Param::NBIT_K, Param::NBIT_F);
-//  fs << X_double;
-//  fs.close();
-//}
 
 void reveal(ublas::vector<myType>& X, string fname, MPCEnv& mpc) {
   ublas::vector<myType> X_copy(X);
@@ -98,7 +88,6 @@ bool text_to_matrix(ublas::matrix<myType>& matrix, ifstream& ifs, string fname, 
       if (Param::DEBUG) printf("%f", x);
       matrix(i,j) = DoubleToFP(x);
       if (Param::DEBUG) cout << matrix(i, j);
-//      if (Param::DEBUG) printf("%llu", matrix(i,j));
     }
     if (Param::DEBUG) printf("-- \n");
   }
@@ -121,7 +110,6 @@ bool text_to_vector(ublas::vector<myType>& vec, ifstream& ifs, string fname) {
       if (Param::DEBUG) printf(" : %f", x);
       vec[j] = DoubleToFP(x);
       if (Param::DEBUG) cout << vec[j];
-//      if (Param::DEBUG) printf(" : %llu", vec[j]);
     }
     if (Param::DEBUG) printf("-- \n");
   }
@@ -179,10 +167,9 @@ void BackAveragePool(ublas::matrix<myType>& input, ublas::matrix<myType>& avgpoo
 void initialize_parameters(ublas::matrix<myType>& W_layer, ublas::vector<myType>& b_layer) {
 
   Init(b_layer, b_layer.size());
-//  W_layer.clear();
-//  b_layer.clear();
   std::default_random_engine random_generator (0);
   int fan_in = W_layer.size1();
+
   // Initialize
   double gain = std::sqrt(2.0 / (1 + pow(std::sqrt(5), 2)));
   double b_bound = 0.0;
