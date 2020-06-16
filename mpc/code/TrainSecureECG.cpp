@@ -203,8 +203,8 @@ void AveragePool(ublas::matrix<myType>& avgpool, ublas::matrix<myType>& input, i
   }
 }
 
-void BackPool(ublas::matrix<myType>& input, ublas::matrix<myType>& back_pool,
-                     int kernel_size, int stride, bool isDifferent=false) {
+void BackAvgPool(ublas::matrix<myType>& input, ublas::matrix<myType>& back_pool,
+                     int kernel_size, int stride, bool isDifferent= false) {
 
   if (Param::DEBUG) tcout() << "back prop pool row, cols (" << back_pool.size1() << ", " << back_pool.size2() << ")" << endl;
   int prev_row = back_pool.size1() / Param::BATCH_SIZE;
@@ -759,19 +759,16 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
         // Compute back prop pool
         ublas::matrix<myType> back_pool;
-        BackPool(back_pool, temp, 2, 2);
 
         if (Param::POOL == "max") {
-          ublas::matrix<myType> max_index;
-          max_index = vpool.back();
-          mpc.MultElem(back_pool, back_pool, max_index);
+          back_pool = vpool.back();
           vpool.pop_back();
         } else {
+          BackAvgPool(back_pool, temp, 2, 2);
           back_pool *= inv2;
           mpc.Trunc(back_pool);
         }
         if (Param::DEBUG) tcout() << "backPool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
-
         dhidden = back_pool;
       } else {
         ublas::matrix<myType> relu = relus.back();
@@ -816,17 +813,14 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         /* Apply derivative of AvgPool1D or MaxPool1D (stride 2, kernel_size 2). */
         if (l <= 3) {
           ublas::matrix<myType> back_pool;
-          if (l == 2)
-            BackPool(back_pool, dhidden_new, 2, 2, true);
-          else
-            BackPool(back_pool, dhidden_new, 2, 2);
-
           if (Param::POOL == "max") {
-            ublas::matrix<myType> max_index;
-            max_index = vpool.back();
-            mpc.MultElem(back_pool, back_pool, max_index);
+            back_pool = vpool.back();
             vpool.pop_back();
           } else {
+            if (l == 2)
+              BackAvgPool(back_pool, dhidden_new, 2, 2, true);
+            else
+              BackAvgPool(back_pool, dhidden_new, 2, 2);
             back_pool *= inv2;
             mpc.Trunc(back_pool);
           }
