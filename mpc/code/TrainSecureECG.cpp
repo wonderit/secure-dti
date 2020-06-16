@@ -117,6 +117,72 @@ bool text_to_vector(ublas::vector<myType>& vec, ifstream& ifs, string fname) {
   return true;
 }
 
+
+void MaxPool(ublas::matrix<myType>& maxpool, ublas::matrix<myType>& input_max_index, ublas::matrix<myType>& input, int kernel_size, int stride, MPCEnv& mpc, int pid) {
+  int prev_row = input.size1() / Param::BATCH_SIZE;
+  int row = prev_row / stride;
+  ublas::matrix<myType> input_left, input_right, maxpool_index, maxpool_tmp;
+  Init(maxpool_tmp, input.size1(), input.size2());
+  Init(maxpool, row * Param::BATCH_SIZE, input.size2());
+  Init(maxpool_index, row * Param::BATCH_SIZE, input.size2());
+  Init(input_left, row * Param::BATCH_SIZE, input.size2());
+  Init(input_right, row * Param::BATCH_SIZE, input.size2());
+  Init(input_max_index, input.size1(), input.size2());
+
+  if (Param::DEBUG) tcout() << "MaxPool input r c (" << input.size1() << ", " << input.size2() << ")" << endl;
+  if (Param::DEBUG) tcout() << "MaxPool row, cols (" << maxpool.size1() << ", " << maxpool.size2() << ")" << endl;
+
+  for (int b = 0; b < Param::BATCH_SIZE; b++) {
+    for (int i = 0; i < row; i++) {
+      for (int c = 0; c < input.size2(); c++) {
+        input_left(b * row + i, c) = input(b * prev_row + i * stride, c);
+        input_right(b * row + i, c) = input(b * prev_row + i * stride + 1, c);
+      }
+    }
+  }
+
+  input_right = input_right - input_left;
+  mpc.IsPositive(maxpool_index, input_right);
+
+  ublas::matrix<myType> xor_maxpool_index;
+  Init(xor_maxpool_index, maxpool_index.size1(), maxpool_index.size2());
+
+  // Calculate 1 - B
+  for (size_t j = 0; j < maxpool_index.size2(); j++) {
+    for (size_t i = 0; i < maxpool_index.size1(); i++) {
+      if (pid == 1)
+        xor_maxpool_index(i, j) = 1 - maxpool_index(i, j);
+      else if(pid == 2)
+        xor_maxpool_index(i, j) = - maxpool_index(i, j);
+    }
+  }
+
+  // Calculate Max Pool Index
+  for (int b = 0; b < Param::BATCH_SIZE; b++) {
+    for (int i = 0; i < row; i++) {
+      for (int c = 0; c < input.size2(); c++) {
+
+        input_max_index(b * prev_row + i * stride + 0, c) = xor_maxpool_index(b * row + i, c);
+        input_max_index(b * prev_row + i * stride + 1, c) = maxpool_index(b * row + i, c);
+      }
+    }
+  }
+
+  // Calculate Max Pool result
+  mpc.MultElem(maxpool_tmp, input, input_max_index);
+
+  // Resize Max Pool result
+  for (int b = 0; b < Param::BATCH_SIZE; b++) {
+    for (int i = 0; i < row; i++) {
+      for (int c = 0; c < input.size2(); c++) {
+        maxpool(b * row + i, c) = maxpool_tmp(b * prev_row + i * stride + 0, c) + maxpool_tmp(b * prev_row + i * stride + 1, c);
+      }
+    }
+  }
+
+}
+
+
 void AveragePool(ublas::matrix<myType>& avgpool, ublas::matrix<myType>& input, int kernel_size, int stride) {
   int prev_row = input.size1() / Param::BATCH_SIZE;
   int row = prev_row / stride;
@@ -135,26 +201,25 @@ void AveragePool(ublas::matrix<myType>& avgpool, ublas::matrix<myType>& input, i
       }
     }
   }
-
 }
 
-void BackAveragePool(ublas::matrix<myType>& input, ublas::matrix<myType>& avgpool,
+void BackPool(ublas::matrix<myType>& input, ublas::matrix<myType>& back_pool,
                      int kernel_size, int stride, bool isDifferent=false) {
 
-  if (Param::DEBUG) tcout() << "avgpool row, cols (" << avgpool.size1() << ", " << avgpool.size2() << ")" << endl;
-  int prev_row = avgpool.size1() / Param::BATCH_SIZE;
+  if (Param::DEBUG) tcout() << "back prop pool row, cols (" << back_pool.size1() << ", " << back_pool.size2() << ")" << endl;
+  int prev_row = back_pool.size1() / Param::BATCH_SIZE;
   int row = prev_row * stride;
   if (isDifferent){
     row++;
   }
 
-  Init(input, row * Param::BATCH_SIZE, avgpool.size2());
+  Init(input, row * Param::BATCH_SIZE, back_pool.size2());
 
   for (int b = 0; b < Param::BATCH_SIZE; b++) {
     for (int i = 0; i < prev_row; i++) {
-      for (int c = 0; c < avgpool.size2(); c++) {
+      for (int c = 0; c < back_pool.size2(); c++) {
         for (int k = 0; k < kernel_size; k++) {
-          input(b * row + i * stride + k, c) = avgpool(b * prev_row + i, c);
+          input(b * row + i * stride + k, c) = back_pool(b * prev_row + i, c);
           if (isDifferent && i == prev_row-1 && k == 0)
             input(b * row + prev_row * stride + k, c) = 0;
         }
@@ -364,6 +429,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
   // calculate denominator for avgpooling
   myType inv2 = DoubleToFP(1. / (double) 2);
 
+  // vector for pooling
+  vector<ublas::matrix<myType>> vpool;
+
   for (int l = 0; l < Param::N_HIDDEN; l++) {
 
     if (pid == 2)
@@ -434,15 +502,26 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     }
 
     if (l == 0) {
+      if (Param::POOL == "max") {
+        // Max Pool
+        ublas::matrix<myType> maxpool;
+        ublas::matrix<myType> max_index;
+        MaxPool(maxpool, max_index, activation, 2, 2, mpc, pid);
+        act.push_back(maxpool);
+        vpool.push_back(max_index);
+        if (Param::DEBUG) tcout() << "activation -> col, rows (" << activation.size1() << ", " << activation.size2() << ")" << pid << endl;
+        if (Param::DEBUG) tcout() << "MAX POOL -> col, rows (" << maxpool.size1() << ", " << maxpool.size2() << ")" << pid << endl;
 
-      // Avg Pool
-      ublas::matrix<myType> avgpool;
-      AveragePool(avgpool, activation, 2, 2);
-      avgpool *= inv2;
-      mpc.Trunc(avgpool);
-      if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
+      } else {
+        // Avg Pool
+        ublas::matrix<myType> avgpool;
+        AveragePool(avgpool, activation, 2, 2);
+        avgpool *= inv2;
+        mpc.Trunc(avgpool);
+        if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
 
-      act.push_back(avgpool);
+        act.push_back(avgpool);
+      }
 
     } else {
 
@@ -464,14 +543,25 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
 
       if (l <= 2) {
-        // Avg Pool
-        ublas::matrix<myType> avgpool;
-        AveragePool(avgpool, after_relu, 2, 2);
-        avgpool *= inv2;
-        mpc.Trunc(avgpool);
-        act.push_back(avgpool);
-        if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
+        if (Param::POOL == "max") {
+          // Max Pool
+          ublas::matrix<myType> maxpool;
+          ublas::matrix<myType> max_index;
+          MaxPool(maxpool, max_index, after_relu, 2, 2, mpc, pid);
+          act.push_back(maxpool);
+          vpool.push_back(max_index);
+          if (Param::DEBUG) tcout() << "MAX POOL -> col, rows (" << maxpool.size1() << ", " << maxpool.size2() << ")" << pid << endl;
 
+        } else {
+          // Avg Pool
+          ublas::matrix<myType> avgpool;
+          AveragePool(avgpool, after_relu, 2, 2);
+          avgpool *= inv2;
+          mpc.Trunc(avgpool);
+          act.push_back(avgpool);
+          if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
+
+        }
       } else {
         act.push_back(after_relu);
       }
@@ -667,14 +757,22 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
                                   << "), conv1d: (" << dhidden_new.size1() << ", " << dhidden_new.size2() << ")"
                                   << endl;
 
-        // Compute backpropagated avgpool
-        ublas::matrix<myType> backAvgPool;
-        BackAveragePool(backAvgPool, temp, 2, 2);
-        backAvgPool *= inv2;
-        mpc.Trunc(backAvgPool);
-        if (Param::DEBUG) tcout() << "backAvgPool: " << backAvgPool.size1() << "/" << backAvgPool.size2() << endl;
+        // Compute back prop pool
+        ublas::matrix<myType> back_pool;
+        BackPool(back_pool, temp, 2, 2);
 
-        dhidden = backAvgPool;
+        if (Param::POOL == "max") {
+          ublas::matrix<myType> max_index;
+          max_index = vpool.back();
+          mpc.MultElem(back_pool, back_pool, max_index);
+          vpool.pop_back();
+        } else {
+          back_pool *= inv2;
+          mpc.Trunc(back_pool);
+        }
+        if (Param::DEBUG) tcout() << "backPool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
+
+        dhidden = back_pool;
       } else {
         ublas::matrix<myType> relu = relus.back();
 
@@ -714,18 +812,26 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
         }
 
-        // Compute backpropagated avgpool
-        /* Apply derivative of AvgPool1D (stride 2, kernel_size 2). */
+        // Compute backpropagated pool
+        /* Apply derivative of AvgPool1D or MaxPool1D (stride 2, kernel_size 2). */
         if (l <= 3) {
-          ublas::matrix<myType> backAvgPool;
+          ublas::matrix<myType> back_pool;
           if (l == 2)
-            BackAveragePool(backAvgPool, dhidden_new, 2, 2, true);
+            BackPool(back_pool, dhidden_new, 2, 2, true);
           else
-            BackAveragePool(backAvgPool, dhidden_new, 2, 2);
-          backAvgPool *= inv2;
-          mpc.Trunc(backAvgPool);
-          if (Param::DEBUG) tcout() << "backAvgPool: " << backAvgPool.size1() << "/" << backAvgPool.size2() << endl;
-          mpc.MultElem(dhidden, backAvgPool, relu);
+            BackPool(back_pool, dhidden_new, 2, 2);
+
+          if (Param::POOL == "max") {
+            ublas::matrix<myType> max_index;
+            max_index = vpool.back();
+            mpc.MultElem(back_pool, back_pool, max_index);
+            vpool.pop_back();
+          } else {
+            back_pool *= inv2;
+            mpc.Trunc(back_pool);
+          }
+          if (Param::DEBUG) tcout() << "back pool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
+          mpc.MultElem(dhidden, back_pool, relu);
         } else {
           mpc.MultElem(dhidden, dhidden_new, relu);
         }

@@ -596,15 +596,15 @@ public:
     FPToDouble(ad, a_copy);
 
     if (pid == 2) {
-      for (int i = 0; i < ad.size1(); i++) {
-        if (i > 4)
+      for (int j = 0; j < ad.size2(); j++) {
+        if (j > 4)
           break;
-        for (int j = 0; j < ad.size2(); j++) {
-          if (j > 4)
+        for (int i = 0; i < ad.size1(); i++) {
+          if (i > 4)
             break;
 
           os << ad(i, j);
-          if (j == ad.size1() - 1) {
+          if (i == ad.size1() - 1) {
             os << endl;
           } else {
             os << '\t';

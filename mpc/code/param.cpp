@@ -78,6 +78,8 @@ bool Param::ParseFile(const char *param_file) {
       ret = Convert(v, Param::LOG_INTERVAL, k);
     } else if (k == "OPTIMIZER") {
       ret = Convert(v, Param::OPTIMIZER, k);
+    } else if (k == "POOL") {
+      ret = Convert(v, Param::POOL, k);
     } else if (k == "OUTPUT_FILE_PREFIX") {
       ret = Convert(v, Param::OUTPUT_FILE_PREFIX, k);
     } else if (k == "CACHED_PARAM_EPOCH") {
@@ -189,6 +191,7 @@ double Param::DROPOUT = 0;
 string Param::LOSS = "mse";
 
 string Param::OPTIMIZER = "sgd";
+string Param::POOL = "avg";
 int Param::LOG_INTERVAL = 10;
 int Param::N_FILE_BATCH = 20000;
 int Param::N_NEURONS = 16;

@@ -70,6 +70,7 @@ class Param {
     static int ITER_PER_EVAL;
     static int LOG_INTERVAL;
     static string OPTIMIZER;
+    static string POOL;
     
     /* Software parameters */
     static uint64_t MPC_BUF_SIZE; // size of data buffer in bytes
