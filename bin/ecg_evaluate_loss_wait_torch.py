@@ -291,7 +291,7 @@ if __name__ == '__main__':
     X_test = np.genfromtxt('../data/ecg/text_demo_5500/Xtest', delimiter=',', dtype='float')
     y_test = np.genfromtxt('../data/ecg/text_demo_5500/ytest', delimiter=',', dtype='float')
 
-    log_batches = int(batches / args.log_interval)
+    log_batches = int(batches // args.log_interval)
     step = 0
 
     for e in range(args.epoch_limit):
@@ -302,6 +302,9 @@ if __name__ == '__main__':
             if i == 0:
                 continue
             step = (log_batches * e + i)
+
+            if step > batches:
+                continue
             # W, b, act = load_model(e, i * args.log_interval)
             if args.model_type == 'cnnavg':
                 model = CNNAVG()
