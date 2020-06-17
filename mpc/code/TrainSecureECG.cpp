@@ -203,7 +203,7 @@ void AveragePool(ublas::matrix<myType>& avgpool, ublas::matrix<myType>& input, i
   }
 }
 
-void BackAvgPool(ublas::matrix<myType>& input, ublas::matrix<myType>& back_pool,
+void BackPool(ublas::matrix<myType>& input, ublas::matrix<myType>& back_pool,
                      int kernel_size, int stride, bool isDifferent= false) {
 
   if (Param::DEBUG) tcout() << "back prop pool row, cols (" << back_pool.size1() << ", " << back_pool.size2() << ")" << endl;
@@ -501,72 +501,115 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       }
     }
 
-    if (l == 0) {
+    /* Apply ReLU non-linearity. */
+    ublas::matrix<myType> relu;
+    relu.resize(activation.size1(), activation.size2());
+    mpc.IsPositive(relu, activation);
+    ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
+    assert(activation.size1() == relu.size1());
+    assert(activation.size2() == relu.size2());
+    mpc.MultElem(after_relu, activation, relu);
+
+    /* Note: Do not call Trunc() here because IsPositive()
+       returns a secret shared integer, not a fixed point.*/
+    // TODO: Implement dropout.
+    /* Save activation for backpropagation. */
+    if (Param::DEBUG) tcout() << "ReLU -> col, rows (" << relu.size1() << ", " << relu.size2() << ")" << pid << endl;
+    if (Param::DEBUG) tcout() << "after ReLU -> col, rows (" << after_relu.size1() << ", " << after_relu.size2() << ")" << pid << endl;
+    if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
+
+    if (l <= 2) {
       if (Param::POOL == "max") {
         // Max Pool
         ublas::matrix<myType> maxpool;
         ublas::matrix<myType> max_index;
-        MaxPool(maxpool, max_index, activation, 2, 2, mpc, pid);
+        MaxPool(maxpool, max_index, after_relu, 2, 2, mpc, pid);
         act.push_back(maxpool);
         vpool.push_back(max_index);
-        if (Param::DEBUG) tcout() << "activation -> col, rows (" << activation.size1() << ", " << activation.size2() << ")" << pid << endl;
         if (Param::DEBUG) tcout() << "MAX POOL -> col, rows (" << maxpool.size1() << ", " << maxpool.size2() << ")" << pid << endl;
 
       } else {
         // Avg Pool
         ublas::matrix<myType> avgpool;
-        AveragePool(avgpool, activation, 2, 2);
+        AveragePool(avgpool, after_relu, 2, 2);
         avgpool *= inv2;
         mpc.Trunc(avgpool);
+        act.push_back(avgpool);
         if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
 
-        act.push_back(avgpool);
       }
-
     } else {
-
-      /* Apply ReLU non-linearity. */
-      ublas::matrix<myType> relu;
-      relu.resize(activation.size1(), activation.size2());
-      mpc.IsPositive(relu, activation);
-      ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
-      assert(activation.size1() == relu.size1());
-      assert(activation.size2() == relu.size2());
-      mpc.MultElem(after_relu, activation, relu);
-
-      /* Note: Do not call Trunc() here because IsPositive()
-         returns a secret shared integer, not a fixed point.*/
-      // TODO: Implement dropout.
-      /* Save activation for backpropagation. */
-      if (Param::DEBUG) tcout() << "ReLU -> col, rows (" << relu.size1() << ", " << relu.size2() << ")" << pid << endl;
-      if (Param::DEBUG) tcout() << "after ReLU -> col, rows (" << after_relu.size1() << ", " << after_relu.size2() << ")" << pid << endl;
-      if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
-
-      if (l <= 2) {
-        if (Param::POOL == "max") {
-          // Max Pool
-          ublas::matrix<myType> maxpool;
-          ublas::matrix<myType> max_index;
-          MaxPool(maxpool, max_index, after_relu, 2, 2, mpc, pid);
-          act.push_back(maxpool);
-          vpool.push_back(max_index);
-          if (Param::DEBUG) tcout() << "MAX POOL -> col, rows (" << maxpool.size1() << ", " << maxpool.size2() << ")" << pid << endl;
-
-        } else {
-          // Avg Pool
-          ublas::matrix<myType> avgpool;
-          AveragePool(avgpool, after_relu, 2, 2);
-          avgpool *= inv2;
-          mpc.Trunc(avgpool);
-          act.push_back(avgpool);
-          if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
-
-        }
-      } else {
-        act.push_back(after_relu);
-      }
-      relus.push_back(relu);
+      act.push_back(after_relu);
     }
+    relus.push_back(relu);
+
+
+//    if (l == 0) {
+//      if (Param::POOL == "max") {
+//        // Max Pool
+//        ublas::matrix<myType> maxpool;
+//        ublas::matrix<myType> max_index;
+//        MaxPool(maxpool, max_index, activation, 2, 2, mpc, pid);
+//        act.push_back(maxpool);
+//        vpool.push_back(max_index);
+//        if (Param::DEBUG) tcout() << "activation -> col, rows (" << activation.size1() << ", " << activation.size2() << ")" << pid << endl;
+//        if (Param::DEBUG) tcout() << "MAX POOL -> col, rows (" << maxpool.size1() << ", " << maxpool.size2() << ")" << pid << endl;
+//
+//      } else {
+//        // Avg Pool
+//        ublas::matrix<myType> avgpool;
+//        AveragePool(avgpool, activation, 2, 2);
+//        avgpool *= inv2;
+//        mpc.Trunc(avgpool);
+//        if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
+//
+//        act.push_back(avgpool);
+//      }
+//
+//    } else {
+//
+//      /* Apply ReLU non-linearity. */
+//      ublas::matrix<myType> relu;
+//      relu.resize(activation.size1(), activation.size2());
+//      mpc.IsPositive(relu, activation);
+//      ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
+//      assert(activation.size1() == relu.size1());
+//      assert(activation.size2() == relu.size2());
+//      mpc.MultElem(after_relu, activation, relu);
+//
+//      /* Note: Do not call Trunc() here because IsPositive()
+//         returns a secret shared integer, not a fixed point.*/
+//      // TODO: Implement dropout.
+//      /* Save activation for backpropagation. */
+//      if (Param::DEBUG) tcout() << "ReLU -> col, rows (" << relu.size1() << ", " << relu.size2() << ")" << pid << endl;
+//      if (Param::DEBUG) tcout() << "after ReLU -> col, rows (" << after_relu.size1() << ", " << after_relu.size2() << ")" << pid << endl;
+//      if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
+//
+//      if (l <= 2) {
+//        if (Param::POOL == "max") {
+//          // Max Pool
+//          ublas::matrix<myType> maxpool;
+//          ublas::matrix<myType> max_index;
+//          MaxPool(maxpool, max_index, after_relu, 2, 2, mpc, pid);
+//          act.push_back(maxpool);
+//          vpool.push_back(max_index);
+//          if (Param::DEBUG) tcout() << "MAX POOL -> col, rows (" << maxpool.size1() << ", " << maxpool.size2() << ")" << pid << endl;
+//
+//        } else {
+//          // Avg Pool
+//          ublas::matrix<myType> avgpool;
+//          AveragePool(avgpool, after_relu, 2, 2);
+//          avgpool *= inv2;
+//          mpc.Trunc(avgpool);
+//          act.push_back(avgpool);
+//          if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
+//
+//        }
+//      } else {
+//        act.push_back(after_relu);
+//      }
+//      relus.push_back(relu);
+//    }
 
   }
 
@@ -749,91 +792,206 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       /* Apply derivative of ReLU. */
       Init(dhidden, dhidden_new.size1(), dhidden_new.size2());
 
-      if (l == 1) {
-        ublas::matrix<myType> temp;
-        back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
 
-        if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
-                                  << "), conv1d: (" << dhidden_new.size1() << ", " << dhidden_new.size2() << ")"
-                                  << endl;
+      ublas::matrix<myType> relu = relus.back();
 
-        // Compute back prop pool
-        ublas::matrix<myType> back_pool;
+      if (pid == 2 && Param::DEBUG) {
+        tcout() << "dhidden_new: " << dhidden_new.size1() << "/" << dhidden_new.size2() << endl;
+        tcout() << "relu : " << relu.size1() << "/" << relu.size2() << endl;
+        tcout() << "l=" << l << "-------------" << endl;
+      }
 
-        if (Param::POOL == "max") {
-          back_pool = vpool.back();
-          vpool.pop_back();
-        } else {
-          BackAvgPool(back_pool, temp, 2, 2);
-          back_pool *= inv2;
-          mpc.Trunc(back_pool);
-        }
-        if (Param::DEBUG) tcout() << "backPool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
-        dhidden = back_pool;
-      } else {
-        ublas::matrix<myType> relu = relus.back();
+      if (dhidden_new.size2() != relu.size2() || dhidden_new.size1() != relu.size1()) {
 
-        if (pid == 2 && Param::DEBUG) {
-          tcout() << "dhidden_new: " << dhidden_new.size1() << "/" << dhidden_new.size2() << endl;
-          tcout() << "relu : " << relu.size1() << "/" << relu.size2() << endl;
-          tcout() << "l=" << l << "-------------" << endl;
-        }
-
-        if (dhidden_new.size2() != relu.size2() || dhidden_new.size1() != relu.size1()) {
-
-          if (l > 2) {
-            ublas::matrix<myType> temp;
-            int row = dhidden_new.size2() / relu.size2();
-            Init(temp, row * Param::BATCH_SIZE, relu.size2());
-            for (int b = 0; b < Param::BATCH_SIZE; b++) {
-              for (int c = 0; c < relu.size2(); c++) {
-                for (int r = 0; r < row; r++) {
-                  temp(b * row + r, c) = dhidden_new(b, c * row + r );
-                }
+        if (l > 2) {
+          ublas::matrix<myType> temp;
+          int row = dhidden_new.size2() / relu.size2();
+          Init(temp, row * Param::BATCH_SIZE, relu.size2());
+          for (int b = 0; b < Param::BATCH_SIZE; b++) {
+            for (int c = 0; c < relu.size2(); c++) {
+              for (int r = 0; r < row; r++) {
+                temp(b * row + r, c) = dhidden_new(b, c * row + r );
               }
             }
-            dhidden_new = temp;
-          } else {
-            ublas::matrix<myType> temp;
-            back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
-
-            if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
-                                      << "), conv1d: (" << dhidden_new.size1() << ", " << dhidden_new.size2() << ")"
-                                      << endl;
-            dhidden_new = temp;
           }
-          if (pid == 2 && Param::DEBUG) {
-            tcout() << "dhidden_new: " << dhidden_new.size1() << "/" << dhidden_new.size2() << endl;
-            tcout() << "l=" << l << "----CHANGED---------" << endl;
-          }
-
-        }
-
-        // Compute backpropagated pool
-        /* Apply derivative of AvgPool1D or MaxPool1D (stride 2, kernel_size 2). */
-        if (l <= 3) {
-          ublas::matrix<myType> back_pool;
-          if (Param::POOL == "max") {
-            back_pool = vpool.back();
-            vpool.pop_back();
-          } else {
-            if (l == 2)
-              BackAvgPool(back_pool, dhidden_new, 2, 2, true);
-            else
-              BackAvgPool(back_pool, dhidden_new, 2, 2);
-            back_pool *= inv2;
-            mpc.Trunc(back_pool);
-          }
-          if (Param::DEBUG) tcout() << "back pool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
-          mpc.MultElem(dhidden, back_pool, relu);
+          dhidden_new = temp;
         } else {
-          mpc.MultElem(dhidden, dhidden_new, relu);
-        }
+          ublas::matrix<myType> temp;
+          back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
 
-        /* Note: No need to call Trunc().*/
-        relus.pop_back();
+          if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
+                                    << "), conv1d: (" << dhidden_new.size1() << ", " << dhidden_new.size2() << ")"
+                                    << endl;
+          dhidden_new = temp;
+        }
+        if (pid == 2 && Param::DEBUG) {
+          tcout() << "dhidden_new: " << dhidden_new.size1() << "/" << dhidden_new.size2() << endl;
+          tcout() << "l=" << l << "----CHANGED---------" << endl;
+        }
 
       }
+
+      // Compute backpropagated pool
+      /* Apply derivative of AvgPool1D or MaxPool1D (stride 2, kernel_size 2). */
+      if (l <= 3) {
+        ublas::matrix<myType> back_pool;
+        if (l == 2)
+          BackPool(back_pool, dhidden_new, 2, 2, true);
+        else
+          BackPool(back_pool, dhidden_new, 2, 2);
+
+        if (Param::POOL == "max") {
+          ublas::matrix<myType> max_pool_back;
+          ublas::matrix<myType> max_pool = vpool.back();
+          mpc.MultElem(max_pool_back, back_pool, max_pool);
+          mpc.MultElem(dhidden, max_pool_back, relu);
+
+          if (Param::DEBUG && pid > 0) {
+
+            tcout() << "Print back_pool:" << endl;
+            mpc.PrintFP(back_pool);
+
+            tcout() << "Print max pool:" << endl;
+            mpc.PrintFP(max_pool);
+            tcout() << "Print max pool back:" << endl;
+            mpc.PrintFP(max_pool_back);
+          }
+
+
+          vpool.pop_back();
+        } else {
+          back_pool *= inv2;
+          mpc.Trunc(back_pool);
+
+          mpc.MultElem(dhidden, back_pool, relu);
+        }
+        if (Param::DEBUG) tcout() << "back pool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
+      } else {
+        mpc.MultElem(dhidden, dhidden_new, relu);
+      }
+
+      /* Note: No need to call Trunc().*/
+      relus.pop_back();
+
+
+//      if (l == 1) {
+//        ublas::matrix<myType> temp;
+//        back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
+//
+//        if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
+//                                  << "), conv1d: (" << dhidden_new.size1() << ", " << dhidden_new.size2() << ")"
+//                                  << endl;
+//
+//        // Compute back prop pool
+//        ublas::matrix<myType> back_pool;
+//        BackPool(back_pool, temp, 2, 2);
+//
+//        if (Param::POOL == "max") {
+//          ublas::matrix<myType> max_pool_back;
+//          ublas::matrix<myType> max_pool = vpool.back();
+//          mpc.MultElem(max_pool_back, back_pool, max_pool);
+//
+//          if (pid > 0) {
+//
+//            tcout() << "Print back_pool:" << endl;
+//            mpc.PrintFP(back_pool);
+//
+//            tcout() << "Print max pool:" << endl;
+//            mpc.PrintFP(max_pool);
+//            tcout() << "Print max pool back:" << endl;
+//            mpc.PrintFP(max_pool_back);
+//          }
+//          dhidden = max_pool_back;
+//          vpool.pop_back();
+//        } else {
+//          back_pool *= inv2;
+//          mpc.Trunc(back_pool);
+//          dhidden = back_pool;
+//        }
+//        if (Param::DEBUG) tcout() << "backPool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
+//
+//      } else {
+//        ublas::matrix<myType> relu = relus.back();
+//
+//        if (pid == 2 && Param::DEBUG) {
+//          tcout() << "dhidden_new: " << dhidden_new.size1() << "/" << dhidden_new.size2() << endl;
+//          tcout() << "relu : " << relu.size1() << "/" << relu.size2() << endl;
+//          tcout() << "l=" << l << "-------------" << endl;
+//        }
+//
+//        if (dhidden_new.size2() != relu.size2() || dhidden_new.size1() != relu.size1()) {
+//
+//          if (l > 2) {
+//            ublas::matrix<myType> temp;
+//            int row = dhidden_new.size2() / relu.size2();
+//            Init(temp, row * Param::BATCH_SIZE, relu.size2());
+//            for (int b = 0; b < Param::BATCH_SIZE; b++) {
+//              for (int c = 0; c < relu.size2(); c++) {
+//                for (int r = 0; r < row; r++) {
+//                  temp(b * row + r, c) = dhidden_new(b, c * row + r );
+//                }
+//              }
+//            }
+//            dhidden_new = temp;
+//          } else {
+//            ublas::matrix<myType> temp;
+//            back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
+//
+//            if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
+//                                      << "), conv1d: (" << dhidden_new.size1() << ", " << dhidden_new.size2() << ")"
+//                                      << endl;
+//            dhidden_new = temp;
+//          }
+//          if (pid == 2 && Param::DEBUG) {
+//            tcout() << "dhidden_new: " << dhidden_new.size1() << "/" << dhidden_new.size2() << endl;
+//            tcout() << "l=" << l << "----CHANGED---------" << endl;
+//          }
+//
+//        }
+//
+//        // Compute backpropagated pool
+//        /* Apply derivative of AvgPool1D or MaxPool1D (stride 2, kernel_size 2). */
+//        if (l <= 3) {
+//          ublas::matrix<myType> back_pool;
+//          if (l == 2)
+//            BackPool(back_pool, dhidden_new, 2, 2, true);
+//          else
+//            BackPool(back_pool, dhidden_new, 2, 2);
+//
+//          if (Param::POOL == "max") {
+//            ublas::matrix<myType> max_pool_back;
+//            ublas::matrix<myType> max_pool = vpool.back();
+//            mpc.MultElem(max_pool_back, back_pool, max_pool);
+//            mpc.MultElem(dhidden, max_pool_back, relu);
+//
+//            if (pid > 0) {
+//
+//              tcout() << "Print back_pool:" << endl;
+//              mpc.PrintFP(back_pool);
+//
+//              tcout() << "Print max pool:" << endl;
+//              mpc.PrintFP(max_pool);
+//              tcout() << "Print max pool back:" << endl;
+//              mpc.PrintFP(max_pool_back);
+//            }
+//
+//
+//            vpool.pop_back();
+//          } else {
+//            back_pool *= inv2;
+//            mpc.Trunc(back_pool);
+//
+//            mpc.MultElem(dhidden, back_pool, relu);
+//          }
+//          if (Param::DEBUG) tcout() << "back pool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
+//        } else {
+//          mpc.MultElem(dhidden, dhidden_new, relu);
+//        }
+//
+//        /* Note: No need to call Trunc().*/
+//        relus.pop_back();
+//
+//      }
     }
   }
 
