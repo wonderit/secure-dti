@@ -1,1 +1,1 @@
-nohup ./ecg_train_demo.sh > train_ecg.log &
+nohup ./ecg_train.sh > train_ecg.log &

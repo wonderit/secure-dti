@@ -206,7 +206,7 @@ file_name_test_x = 'X{}'.format(test_file_suffix)
 file_name_test_y = 'y{}'.format(test_file_suffix)
 
 # %1.1f
-np.savetxt('{}/{}'.format(data_dir, file_name_train_x), train_x, delimiter=',', fmt='%f')
-np.savetxt('{}/{}'.format(data_dir, file_name_train_y), train_y, delimiter='\n', fmt='%f')
-np.savetxt('{}/{}'.format(data_dir, file_name_test_x), test_x, delimiter=',', fmt='%f')
-np.savetxt('{}/{}'.format(data_dir, file_name_test_y), test_y, delimiter='\n', fmt='%f')
+np.savetxt('{}/{}'.format(data_dir, file_name_train_x), train_x, delimiter=',', fmt='%1.4f')
+np.savetxt('{}/{}'.format(data_dir, file_name_train_y), train_y, delimiter='\n', fmt='%1.4f')
+np.savetxt('{}/{}'.format(data_dir, file_name_test_x), test_x, delimiter=',', fmt='%1.4f')
+np.savetxt('{}/{}'.format(data_dir, file_name_test_y), test_y, delimiter='\n', fmt='%1.4f')

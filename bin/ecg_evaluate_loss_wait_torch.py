@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--epoch", help="Set epoch", type=int, default=0)
 parser.add_argument("-el", "--epoch_limit", help="Set epoch limit", type=int, default=30)
 parser.add_argument("-li", "--log_interval", help="Set batch interval for log", type=int, default=5)
-parser.add_argument("-b", "--batch_size", help="Set batch size for log", type=int, default=20)
+parser.add_argument("-b", "--batch_size", help="Set batch size for log", type=int, default=32)
 parser.add_argument("-t", "--is_test", help="Set isTest", action='store_true')
 parser.add_argument("-c", "--is_comet", help="Set isTest", action='store_true')
 parser.add_argument("-f", "--cache_folder", help="Set folder name", type=str, default='cache')
@@ -28,6 +28,7 @@ parser.add_argument("-seed", "--seed", help="Set random seed", type=int, default
 parser.add_argument("-m", "--mean", help="Set mean of Y", type=float, default=61.9)
 parser.add_argument("-s", "--std", help="Set std of Y", type=float, default=10.6)
 parser.add_argument("-r", "--spearman", help="Set std of Y", action='store_true')
+parser.add_argument("-model", "--model_type", help="model name(shallow, normal, ann, mpc, cnn2d, cnnmax)", type=str, default='cnnmax')
 
 args = parser.parse_args()
 
@@ -48,7 +49,7 @@ print('mean', MEAN, 's', STD)
 _ = torch.manual_seed(args.seed)
 
 result_path = 'result'
-batches = 5000 / args.batch_size
+batches = 5000 // args.batch_size
 
 
 def scale(arr, m, s):
@@ -243,6 +244,39 @@ class CNNAVG(nn.Module):
         return y
 
 
+class CNNMAX(nn.Module):
+    def __init__(self):
+        super(CNNMAX, self).__init__()
+        self.kernel_size = 7
+        self.padding_size = 0
+        self.channel_size = 6
+        self.maxpool1 = nn.MaxPool1d(kernel_size=2, stride=2)
+        self.maxpool2 = nn.MaxPool1d(kernel_size=2, stride=2)
+        self.maxpool3 = nn.MaxPool1d(kernel_size=2, stride=2)
+        self.conv1 = nn.Conv1d(3, self.channel_size, kernel_size=self.kernel_size, padding=self.padding_size)
+        self.conv2 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                               padding=self.padding_size)
+        self.conv3 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                               padding=self.padding_size)
+        self.fc1 = nn.Linear(342, 16)
+        self.fc2 = nn.Linear(16, 64)
+        self.fc3 = nn.Linear(64, 1)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x))  # 32
+        x = self.maxpool1(x)  # 32
+        x = F.relu(self.conv2(x))
+        x = self.maxpool2(x)
+        y = F.relu(self.conv3(x))
+        y = self.maxpool3(y)
+        y = y.view(y.shape[0], -1)
+
+        y = F.relu(self.fc1(y))
+        y = F.relu(self.fc2(y))
+        y = self.fc3(y)
+        return y
+
+
 if __name__ == '__main__':
     # Add the following code anywhere in your machine learning file
     if args.is_comet:
@@ -269,7 +303,11 @@ if __name__ == '__main__':
                 continue
             step = (log_batches * e + i)
             # W, b, act = load_model(e, i * args.log_interval)
-            model = CNNAVG()
+            if args.model_type == 'cnnavg':
+                model = CNNAVG()
+            else:
+                model = CNNMAX()
+
 
             model = load_model(model, e, i * args.log_interval)
 

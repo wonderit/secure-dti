@@ -368,7 +368,7 @@ void initialize_model(
 //      }
 
       // Set param from cached results
-      if (Param::CACHED_PARAM_BATCH > 0 && Param::CACHED_PARAM_EPOCH > 0) {
+      if (Param::CACHED_PARAM_BATCH >= 0 && Param::CACHED_PARAM_EPOCH >= 0) {
         if (!text_to_matrix(W_layer, ifs, "../cache/ecg_P1_"
         + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
         + "_W" + to_string(l) + ".bin", W_layer.size1(), W_layer.size2()))
@@ -740,11 +740,13 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     mpc.Trunc(dW[l]);
 
     /* Add regularization term to weights. */
-    myType reg;
-    reg = DoubleToFP(Param::REG);
-    ublas::matrix<myType> reg_mat = W[l] * reg;
-    mpc.Trunc(reg_mat);
-    dW[l] += reg_mat;
+    if (Param::REG > 0) {
+      myType reg;
+      reg = DoubleToFP(Param::REG);
+      ublas::matrix<myType> reg_mat = W[l] * reg;
+      mpc.Trunc(reg_mat);
+      dW[l] += reg_mat;
+    }
 
 //    /* Add regularization term to weights. */
 ////    ZZ_p REG;
@@ -1316,7 +1318,7 @@ void model_update(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     }
 
     /* Save state every LOG_INTERVAL batches. */
-    if (i % Param::LOG_INTERVAL == 0) {
+    if (i % Param::LOG_INTERVAL == 0 && i > 0) {
       if (pid == 2) {
         tcout() << "save parameters of W, b into .bin files." << endl;
       }
