@@ -230,7 +230,7 @@ class CNNAVG(nn.Module):
         self.fc3 = nn.Linear(64, 1)
 
     def forward(self, x):
-        x = self.conv1(x)  # 32
+        x = F.relu(self.conv1(x))  # 32
         x = self.avgpool1(x)  # 32
         x = F.relu(self.conv2(x))
         x = self.avgpool2(x)
