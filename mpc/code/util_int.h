@@ -458,15 +458,29 @@ static inline void back_reshape_conv(ublas::matrix<myType>& x, ublas::matrix<myT
     for (int index = 0; index < row; index++) {
       for (int channel = 0; channel < input_channel; channel++) {
         for (int filter = 0; filter < kernel_size; filter++) {
+//          if (Param::CNN_PADDING == "valid") {
+//            x(batch * prev_row + index + filter, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
+//          } else {
+//            int padding_size = kernel_size / 2;
+//            int location = index + filter - padding_size;
+//            if ( location >= 0 && location < row) {
+//              x(batch * prev_row + location, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
+//            }
+//          }
+
+          int padding_size = kernel_size / 2;
           if (Param::CNN_PADDING == "valid") {
-            x(batch * prev_row + index + filter, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
-          } else {
-            int padding_size = kernel_size / 2;
-            int location = index + filter - padding_size;
-            if ( location >= 0 && location < row) {
-              x(batch * prev_row + location, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
-            }
+            padding_size = 0;
           }
+          int location = index + filter - padding_size;
+
+          if (location < 0)
+            location = 0;
+          else if (location >= prev_row)
+            location = prev_row - 1;
+
+          x(batch * prev_row + location, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
+
         }
       }
     }
