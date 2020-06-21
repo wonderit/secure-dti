@@ -264,12 +264,22 @@ class CNNMAX(nn.Module):
         self.maxpool1 = nn.MaxPool1d(kernel_size=2, stride=2)
         self.maxpool2 = nn.MaxPool1d(kernel_size=2, stride=2)
         self.maxpool3 = nn.MaxPool1d(kernel_size=2, stride=2)
-        self.conv1 = nn.Conv1d(3, self.channel_size, kernel_size=self.kernel_size, padding=self.padding_size)
-        self.conv2 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
-                               padding=self.padding_size)
-        self.conv3 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
-                               padding=self.padding_size)
-        self.fc1 = nn.Linear(342, 16)
+        if args.cnn_padding == 'valid':
+            self.conv1 = nn.Conv1d(3, self.channel_size, kernel_size=self.kernel_size, padding=self.padding_size)
+            self.conv2 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=self.padding_size)
+            self.conv3 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=self.padding_size)
+            self.fc1 = nn.Linear(342, 16)
+        else:
+
+            self.conv1 = nn.Conv1d(3, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=(self.kernel_size // 2))
+            self.conv2 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=(self.kernel_size // 2))
+            self.conv3 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=(self.kernel_size // 2))
+            self.fc1 = nn.Linear(372, 16)
         self.fc2 = nn.Linear(16, 64)
         self.fc3 = nn.Linear(64, 1)
 
