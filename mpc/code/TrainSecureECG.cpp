@@ -185,7 +185,9 @@ void MaxPool(ublas::matrix<myType>& maxpool, ublas::matrix<myType>& input_max_in
 
 void AveragePool(ublas::matrix<myType>& avgpool, ublas::matrix<myType>& input, int kernel_size, int stride) {
   int prev_row = input.size1() / Param::BATCH_SIZE;
-  int row = prev_row / stride;
+  int row = (prev_row) / stride;
+
+  if (Param::DEBUG) tcout() << "row, avgrow (" << row << ", " << row * Param::BATCH_SIZE << ")" << endl;
 
   Init(avgpool, row * Param::BATCH_SIZE, input.size2());
 
@@ -204,23 +206,29 @@ void AveragePool(ublas::matrix<myType>& avgpool, ublas::matrix<myType>& input, i
 }
 
 void BackPool(ublas::matrix<myType>& input, ublas::matrix<myType>& back_pool,
-                     int kernel_size, int stride, bool isDifferent= false) {
+                     int kernel_size, int stride, int relu_size1) {
 
   if (Param::DEBUG) tcout() << "back prop pool row, cols (" << back_pool.size1() << ", " << back_pool.size2() << ")" << endl;
-  int prev_row = back_pool.size1() / Param::BATCH_SIZE;
-  int row = prev_row * stride;
-  if (isDifferent){
+  int prev_row = back_pool.size1() / Param::BATCH_SIZE; // 62
+  int row = prev_row * stride; // 62 * 2
+  int relu_row = relu_size1 / Param::BATCH_SIZE;
+
+
+  // If row length is different (e.g. : dhidden_new : 62 -> relu : 125
+  if (relu_row > row){
     row++;
   }
 
   Init(input, row * Param::BATCH_SIZE, back_pool.size2());
+
+  if (Param::DEBUG) tcout() << "back prop pool input row, cols (" << input.size1() << ", " << input.size2() << ")" << endl;
 
   for (int b = 0; b < Param::BATCH_SIZE; b++) {
     for (int i = 0; i < prev_row; i++) {
       for (int c = 0; c < back_pool.size2(); c++) {
         for (int k = 0; k < kernel_size; k++) {
           input(b * row + i * stride + k, c) = back_pool(b * prev_row + i, c);
-          if (isDifferent && i == prev_row-1 && k == 0)
+          if (relu_row > row && i == prev_row-1 && k == 0)
             input(b * row + prev_row * stride + k, c) = 0;
         }
       }
@@ -276,140 +284,225 @@ void initialize_model(
 //  std::default_random_engine generator (0);
 //  std::normal_distribution<double> distribution (0.0, 0.01);
 
-  for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
-    ublas::matrix<myType> W_layer, dW_layer, vW_layer, mW_layer;
-    ublas::vector<myType> b_layer, db_layer, vb_layer, mb_layer;
+  // If small network
+  if (Param::NETWORK_TYPE == 0) {
+    for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+      ublas::matrix<myType> W_layer, dW_layer, vW_layer, mW_layer;
+      ublas::vector<myType> b_layer, db_layer, vb_layer, mb_layer;
 
-    /* Handle case with 0 hidden layers. */
-    if (Param::N_HIDDEN == 0 && l >= 1) {
-      break;
-    } else if (Param::N_HIDDEN == 0 && l == 0) {
-      Init(W_layer, Param::FEATURE_RANK, Param::N_CLASSES - 1);
-      Init(b_layer, Param::N_CLASSES - 1);
-    
-    /* Set dimensions of the input layer. */
-    } else if (l == 0) {
-      Init(W_layer, 21, 6);
-      Init(b_layer, 6);
+      /* Handle case with 0 hidden layers. */
+      if (Param::N_HIDDEN == 0 && l >= 1) {
+        break;
+      } else if (Param::N_HIDDEN == 0 && l == 0) {
+        Init(W_layer, Param::FEATURE_RANK, Param::N_CLASSES - 1);
+        Init(b_layer, Param::N_CLASSES - 1);
 
-    /* Set dimensions of the hidden layers. */
-    } else if (l == 1) {
-      Init(W_layer, 42, 6);
-      Init(b_layer, 6);
-    } else if (l == 2) {
-      Init(W_layer, 42, 6);
-      Init(b_layer, 6);
-    } else if (l == 3) {
-      Init(W_layer, 342, Param::N_NEURONS);
-      Init(b_layer, Param::N_NEURONS);
-    } else if (l == 4) {
+        /* Set dimensions of the input layer. */
+      } else if (l == 0) {
+        Init(W_layer, 21, 6);
+        Init(b_layer, 6);
 
-      Init(W_layer, Param::N_NEURONS, Param::N_NEURONS_2);
-      Init(b_layer, Param::N_NEURONS_2);
+        /* Set dimensions of the hidden layers. */
+      } else if (l == 1) {
+        Init(W_layer, 42, 6);
+        Init(b_layer, 6);
+      } else if (l == 2) {
+        Init(W_layer, 42, 6);
+        Init(b_layer, 6);
+      } else if (l == 3) {
+        if (Param::CNN_PADDING == "valid")
+          Init(W_layer, 342, Param::N_NEURONS);
+        else
+          Init(W_layer, 372, Param::N_NEURONS);
+        Init(b_layer, Param::N_NEURONS);
+      } else if (l == 4) {
 
-    /* Set dimensions of the output layer. */
-    } else if (l == Param::N_HIDDEN) {
-      Init(W_layer, Param::N_NEURONS_2, Param::N_CLASSES - 1);
-      Init(b_layer, Param::N_CLASSES - 1);
-    }
+        Init(W_layer, Param::N_NEURONS, Param::N_NEURONS_2);
+        Init(b_layer, Param::N_NEURONS_2);
 
-    Init(dW_layer, W_layer.size1(), W_layer.size2());
-    Init(vW_layer, W_layer.size1(), W_layer.size2());
-    Init(mW_layer, W_layer.size1(), W_layer.size2());
-
-
-    Init(db_layer, b_layer.size());
-    Init(vb_layer, b_layer.size());
-    Init(mb_layer, b_layer.size());
-
-    ublas::matrix<myType> W_r;
-    Init(W_r, W_layer.size1(), W_layer.size2());
-    ublas::vector<myType> b_r;
-    Init(b_r, b_layer.size());
-    if (pid == 2) {
-
-      ifstream ifs;
-      /* CP2 will have real data minus random data. */
-      /* Initialize weight matrix with Gaussian noise. */
-//      for (int i = 0; i < W_layer.NumRows(); i++) {
-//        for (int j = 0; j < W_layer.NumCols(); j++) {
-//          double noise = distribution(generator);
-//          DoubleToFP(W_layer[i][j], noise, Param::NBIT_K, Param::NBIT_F);
-//        }
-//      }
-
-//      Init(b_layer, b_layer.length());
-//      if (l == 0) {
-//        if (Param::DEBUG) tcout() << "reading W, B from txt" << endl;
-//        if (!text_to_matrix(W_layer, ifs, "../cache/from_py/cann_conv1_weight.txt",
-//                         W_layer.NumRows(), W_layer.NumCols()))
-//          return;
-//
-//        if (!text_to_vector(b_layer, ifs, "../cache/from_py/cann_conv1_bias.txt"))
-//          return;
-//
-//      } else if (l == 1) {
-//        if (!text_to_matrix(W_layer, ifs, "../cache/from_py/cann_conv2_weight.txt",
-//                         W_layer.NumRows(), W_layer.NumCols()))
-//          return;
-//        if (!text_to_vector(b_layer, ifs, "../cache/from_py/cann_conv2_bias.txt"))
-//          return;
-//
-//      } else if (l == 2) {
-//        if (!text_to_matrix(W_layer, ifs, "../cache/from_py/cann_conv3_weight.txt",
-//                            W_layer.NumRows(), W_layer.NumCols()))
-//          return;
-//        if (!text_to_vector(b_layer, ifs, "../cache/from_py/cann_conv3_bias.txt"))
-//          return;
-//
-//      } else {
-//
-//        initialize_parameters(W_layer, b_layer);
-//      }
-
-      // Set param from cached results
-      if (Param::CACHED_PARAM_BATCH >= 0 && Param::CACHED_PARAM_EPOCH >= 0) {
-        if (!text_to_matrix(W_layer, ifs, "../cache/ecg_P1_"
-        + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
-        + "_W" + to_string(l) + ".bin", W_layer.size1(), W_layer.size2()))
-          return;
-        if (!text_to_vector(b_layer, ifs, "../cache/ecg_P1_"
-        + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
-        + "_b" + to_string(l) + ".bin"))
-          return;
-      } else {
-        initialize_parameters(W_layer, b_layer);
+        /* Set dimensions of the output layer. */
+      } else if (l == Param::N_HIDDEN) {
+        Init(W_layer, Param::N_NEURONS_2, Param::N_CLASSES - 1);
+        Init(b_layer, Param::N_CLASSES - 1);
       }
 
-      /* Blind the data. */
-      mpc.SwitchSeed(1);
-      mpc.RandMat(W_r, W_layer.size1(), W_layer.size2());
-      mpc.RandVec(b_r, b_layer.size());
-      mpc.RestoreSeed();
-      W_layer -= W_r;
-      b_layer -= b_r;
 
 
-    } else if (pid == 1) {
-      /* CP1 will just have the random data. */
-      mpc.SwitchSeed(2);
-      mpc.RandMat(W_r, W_layer.size1(), W_layer.size2());
-      mpc.RandVec(b_r, b_layer.size());
-      mpc.RestoreSeed();
-      W_layer = W_r;
-      b_layer = b_r;
+      Init(dW_layer, W_layer.size1(), W_layer.size2());
+      Init(vW_layer, W_layer.size1(), W_layer.size2());
+      Init(mW_layer, W_layer.size1(), W_layer.size2());
 
+
+      Init(db_layer, b_layer.size());
+      Init(vb_layer, b_layer.size());
+      Init(mb_layer, b_layer.size());
+
+      ublas::matrix<myType> W_r;
+      Init(W_r, W_layer.size1(), W_layer.size2());
+      ublas::vector<myType> b_r;
+      Init(b_r, b_layer.size());
+      if (pid == 2) {
+
+        ifstream ifs;
+
+        // Set param from cached results
+        if (Param::CACHED_PARAM_BATCH >= 0 && Param::CACHED_PARAM_EPOCH >= 0) {
+          if (!text_to_matrix(W_layer, ifs, "../cache/ecg_P1_"
+                                            + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
+                                            + "_W" + to_string(l) + ".bin", W_layer.size1(), W_layer.size2()))
+            return;
+          if (!text_to_vector(b_layer, ifs, "../cache/ecg_P1_"
+                                            + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
+                                            + "_b" + to_string(l) + ".bin"))
+            return;
+        } else {
+          /* CP2 will have real data minus random data. */
+          /* Initialize weight matrix with Gaussian noise. */
+          initialize_parameters(W_layer, b_layer);
+        }
+
+        /* Blind the data. */
+        mpc.SwitchSeed(1);
+        mpc.RandMat(W_r, W_layer.size1(), W_layer.size2());
+        mpc.RandVec(b_r, b_layer.size());
+        mpc.RestoreSeed();
+        W_layer -= W_r;
+        b_layer -= b_r;
+
+
+      } else if (pid == 1) {
+        /* CP1 will just have the random data. */
+        mpc.SwitchSeed(2);
+        mpc.RandMat(W_r, W_layer.size1(), W_layer.size2());
+        mpc.RandVec(b_r, b_layer.size());
+        mpc.RestoreSeed();
+        W_layer = W_r;
+        b_layer = b_r;
+
+      }
+
+      W.push_back(W_layer);
+      dW.push_back(dW_layer);
+      vW.push_back(vW_layer);
+      mW.push_back(mW_layer);
+      b.push_back(b_layer);
+      db.push_back(db_layer);
+      vb.push_back(vb_layer);
+      mb.push_back(mb_layer);
     }
+  } else {
+    // TODO CHECK Param::N_HIDDEN = 7
+    for (int l = 0; l < 7 + 1; l++) {
+      ublas::matrix<myType> W_layer, dW_layer, vW_layer, mW_layer;
+      ublas::vector<myType> b_layer, db_layer, vb_layer, mb_layer;
 
-    W.push_back(W_layer);
-    dW.push_back(dW_layer);
-    vW.push_back(vW_layer);
-    mW.push_back(mW_layer);
-    b.push_back(b_layer);
-    db.push_back(db_layer);
-    vb.push_back(vb_layer);
-    mb.push_back(mb_layer);
+      /* Handle case with 0 hidden layers. */
+      if (Param::N_HIDDEN == 0 && l >= 1) {
+        break;
+      } else if (Param::N_HIDDEN == 0 && l == 0) {
+        Init(W_layer, Param::FEATURE_RANK, Param::N_CLASSES - 1);
+        Init(b_layer, Param::N_CLASSES - 1);
+
+        /* Set dimensions of the input layer. */
+      } else if (l == 0) {
+        Init(W_layer, 3 * 7, 6);
+        Init(b_layer, 6);
+      } else if (l == 1) {
+        Init(W_layer, 6 * 7, 6);
+        Init(b_layer, 6);
+      } else if (l == 2) {
+        Init(W_layer, 6 * 7, 6);
+        Init(b_layer, 6);
+      } else if (l == 3) {
+        Init(W_layer, 12 * 7, 6);
+        Init(b_layer, 6);
+      } else if (l == 4) {
+        Init(W_layer, 18 * 7, 4);
+        Init(b_layer, 4);
+      } else if (l == 3) {
+        if (Param::CNN_PADDING == "valid")
+          Init(W_layer, 342, Param::N_NEURONS);
+        else
+          Init(W_layer, 372, Param::N_NEURONS);
+        Init(b_layer, Param::N_NEURONS);
+      } else if (l == 4) {
+
+        Init(W_layer, Param::N_NEURONS, Param::N_NEURONS_2);
+        Init(b_layer, Param::N_NEURONS_2);
+
+        /* Set dimensions of the output layer. */
+      } else if (l == Param::N_HIDDEN) {
+        Init(W_layer, Param::N_NEURONS_2, Param::N_CLASSES - 1);
+        Init(b_layer, Param::N_CLASSES - 1);
+      }
+
+
+
+      Init(dW_layer, W_layer.size1(), W_layer.size2());
+      Init(vW_layer, W_layer.size1(), W_layer.size2());
+      Init(mW_layer, W_layer.size1(), W_layer.size2());
+
+
+      Init(db_layer, b_layer.size());
+      Init(vb_layer, b_layer.size());
+      Init(mb_layer, b_layer.size());
+
+      ublas::matrix<myType> W_r;
+      Init(W_r, W_layer.size1(), W_layer.size2());
+      ublas::vector<myType> b_r;
+      Init(b_r, b_layer.size());
+      if (pid == 2) {
+
+        ifstream ifs;
+
+        // Set param from cached results
+        if (Param::CACHED_PARAM_BATCH >= 0 && Param::CACHED_PARAM_EPOCH >= 0) {
+          if (!text_to_matrix(W_layer, ifs, "../cache/ecg_P1_"
+                                            + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
+                                            + "_W" + to_string(l) + ".bin", W_layer.size1(), W_layer.size2()))
+            return;
+          if (!text_to_vector(b_layer, ifs, "../cache/ecg_P1_"
+                                            + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
+                                            + "_b" + to_string(l) + ".bin"))
+            return;
+        } else {
+          /* CP2 will have real data minus random data. */
+          /* Initialize weight matrix with Gaussian noise. */
+          initialize_parameters(W_layer, b_layer);
+        }
+
+        /* Blind the data. */
+        mpc.SwitchSeed(1);
+        mpc.RandMat(W_r, W_layer.size1(), W_layer.size2());
+        mpc.RandVec(b_r, b_layer.size());
+        mpc.RestoreSeed();
+        W_layer -= W_r;
+        b_layer -= b_r;
+
+
+      } else if (pid == 1) {
+        /* CP1 will just have the random data. */
+        mpc.SwitchSeed(2);
+        mpc.RandMat(W_r, W_layer.size1(), W_layer.size2());
+        mpc.RandVec(b_r, b_layer.size());
+        mpc.RestoreSeed();
+        W_layer = W_r;
+        b_layer = b_r;
+
+      }
+
+      W.push_back(W_layer);
+      dW.push_back(dW_layer);
+      vW.push_back(vW_layer);
+      mW.push_back(mW_layer);
+      b.push_back(b_layer);
+      db.push_back(db_layer);
+      vb.push_back(vb_layer);
+      mb.push_back(mb_layer);
+    }
   }
+
+
 }
 
 double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
@@ -543,74 +636,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     }
     relus.push_back(relu);
 
-
-//    if (l == 0) {
-//      if (Param::POOL == "max") {
-//        // Max Pool
-//        ublas::matrix<myType> maxpool;
-//        ublas::matrix<myType> max_index;
-//        MaxPool(maxpool, max_index, activation, 2, 2, mpc, pid);
-//        act.push_back(maxpool);
-//        vpool.push_back(max_index);
-//        if (Param::DEBUG) tcout() << "activation -> col, rows (" << activation.size1() << ", " << activation.size2() << ")" << pid << endl;
-//        if (Param::DEBUG) tcout() << "MAX POOL -> col, rows (" << maxpool.size1() << ", " << maxpool.size2() << ")" << pid << endl;
-//
-//      } else {
-//        // Avg Pool
-//        ublas::matrix<myType> avgpool;
-//        AveragePool(avgpool, activation, 2, 2);
-//        avgpool *= inv2;
-//        mpc.Trunc(avgpool);
-//        if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
-//
-//        act.push_back(avgpool);
-//      }
-//
-//    } else {
-//
-//      /* Apply ReLU non-linearity. */
-//      ublas::matrix<myType> relu;
-//      relu.resize(activation.size1(), activation.size2());
-//      mpc.IsPositive(relu, activation);
-//      ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
-//      assert(activation.size1() == relu.size1());
-//      assert(activation.size2() == relu.size2());
-//      mpc.MultElem(after_relu, activation, relu);
-//
-//      /* Note: Do not call Trunc() here because IsPositive()
-//         returns a secret shared integer, not a fixed point.*/
-//      // TODO: Implement dropout.
-//      /* Save activation for backpropagation. */
-//      if (Param::DEBUG) tcout() << "ReLU -> col, rows (" << relu.size1() << ", " << relu.size2() << ")" << pid << endl;
-//      if (Param::DEBUG) tcout() << "after ReLU -> col, rows (" << after_relu.size1() << ", " << after_relu.size2() << ")" << pid << endl;
-//      if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
-//
-//      if (l <= 2) {
-//        if (Param::POOL == "max") {
-//          // Max Pool
-//          ublas::matrix<myType> maxpool;
-//          ublas::matrix<myType> max_index;
-//          MaxPool(maxpool, max_index, after_relu, 2, 2, mpc, pid);
-//          act.push_back(maxpool);
-//          vpool.push_back(max_index);
-//          if (Param::DEBUG) tcout() << "MAX POOL -> col, rows (" << maxpool.size1() << ", " << maxpool.size2() << ")" << pid << endl;
-//
-//        } else {
-//          // Avg Pool
-//          ublas::matrix<myType> avgpool;
-//          AveragePool(avgpool, after_relu, 2, 2);
-//          avgpool *= inv2;
-//          mpc.Trunc(avgpool);
-//          act.push_back(avgpool);
-//          if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
-//
-//        }
-//      } else {
-//        act.push_back(after_relu);
-//      }
-//      relus.push_back(relu);
-//    }
-
   }
 
   
@@ -735,7 +760,13 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       }
     } else {
 
-      mpc.MultMat(dW[l], X_T, dhidden);
+      // same, zero padding back prop for l < 3
+      if (l < 3) {
+        mpc.MultMatForConvBack(dW[l], X_T, dhidden, 7);
+      } else {
+        mpc.MultMat(dW[l], X_T, dhidden);
+      }
+
     }
     mpc.Trunc(dW[l]);
 
@@ -747,20 +778,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       mpc.Trunc(reg_mat);
       dW[l] += reg_mat;
     }
-
-//    /* Add regularization term to weights. */
-////    ZZ_p REG;
-//    myType REG;
-//    DoubleToFP(Param::REG);
-////    DoubleToFP(REG, Param::REG, Param::NBIT_K, Param::NBIT_F);
-//    Mat<ZZ_p> reg = W[l] * REG;
-//    mpc.Trunc(reg);
-//    if (pid == 2 && Param::DEBUG) {
-//      tcout() << "W[l] : " << W[l].NumRows() << "/" << W[l].NumCols() << endl;
-//      tcout() << "dW[l] : " << dW[l].NumRows() << "/" << dW[l].NumCols() << endl;
-//      tcout() << "reg : " << reg.NumRows() << "/" << reg.NumCols() << endl;
-//    }
-//    dW[l] += reg;
 
     /* Compute derivative of biases. */
     Init(db[l], b[l].size());
@@ -793,7 +810,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
       /* Apply derivative of ReLU. */
       Init(dhidden, dhidden_new.size1(), dhidden_new.size2());
-
 
       ublas::matrix<myType> relu = relus.back();
 
@@ -829,6 +845,7 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         if (pid == 2 && Param::DEBUG) {
           tcout() << "dhidden_new: " << dhidden_new.size1() << "/" << dhidden_new.size2() << endl;
           tcout() << "l=" << l << "----CHANGED---------" << endl;
+          tcout() << "relu: " << relu.size1() << "/" << relu.size2() << endl;
         }
 
       }
@@ -837,10 +854,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       /* Apply derivative of AvgPool1D or MaxPool1D (stride 2, kernel_size 2). */
       if (l <= 3) {
         ublas::matrix<myType> back_pool;
-        if (l == 2)
-          BackPool(back_pool, dhidden_new, 2, 2, true);
-        else
-          BackPool(back_pool, dhidden_new, 2, 2);
+
+        // add size of relu
+        BackPool(back_pool, dhidden_new, 2, 2, relu.size1());
 
         if (Param::POOL == "max") {
           ublas::matrix<myType> max_pool_back;
@@ -874,128 +890,10 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
       /* Note: No need to call Trunc().*/
       relus.pop_back();
-
-
-//      if (l == 1) {
-//        ublas::matrix<myType> temp;
-//        back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
-//
-//        if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
-//                                  << "), conv1d: (" << dhidden_new.size1() << ", " << dhidden_new.size2() << ")"
-//                                  << endl;
-//
-//        // Compute back prop pool
-//        ublas::matrix<myType> back_pool;
-//        BackPool(back_pool, temp, 2, 2);
-//
-//        if (Param::POOL == "max") {
-//          ublas::matrix<myType> max_pool_back;
-//          ublas::matrix<myType> max_pool = vpool.back();
-//          mpc.MultElem(max_pool_back, back_pool, max_pool);
-//
-//          if (pid > 0) {
-//
-//            tcout() << "Print back_pool:" << endl;
-//            mpc.PrintFP(back_pool);
-//
-//            tcout() << "Print max pool:" << endl;
-//            mpc.PrintFP(max_pool);
-//            tcout() << "Print max pool back:" << endl;
-//            mpc.PrintFP(max_pool_back);
-//          }
-//          dhidden = max_pool_back;
-//          vpool.pop_back();
-//        } else {
-//          back_pool *= inv2;
-//          mpc.Trunc(back_pool);
-//          dhidden = back_pool;
-//        }
-//        if (Param::DEBUG) tcout() << "backPool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
-//
-//      } else {
-//        ublas::matrix<myType> relu = relus.back();
-//
-//        if (pid == 2 && Param::DEBUG) {
-//          tcout() << "dhidden_new: " << dhidden_new.size1() << "/" << dhidden_new.size2() << endl;
-//          tcout() << "relu : " << relu.size1() << "/" << relu.size2() << endl;
-//          tcout() << "l=" << l << "-------------" << endl;
-//        }
-//
-//        if (dhidden_new.size2() != relu.size2() || dhidden_new.size1() != relu.size1()) {
-//
-//          if (l > 2) {
-//            ublas::matrix<myType> temp;
-//            int row = dhidden_new.size2() / relu.size2();
-//            Init(temp, row * Param::BATCH_SIZE, relu.size2());
-//            for (int b = 0; b < Param::BATCH_SIZE; b++) {
-//              for (int c = 0; c < relu.size2(); c++) {
-//                for (int r = 0; r < row; r++) {
-//                  temp(b * row + r, c) = dhidden_new(b, c * row + r );
-//                }
-//              }
-//            }
-//            dhidden_new = temp;
-//          } else {
-//            ublas::matrix<myType> temp;
-//            back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
-//
-//            if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
-//                                      << "), conv1d: (" << dhidden_new.size1() << ", " << dhidden_new.size2() << ")"
-//                                      << endl;
-//            dhidden_new = temp;
-//          }
-//          if (pid == 2 && Param::DEBUG) {
-//            tcout() << "dhidden_new: " << dhidden_new.size1() << "/" << dhidden_new.size2() << endl;
-//            tcout() << "l=" << l << "----CHANGED---------" << endl;
-//          }
-//
-//        }
-//
-//        // Compute backpropagated pool
-//        /* Apply derivative of AvgPool1D or MaxPool1D (stride 2, kernel_size 2). */
-//        if (l <= 3) {
-//          ublas::matrix<myType> back_pool;
-//          if (l == 2)
-//            BackPool(back_pool, dhidden_new, 2, 2, true);
-//          else
-//            BackPool(back_pool, dhidden_new, 2, 2);
-//
-//          if (Param::POOL == "max") {
-//            ublas::matrix<myType> max_pool_back;
-//            ublas::matrix<myType> max_pool = vpool.back();
-//            mpc.MultElem(max_pool_back, back_pool, max_pool);
-//            mpc.MultElem(dhidden, max_pool_back, relu);
-//
-//            if (pid > 0) {
-//
-//              tcout() << "Print back_pool:" << endl;
-//              mpc.PrintFP(back_pool);
-//
-//              tcout() << "Print max pool:" << endl;
-//              mpc.PrintFP(max_pool);
-//              tcout() << "Print max pool back:" << endl;
-//              mpc.PrintFP(max_pool_back);
-//            }
-//
-//
-//            vpool.pop_back();
-//          } else {
-//            back_pool *= inv2;
-//            mpc.Trunc(back_pool);
-//
-//            mpc.MultElem(dhidden, back_pool, relu);
-//          }
-//          if (Param::DEBUG) tcout() << "back pool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
-//        } else {
-//          mpc.MultElem(dhidden, dhidden_new, relu);
-//        }
-//
-//        /* Note: No need to call Trunc().*/
-//        relus.pop_back();
-//
-//      }
     }
   }
+
+  if (Param::DEBUG) tcout() << "FIN? "<< endl;
 
   assert(act.size() == 0);
   assert(relus.size() == 0);
@@ -1096,6 +994,11 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     myType LEARN_RATE = DoubleToFP( - Param::LEARN_RATE);
 
     for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
+      if (Param::DEBUG) {
+        tcout() << "calculate sgd L = " << l << endl;
+        tcout() << "vW[l] = " << vW[l].size1() << "/" << vW[l].size2() << endl;
+        tcout() << "dW[l] s = " << dW[l].size1() << "/" << dW[l].size2() << endl;
+      }
       /* Update the weights. */
       ublas::matrix<myType> vW_prev= vW[l];
       vW[l] = (MOMENTUM * vW[l]) - (LEARN_RATE * dW[l]);
