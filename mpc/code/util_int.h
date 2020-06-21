@@ -461,7 +461,11 @@ static inline void back_reshape_conv(ublas::matrix<myType>& x, ublas::matrix<myT
           if (Param::CNN_PADDING == "valid") {
             x(batch * prev_row + index + filter, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
           } else {
-            x(batch * prev_row + index, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
+            int padding_size = kernel_size / 2;
+            int location = index + filter - padding_size;
+            if ( location >= 0 && location < row) {
+              x(batch * prev_row + location, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
+            }
           }
         }
       }
