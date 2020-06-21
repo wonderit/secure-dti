@@ -29,6 +29,7 @@ parser.add_argument("-m", "--mean", help="Set mean of Y", type=float, default=61
 parser.add_argument("-s", "--std", help="Set std of Y", type=float, default=10.6)
 parser.add_argument("-r", "--spearman", help="Set std of Y", action='store_true')
 parser.add_argument("-model", "--model_type", help="model name(shallow, normal, ann, mpc, cnn2d, cnnmax)", type=str, default='cnnmax')
+parser.add_argument("-cp", "--cnn_padding", help="padding type (valid, same, zero)", type=str, default='same')
 
 args = parser.parse_args()
 
@@ -220,12 +221,22 @@ class CNNAVG(nn.Module):
         self.avgpool1 = nn.AvgPool1d(kernel_size=2, stride=2)
         self.avgpool2 = nn.AvgPool1d(kernel_size=2, stride=2)
         self.avgpool3 = nn.AvgPool1d(kernel_size=2, stride=2)
-        self.conv1 = nn.Conv1d(3, self.channel_size, kernel_size=self.kernel_size, padding=self.padding_size)
-        self.conv2 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
-                               padding=self.padding_size)
-        self.conv3 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
-                               padding=self.padding_size)
-        self.fc1 = nn.Linear(342, 16)
+        if args.cnn_padding == 'valid':
+            self.conv1 = nn.Conv1d(3, self.channel_size, kernel_size=self.kernel_size, padding=self.padding_size)
+            self.conv2 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                                    padding=self.padding_size)
+            self.conv3 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                                    padding=self.padding_size)
+            self.fc1 = nn.Linear(342, 16)
+        else:
+
+            self.conv1 = nn.Conv1d(3, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=(self.kernel_size // 2))
+            self.conv2 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=(self.kernel_size // 2))
+            self.conv3 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=(self.kernel_size // 2))
+            self.fc1 = nn.Linear(372, 16)
         self.fc2 = nn.Linear(16, 64)
         self.fc3 = nn.Linear(64, 1)
 
