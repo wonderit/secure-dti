@@ -7,7 +7,7 @@
 using namespace boost::multiprecision;
 using namespace std;
 
-#define INT_TYPE 128
+#define INT_TYPE 64
 
 #if INT_TYPE == 128
   typedef uint128_t myType;
