@@ -78,6 +78,8 @@ bool Param::ParseFile(const char *param_file) {
       ret = Convert(v, Param::LOG_INTERVAL, k);
     } else if (k == "OPTIMIZER") {
       ret = Convert(v, Param::OPTIMIZER, k);
+    } else if (k == "CNN_PADDING") {
+      ret = Convert(v, Param::CNN_PADDING, k);
     } else if (k == "POOL") {
       ret = Convert(v, Param::POOL, k);
     } else if (k == "OUTPUT_FILE_PREFIX") {
@@ -97,6 +99,8 @@ bool Param::ParseFile(const char *param_file) {
       ret = Convert(v, Param::FEATURE_RANK, k);
     } else if (k == "MAX_EPOCHS") {
       ret = Convert(v, Param::MAX_EPOCHS, k);
+    } else if (k == "NETWORK_TYPE") {
+      ret = Convert(v, Param::NETWORK_TYPE, k);
     } else if (k == "MOMENTUM") {
       ret = Convert(v, Param::MOMENTUM, k);
     } else if (k == "LEARN_RATE") {
@@ -192,12 +196,14 @@ string Param::LOSS = "mse";
 
 string Param::OPTIMIZER = "sgd";
 string Param::POOL = "avg";
+string Param::CNN_PADDING = "same";
 int Param::LOG_INTERVAL = 10;
 int Param::N_FILE_BATCH = 20000;
 int Param::N_NEURONS = 16;
 int Param::N_NEURONS_2 = 64;
 int Param::BATCH_SIZE = 50;
 int Param::MAX_EPOCHS = 20000;
+int Param::NETWORK_TYPE = 0;
 
 string Param::FEATURES_FILE = "../test_data/features_masked.bin";
 string Param::LABELS_FILE = "../test_data/labels_masked.bin";

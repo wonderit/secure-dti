@@ -387,18 +387,55 @@ static inline void initial_reshape(ublas::matrix<myType>& x_2d, ublas::matrix<my
     }
   }
 }
-//
+
 static inline void reshape_conv(ublas::matrix<myType>& conv1d, ublas::matrix<myType>& x, int kernel_size, int batch_size) {
-  int channels = x.size2();
-  int prev_row = x.size1() / batch_size;  // 488
-  int row = prev_row - kernel_size + 1;  // 482
+  int channels = x.size2(); // 12
+  int prev_row = x.size1() / batch_size;  // 500
+
+  int row = prev_row;
+  if (Param::CNN_PADDING == "valid")
+    row = prev_row - kernel_size + 1;  // 494
+
   Init(conv1d, batch_size * row, kernel_size * channels);
   if(Param::DEBUG) cout << "reshape_conv: (" << conv1d.size1() << ", " << conv1d.size2() << "), (" << x.size1() << ", " << x.size2() << ")" << endl;
 
-  for (int batch = 0; batch < batch_size; batch++) {
-    for (int index = 0; index < row; index++) {
-      for (int channel = 0; channel < channels; channel++) {
-        for (int filter = 0; filter < kernel_size; filter++) {
+  if (Param::CNN_PADDING != "valid") {
+    ublas::matrix<myType> x_pad;
+    int padded_row = row + kernel_size - 1;
+    int padding_size = (kernel_size - 1) / 2;
+
+    Init(x_pad, batch_size * padded_row, channels);
+    for (size_t b = 0; b < batch_size; ++b) {
+      for (size_t r = 0; r < padded_row; ++r) {
+        for (size_t c = 0; c < channels; ++c) {
+          if (r < padding_size) {
+            if (Param::CNN_PADDING != "same") {
+              x_pad(b * padded_row + r, c) = x(b * row, c);
+            } else {
+              x_pad(b * padded_row + r, c) = 0;
+            }
+          } else if (r >= (padded_row - padding_size)) {
+            if (Param::CNN_PADDING != "same") {
+              x_pad(b * padded_row + r, c) = x(b * row + row - 1, c);
+            } else {
+              x_pad(b * padded_row + r, c) = 0;
+            }
+          } else {
+            x_pad(b * padded_row + r, c) = x(b * row + r - padding_size, c);
+          }
+        }
+      }
+    }
+    x = x_pad;
+
+    if(Param::DEBUG) cout << "x_pad, x: (" << x_pad.size1() << ", " << x_pad.size2() << "), (" << x.size1() << ", " << x.size2() << ")" << endl;
+  }
+
+
+  for (size_t batch = 0; batch < batch_size; batch++) {
+    for (size_t index = 0; index < row; index++) {
+      for (size_t channel = 0; channel < channels; channel++) {
+        for (size_t filter = 0; filter < kernel_size; filter++) {
           conv1d(batch * row + index, kernel_size * channel + filter) = x(batch * prev_row + index + filter, channel);
         }
       }
@@ -409,14 +446,23 @@ static inline void reshape_conv(ublas::matrix<myType>& conv1d, ublas::matrix<myT
 static inline void back_reshape_conv(ublas::matrix<myType>& x, ublas::matrix<myType>& conv1d, int kernel_size, int batch_size) {
   int input_channel = conv1d.size2() / kernel_size;
   int row = conv1d.size1() / batch_size; // 482
-  int prev_row = row + kernel_size - 1;  // 488
+  int prev_row = row;
+  if (Param::CNN_PADDING == "valid")
+    prev_row = row + kernel_size - 1;  // 494
+
   Init(x, batch_size * prev_row, input_channel);
+
+  if(Param::DEBUG) cout << "back_reshape_conv x: (" << x.size1() << ", " << x.size2() << "), conv1d(" << conv1d.size1() << ", " << conv1d.size2() << ")" << endl;
 
   for (int batch = 0; batch < batch_size; batch++) {
     for (int index = 0; index < row; index++) {
       for (int channel = 0; channel < input_channel; channel++) {
         for (int filter = 0; filter < kernel_size; filter++) {
-          x(batch * prev_row + index + filter, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
+          if (Param::CNN_PADDING == "valid") {
+            x(batch * prev_row + index + filter, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
+          } else {
+            x(batch * prev_row + index, channel) += conv1d(batch * row + index, kernel_size * channel + filter);
+          }
         }
       }
     }

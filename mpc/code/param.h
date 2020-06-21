@@ -71,6 +71,8 @@ class Param {
     static int LOG_INTERVAL;
     static string OPTIMIZER;
     static string POOL;
+    static string CNN_PADDING;
+    static int NETWORK_TYPE;
     
     /* Software parameters */
     static uint64_t MPC_BUF_SIZE; // size of data buffer in bytes

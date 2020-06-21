@@ -1428,10 +1428,10 @@ public:
     Init(c, out_rows, out_cols);
 //    c.resize(out_rows, out_cols);
 
+    if(Param::DEBUG) cout << "am_conv_t: (" << am_conv_t.size1() << ", " << am_conv_t.size2() << "), (" << br.size1() << ", " << br.size2() << ")" << endl;
     // dimension mismatch bc of pooling layers
     if (am_conv_t.size2() > br.size1()) {
 
-      if(Param::DEBUG) cout << "am_conv_t: (" << am_conv_t.size1() << ", " << am_conv_t.size2() << "), (" << br.size1() << ", " << br.size2() << ")" << endl;
       ublas::matrix<T> new_ar_conv_t;
       ublas::matrix<T> new_am_conv_t;
       new_ar_conv_t.resize(ar_conv_t.size1(), br.size1());
