@@ -753,12 +753,11 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         if (Param::DEBUG) tcout() << "X_T -> converted : (" << X_T.size1() << ", " << X_T.size2() << ")" << endl;
 
         mpc.MultMat(dW[l], X_T, dhidden);
+      } else {
+        if (Param::DEBUG) tcout() << "mult mat for conv back start" << endl;
+        mpc.MultMatForConvBack(dW[l], X_T, dhidden, 7);
+        if (Param::DEBUG) tcout() << "mult mat for conv back end" << endl;
       }
-//      else {
-//        if (Param::DEBUG) tcout() << "mult mat for conv back start" << endl;
-//        mpc.MultMatForConvBack(dW[l], X_T, dhidden, 7);
-//        if (Param::DEBUG) tcout() << "mult mat for conv back end" << endl;
-//      }
     } else {
 
       // same, zero padding back prop for l < 3

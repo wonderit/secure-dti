@@ -399,44 +399,22 @@ static inline void reshape_conv(ublas::matrix<myType>& conv1d, ublas::matrix<myT
   Init(conv1d, batch_size * row, kernel_size * channels);
   if(Param::DEBUG) cout << "reshape_conv: (" << conv1d.size1() << ", " << conv1d.size2() << "), (" << x.size1() << ", " << x.size2() << ")" << endl;
 
-  if (Param::CNN_PADDING != "valid") {
-    ublas::matrix<myType> x_pad;
-    int padded_row = row + kernel_size - 1;
-    int padding_size = (kernel_size - 1) / 2;
-
-    Init(x_pad, batch_size * padded_row, channels);
-    for (size_t b = 0; b < batch_size; ++b) {
-      for (size_t r = 0; r < padded_row; ++r) {
-        for (size_t c = 0; c < channels; ++c) {
-          if (r < padding_size) {
-            if (Param::CNN_PADDING != "same") {
-              x_pad(b * padded_row + r, c) = x(b * row, c);
-            } else {
-              x_pad(b * padded_row + r, c) = 0;
-            }
-          } else if (r >= (padded_row - padding_size)) {
-            if (Param::CNN_PADDING != "same") {
-              x_pad(b * padded_row + r, c) = x(b * row + row - 1, c);
-            } else {
-              x_pad(b * padded_row + r, c) = 0;
-            }
-          } else {
-            x_pad(b * padded_row + r, c) = x(b * row + r - padding_size, c);
-          }
-        }
-      }
-    }
-    x = x_pad;
-
-    if(Param::DEBUG) cout << "x_pad, x: (" << x_pad.size1() << ", " << x_pad.size2() << "), (" << x.size1() << ", " << x.size2() << ")" << endl;
+  int padding_size = kernel_size / 2;
+  if (Param::CNN_PADDING == "valid") {
+    padding_size = 0;
   }
-
 
   for (size_t batch = 0; batch < batch_size; batch++) {
     for (size_t index = 0; index < row; index++) {
       for (size_t channel = 0; channel < channels; channel++) {
         for (size_t filter = 0; filter < kernel_size; filter++) {
-          conv1d(batch * row + index, kernel_size * channel + filter) = x(batch * prev_row + index + filter, channel);
+          int location = index + filter - padding_size;
+          if (location < 0)
+            location = 0;
+          else if (location >= prev_row)
+            location = prev_row - 1;
+
+          conv1d(batch * row + index, kernel_size * channel + filter) = x(batch * prev_row + location, channel);
         }
       }
     }
