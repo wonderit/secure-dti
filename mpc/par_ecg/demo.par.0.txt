@@ -15,9 +15,9 @@ NUM_THREADS 20
 
 # DTI
 CACHE_FILE_PREFIX ../cache/ecg
-FEATURE_RANK 1500
-FEATURES_FILE ../../../data/ecg/text_demo_5500/X
-LABELS_FILE ../../../data/ecg/text_demo_5500/y
+FEATURE_RANK 60000
+FEATURES_FILE ../../../data/ecg/text_original_5500/X
+LABELS_FILE ../../../data/ecg/text_original_5500/y
 TRAIN_SUFFIXES ../../demo_data/text_demo/train_suffixes.txt
 TEST_SUFFIXES ../../demo_data/text_demo/test_suffixes.txt
 PROFILER 1
@@ -28,14 +28,14 @@ MAX_EPOCHS 3
 BATCH_SIZE 32
 N_NEURONS 16
 N_NEURONS_2 64
-N_HIDDEN 5
+N_HIDDEN 12
 LEARN_RATE 0.01
 OPTIMIZER sgd
 POOL avg
 CNN_PADDING same
 LOG_INTERVAL 5
 REG 0
-NETWORK_TYPE 0
+NETWORK_TYPE 2
 
 # FILES
 CACHED_PARAM_EPOCH -1

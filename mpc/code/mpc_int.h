@@ -57,6 +57,7 @@ public:
   }
 
   myType PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType beta);
+  void ComputeMsb_test(ublas::vector<myType>& y_sh, ublas::vector<myType>& b);
   void ComputeMsb(ublas::vector<myType>& y_sh, ublas::vector<myType>& b);
   void LessThan(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b);
   void LessThan(ublas::vector<myType>& c, ublas::vector<myType>& a, ublas::vector<myType>& b);
@@ -1375,6 +1376,48 @@ public:
     BeaverMult(c, ar, am, br, bm, fid);
 
     BeaverReconstruct(c, fid);
+  }
+
+  template<class T>
+  void Concatenate(ublas::matrix<T>& c, ublas::matrix<T>& a, ublas::matrix<T>& b) {
+    if(Param::DEBUG) cout << "Concatenate Convs: (" << a.size1() << ", " << a.size2() << "), (" << b.size1() << ", " << b.size2() << ")" << endl;
+
+
+    assert(a.size1() == b.size1());
+    assert(a.size2() == b.size2());
+
+    Init(c, a.size1(), a.size2() + b.size2());
+
+    for (size_t i = 0; i < a.size1(); ++i) {
+      for (size_t j = 0; j < a.size2(); ++j) {
+        c(i, j) = a(i, j);
+        c(i, a.size2()+j) = b(i, j);
+      }
+    }
+  }
+
+
+  template<class T>
+  void Concatenate3(ublas::matrix<T>& c, ublas::matrix<T>& a1, ublas::matrix<T>& a2, ublas::matrix<T>& a3) {
+    if(Param::DEBUG)
+      cout << "Concatenate Convs: (" << a1.size1() << ", " << a1.size2() << "), ("
+           << a2.size1() << ", " << a2.size2() << "), ("
+           << a3.size1() << ", " << a3.size2() << ")"
+           << endl;
+
+
+    assert(a1.size1() == a2.size1() && a2.size1() == a3.size1());
+    assert(a1.size2() == a2.size2() && a2.size2() == a3.size2());
+
+    Init(c, a1.size1(), a1.size2() * 3);
+
+    for (size_t i = 0; i < a1.size1(); ++i) {
+      for (size_t j = 0; j < a1.size2(); ++j) {
+        c(i, j) = a1(i, j);
+        c(i, a1.size2()+j) = a2(i, j);
+        c(i, a1.size2()*2+j) = a3(i, j);
+      }
+    }
   }
 
   template<class T>

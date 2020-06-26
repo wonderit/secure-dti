@@ -1221,6 +1221,13 @@ void MPCEnv::LessThan(ublas::vector<myType>& c, ublas::vector<myType>& a, ublas:
 //  FlipBit(c);
 }
 
+void MPCEnv::ComputeMsb_test(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
+  for (size_t i = 0; i < b.size(); i ++) {
+    b[i] = i % 2;
+  }
+
+}
+
 void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
   size_t size = a_sh.size();
   ublas::vector<myType> y_sh(a_sh.size(), 0);

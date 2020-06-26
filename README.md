@@ -33,6 +33,22 @@
 ./ecg_remove_cache.sh
 ```
 
+### Parameters
+
+Network_type
+
+1. 0
+
+    Simple version (3 conv layers, 2 fc layers)
+
+2. 1
+
+    Simple dense block version (5 conv layers (1 concatenate block), 2 fc layers)
+
+3. 2
+
+    Original dense block version (10 conv layers (3 concatenate blocks), 2 fc layers)
+
 # Secure DTI
 
 ## Realizing private and practical pharmacological collaboration
