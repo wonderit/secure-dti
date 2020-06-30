@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python ./bin/data_to_text_scaler.py -x -y -m 30
+python ./bin/data_to_text_scaler.py -x -y -m 15

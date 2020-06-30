@@ -1,7 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include "crypto.h"
-#include "util.h"
+#include "util_int.h"
 
 using namespace std;
 
