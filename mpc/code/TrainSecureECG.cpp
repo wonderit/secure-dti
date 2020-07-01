@@ -670,7 +670,7 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
                                   << "), X_reshape : (" << X_reshape.size1() << ", " << X_reshape.size2() << ")" << endl;
 
         // MultMat by reshaping after beaver partition
-        mpc.MultMatForConv(activation, X_reshape, W[l], 71);
+        mpc.MultMatForConv(activation, X_reshape, W[l], 7);
 
         if (Param::DEBUG) tcout() << "First CNN Layer (" << activation.size1() << "," << activation.size2() << ")" << endl;
 
@@ -682,7 +682,7 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         if (l == 1 || l == 2) {
 
           // MultMat by reshaping after beaver partition
-          mpc.MultMatForConv(activation, act[l-1], W[l], 71);
+          mpc.MultMatForConv(activation, act[l - 1], W[l], 7);
 
           // first layer of FC layers
         } else if (l == 3) {
