@@ -4,6 +4,18 @@
 
 ### Dependencies
 - Boost : `brew install boost`
+- Openssl : `brew install openssl` 
+- gmp : `brew install gmp`
+
+```
+# if error occurs: Mac OSX fatal error: ‘openssl/sha.h’ file not found
+cd /usr/local/include 
+ln -s ../opt/openssl/include/openssl .
+
+# if `ld: library not found for -lssl` error occurs:
+export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/opt/openssl/lib/
+```
+- NTL package (10.3.0; http://www.shoup.net/ntl/)
 - comet (for logging)
 
 ### RUN
