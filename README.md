@@ -3,9 +3,33 @@
 ## Setup
 
 ### Dependencies
-- Boost : `brew install boost`
-- Openssl : `brew install openssl` 
-- gmp : `brew install gmp`
+- Boost : 
+```
+# mac
+brew install boost
+
+# ubuntu
+sudo apt-get install libboost-all-dev
+```
+- Openssl : 
+```
+# mac
+brew install openssl
+
+# ubuntu
+sudo apt-get install libssl-dev
+
+``` 
+- gmp : 
+
+```
+# mac
+brew install gmp
+
+# ubuntu
+sudo apt-get install libgmp3-dev
+
+``` 
 
 ```
 # if error occurs: Mac OSX fatal error: ‘openssl/sha.h’ file not found
@@ -44,6 +68,22 @@ export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/opt/openssl/lib/
 ```
 ./ecg_remove_cache.sh
 ```
+
+### Parameters
+
+Network_type
+
+1. 0
+
+    Simple version (3 conv layers, 2 fc layers)
+
+2. 1
+
+    Simple dense block version (5 conv layers (1 concatenate block), 2 fc layers)
+
+3. 2
+
+    Original dense block version (10 conv layers (3 concatenate blocks), 2 fc layers)
 
 # Secure DTI
 

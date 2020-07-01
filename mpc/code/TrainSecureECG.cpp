@@ -328,6 +328,113 @@ void initialize_model(
         Init(b_layer, Param::N_CLASSES - 1);
       }
 
+      Init(dW_layer, W_layer.size1(), W_layer.size2());
+      Init(vW_layer, W_layer.size1(), W_layer.size2());
+      Init(mW_layer, W_layer.size1(), W_layer.size2());
+
+      Init(db_layer, b_layer.size());
+      Init(vb_layer, b_layer.size());
+      Init(mb_layer, b_layer.size());
+
+      ublas::matrix<myType> W_r;
+      Init(W_r, W_layer.size1(), W_layer.size2());
+      ublas::vector<myType> b_r;
+      Init(b_r, b_layer.size());
+      if (pid == 2) {
+
+        ifstream ifs;
+
+        // Set param from cached results
+        if (Param::CACHED_PARAM_BATCH >= 0 && Param::CACHED_PARAM_EPOCH >= 0) {
+          if (!text_to_matrix(W_layer, ifs, "../cache/ecg_P1_"
+                                            + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
+                                            + "_W" + to_string(l) + ".bin", W_layer.size1(), W_layer.size2()))
+            return;
+          if (!text_to_vector(b_layer, ifs, "../cache/ecg_P1_"
+                                            + to_string(Param::CACHED_PARAM_EPOCH) + "_" + to_string(Param::CACHED_PARAM_BATCH)
+                                            + "_b" + to_string(l) + ".bin"))
+            return;
+        } else {
+          /* CP2 will have real data minus random data. */
+          /* Initialize weight matrix with Gaussian noise. */
+          initialize_parameters(W_layer, b_layer);
+        }
+
+        /* Blind the data. */
+        mpc.SwitchSeed(1);
+        mpc.RandMat(W_r, W_layer.size1(), W_layer.size2());
+        mpc.RandVec(b_r, b_layer.size());
+        mpc.RestoreSeed();
+        W_layer -= W_r;
+        b_layer -= b_r;
+
+
+      } else if (pid == 1) {
+        /* CP1 will just have the random data. */
+        mpc.SwitchSeed(2);
+        mpc.RandMat(W_r, W_layer.size1(), W_layer.size2());
+        mpc.RandVec(b_r, b_layer.size());
+        mpc.RestoreSeed();
+        W_layer = W_r;
+        b_layer = b_r;
+
+      }
+
+      W.push_back(W_layer);
+      dW.push_back(dW_layer);
+      vW.push_back(vW_layer);
+      mW.push_back(mW_layer);
+      b.push_back(b_layer);
+      db.push_back(db_layer);
+      vb.push_back(vb_layer);
+      mb.push_back(mb_layer);
+    }
+  } else if (Param::NETWORK_TYPE == 1) {
+    // TODO CHECK Param::N_HIDDEN = 7
+    for (int l = 0; l < 7 + 1; l++) {
+      ublas::matrix<myType> W_layer, dW_layer, vW_layer, mW_layer;
+      ublas::vector<myType> b_layer, db_layer, vb_layer, mb_layer;
+
+      /* Handle case with 0 hidden layers. */
+      if (Param::N_HIDDEN == 0 && l >= 1) {
+        break;
+      } else if (Param::N_HIDDEN == 0 && l == 0) {
+        Init(W_layer, Param::FEATURE_RANK, Param::N_CLASSES - 1);
+        Init(b_layer, Param::N_CLASSES - 1);
+
+        /* Set dimensions of the input layer. */
+      } else if (l == 0) {
+        Init(W_layer, 3 * 7, 6);
+        Init(b_layer, 6);
+      } else if (l == 1) {
+        Init(W_layer, 6 * 7, 6);
+        Init(b_layer, 6);
+      } else if (l == 2) {
+        Init(W_layer, 6 * 7, 6);
+        Init(b_layer, 6);
+      } else if (l == 3) {
+        Init(W_layer, 12 * 7, 6);
+        Init(b_layer, 6);
+      } else if (l == 4) {
+        Init(W_layer, 18 * 7, 4);
+        Init(b_layer, 4);
+      } else if (l == 5) {
+        if (Param::CNN_PADDING == "valid")
+          Init(W_layer, 500, Param::N_NEURONS);
+        else
+          Init(W_layer, 500, Param::N_NEURONS);
+        Init(b_layer, Param::N_NEURONS);
+      } else if (l == 6) {
+
+        Init(W_layer, Param::N_NEURONS, Param::N_NEURONS_2);
+        Init(b_layer, Param::N_NEURONS_2);
+
+        /* Set dimensions of the output layer. */
+      } else if (l == Param::N_HIDDEN) {
+        Init(W_layer, Param::N_NEURONS_2, Param::N_CLASSES - 1);
+        Init(b_layer, Param::N_CLASSES - 1);
+      }
+
 
 
       Init(dW_layer, W_layer.size1(), W_layer.size2());
@@ -393,8 +500,8 @@ void initialize_model(
       mb.push_back(mb_layer);
     }
   } else {
-    // TODO CHECK Param::N_HIDDEN = 7
-    for (int l = 0; l < 7 + 1; l++) {
+    // TODO CHECK Param::N_HIDDEN = 12
+    for (int l = 0; l < Param::N_HIDDEN + 1; l++) {
       ublas::matrix<myType> W_layer, dW_layer, vW_layer, mW_layer;
       ublas::vector<myType> b_layer, db_layer, vb_layer, mb_layer;
 
@@ -407,27 +514,39 @@ void initialize_model(
 
         /* Set dimensions of the input layer. */
       } else if (l == 0) {
-        Init(W_layer, 3 * 7, 6);
-        Init(b_layer, 6);
-      } else if (l == 1) {
-        Init(W_layer, 6 * 7, 6);
-        Init(b_layer, 6);
-      } else if (l == 2) {
-        Init(W_layer, 6 * 7, 6);
-        Init(b_layer, 6);
+        Init(W_layer, 12 * 71, 32);
+        Init(b_layer, 32);
+      } else if (l == 1 || l == 2) {
+        Init(W_layer, 32 * 71, 32);
+        Init(b_layer, 32);
       } else if (l == 3) {
-        Init(W_layer, 12 * 7, 6);
-        Init(b_layer, 6);
+        Init(W_layer, 64 * 71, 32);
+        Init(b_layer, 32);
       } else if (l == 4) {
-        Init(W_layer, 18 * 7, 4);
-        Init(b_layer, 4);
-      } else if (l == 3) {
+        Init(W_layer, 96 * 71, 24);
+        Init(b_layer, 24);
+      } else if (l == 5) {
+        Init(W_layer, 24 * 71, 24);
+        Init(b_layer, 24);
+      } else if (l == 6) {
+        Init(W_layer, 48 * 71, 24);
+        Init(b_layer, 24);
+      } else if (l == 7) {
+        Init(W_layer, 72 * 71, 16);
+        Init(b_layer, 16);
+      } else if (l == 8) {
+        Init(W_layer, 16 * 71, 16);
+        Init(b_layer, 16);
+      } else if (l == 9) {
+        Init(W_layer, 32 * 71, 16);
+        Init(b_layer, 16);
+      } else if (l == 10) {
         if (Param::CNN_PADDING == "valid")
-          Init(W_layer, 342, Param::N_NEURONS);
+          Init(W_layer, 500, Param::N_NEURONS);
         else
-          Init(W_layer, 372, Param::N_NEURONS);
+          Init(W_layer, 30000, Param::N_NEURONS);
         Init(b_layer, Param::N_NEURONS);
-      } else if (l == 4) {
+      } else if (l == 11) {
 
         Init(W_layer, Param::N_NEURONS, Param::N_NEURONS_2);
         Init(b_layer, Param::N_NEURONS_2);
@@ -437,8 +556,6 @@ void initialize_model(
         Init(W_layer, Param::N_NEURONS_2, Param::N_CLASSES - 1);
         Init(b_layer, Param::N_CLASSES - 1);
       }
-
-
 
       Init(dW_layer, W_layer.size1(), W_layer.size2());
       Init(vW_layer, W_layer.size1(), W_layer.size2());
@@ -527,74 +644,80 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
   // vector for pooling
   vector<ublas::matrix<myType>> vpool;
 
-  for (int l = 0; l < Param::N_HIDDEN; l++) {
+  // vector for concat
+  vector<ublas::matrix<myType>> vconcat;
+  vector<ublas::matrix<myType>> dhidden_concat;
 
-    if (pid == 2)
-      if (Param::DEBUG) tcout() << "Forward prop, multiplication. layer #" << l << endl;
+  if (Param::NETWORK_TYPE == 0) {
 
-    /* Multiply weight matrix. */
-    ublas::matrix<myType> activation;
+    for (int l = 0; l < Param::N_HIDDEN; l++) {
 
-    // Conv1d LAYER START
-    if (l == 0) {
+      if (pid == 2)
+        if (Param::DEBUG) tcout() << "Forward prop, multiplication. layer #" << l << endl;
 
-      if (Param::DEBUG) tcout() << "before initial reshape" << endl;
+      /* Multiply weight matrix. */
+      ublas::matrix<myType> activation;
 
-      // Reshape (N, row * channel) -> (N * row, channel)
-      initial_reshape(X_reshape, X, 3, Param::BATCH_SIZE);
+      // Conv1d LAYER START
+      if (l == 0) {
 
-      if (Param::DEBUG) tcout() << "Reshape X to X_reshape : (" << X.size1() << "," << X.size2()
-                                << "), X_reshape : (" << X_reshape.size1() << ", " << X_reshape.size2() << ")" << endl;
+        if (Param::DEBUG) tcout() << "before initial reshape" << endl;
 
-      // MultMat by reshaping after beaver partition
-      mpc.MultMatForConv(activation, X_reshape, W[l], 7);
+        // Reshape (N, row * channel) -> (N * row, channel)
+        initial_reshape(X_reshape, X, 3, Param::BATCH_SIZE);
 
-      if (Param::DEBUG) tcout() << "First CNN Layer (" << activation.size1() << "," << activation.size2() << ")" << endl;
-
-    } else {
-
-      if (Param::DEBUG) tcout() << "l = " << l << ", activation size " << act[l-1].size1() << ", " << act[l-1].size2() << endl;
-
-      // 2 conv1d layers
-      if (l == 1 || l == 2) {
+        if (Param::DEBUG) tcout() << "Reshape X to X_reshape : (" << X.size1() << "," << X.size2()
+                                  << "), X_reshape : (" << X_reshape.size1() << ", " << X_reshape.size2() << ")" << endl;
 
         // MultMat by reshaping after beaver partition
-        mpc.MultMatForConv(activation, act[l-1], W[l], 7);
+        mpc.MultMatForConv(activation, X_reshape, W[l], 71);
 
-      // first layer of FC layers
-      } else if (l == 3) {
-        ublas::matrix<myType> ann;
-        int channels = act[l-1].size2();
-        int row = act[l-1].size1() / Param::BATCH_SIZE;
-        ann.resize(Param::BATCH_SIZE, row * channels);
-        ann.clear();
+        if (Param::DEBUG) tcout() << "First CNN Layer (" << activation.size1() << "," << activation.size2() << ")" << endl;
 
-        for (int b = 0; b < Param::BATCH_SIZE; b++) {
-          for (int c = 0; c < channels; c++) {
-            for (int r = 0; r < row; r++) {
-              ann(b, c * row + r) = act[l-1](b * row + r, c);
+      } else {
+
+        if (Param::DEBUG) tcout() << "l = " << l << ", activation size " << act[l-1].size1() << ", " << act[l-1].size2() << endl;
+
+        // 2 conv1d layers
+        if (l == 1 || l == 2) {
+
+          // MultMat by reshaping after beaver partition
+          mpc.MultMatForConv(activation, act[l-1], W[l], 71);
+
+          // first layer of FC layers
+        } else if (l == 3) {
+          ublas::matrix<myType> ann;
+          int channels = act[l-1].size2();
+          int row = act[l-1].size1() / Param::BATCH_SIZE;
+          ann.resize(Param::BATCH_SIZE, row * channels);
+          ann.clear();
+
+          for (int b = 0; b < Param::BATCH_SIZE; b++) {
+            for (int c = 0; c < channels; c++) {
+              for (int r = 0; r < row; r++) {
+                ann(b, c * row + r) = act[l-1](b * row + r, c);
+              }
             }
           }
+          act[l-1] = ann;
+          mpc.MultMat(activation, act[l-1], W[l]);
+
+          // the rest of FC layers
+        } else {
+          mpc.MultMat(activation, act[l-1], W[l]);
         }
-        act[l-1] = ann;
-        mpc.MultMat(activation, act[l-1], W[l]);
-
-      // the rest of FC layers
-      } else {
-        mpc.MultMat(activation, act[l-1], W[l]);
       }
-    }
-    mpc.Trunc(activation);
-    if (Param::DEBUG) tcout() << "activation[i, j] -> r, c (" << activation.size1() << ", " << activation.size2() << ")" << pid << endl;
-    if (Param::DEBUG) tcout() << "b[l] -> col, rows (" << b[l].size() << ", " << b[l].size() << ")" << pid << endl;
+      mpc.Trunc(activation);
+      if (Param::DEBUG) tcout() << "activation[i, j] -> r, c (" << activation.size1() << ", " << activation.size2() << ")" << pid << endl;
+      if (Param::DEBUG) tcout() << "b[l] -> col, rows (" << b[l].size() << ", " << b[l].size() << ")" << pid << endl;
 
 
-    /* Add bias term; */
-    for (int i = 0; i < activation.size1(); i++) {
-      for (int j = 0; j < activation.size2(); j++) {
-        activation(i, j) += b[l][j];
+      /* Add bias term; */
+      for (int i = 0; i < activation.size1(); i++) {
+        for (int j = 0; j < activation.size2(); j++) {
+          activation(i, j) += b[l][j];
+        }
       }
-    }
 
     /* Apply ReLU non-linearity. */
     ublas::matrix<myType> relu;
@@ -609,40 +732,327 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     assert(activation.size2() == relu.size2());
     mpc.MultElem(after_relu, activation, relu);
 
-    /* Note: Do not call Trunc() here because IsPositive()
-       returns a secret shared integer, not a fixed point.*/
-    // TODO: Implement dropout.
-    /* Save activation for backpropagation. */
-    if (Param::DEBUG) tcout() << "ReLU -> col, rows (" << relu.size1() << ", " << relu.size2() << ")" << pid << endl;
-    if (Param::DEBUG) tcout() << "after ReLU -> col, rows (" << after_relu.size1() << ", " << after_relu.size2() << ")" << pid << endl;
-    if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
+      /* Note: Do not call Trunc() here because IsPositive()
+         returns a secret shared integer, not a fixed point.*/
+      // TODO: Implement dropout.
+      /* Save activation for backpropagation. */
+      if (Param::DEBUG) tcout() << "ReLU -> col, rows (" << relu.size1() << ", " << relu.size2() << ")" << pid << endl;
+      if (Param::DEBUG) tcout() << "after ReLU -> col, rows (" << after_relu.size1() << ", " << after_relu.size2() << ")" << pid << endl;
+      if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
 
-    if (l <= 2) {
-      if (Param::POOL == "max") {
-        // Max Pool
-        ublas::matrix<myType> maxpool;
-        ublas::matrix<myType> max_index;
-        MaxPool(maxpool, max_index, after_relu, 2, 2, mpc, pid);
-        act.push_back(maxpool);
-        vpool.push_back(max_index);
-        if (Param::DEBUG) tcout() << "MAX POOL -> col, rows (" << maxpool.size1() << ", " << maxpool.size2() << ")" << pid << endl;
+      if (l <= 2) {
+        if (Param::POOL == "max") {
+          // Max Pool
+          ublas::matrix<myType> maxpool;
+          ublas::matrix<myType> max_index;
+          MaxPool(maxpool, max_index, after_relu, 2, 2, mpc, pid);
+          act.push_back(maxpool);
+          vpool.push_back(max_index);
+          if (Param::DEBUG) tcout() << "MAX POOL -> col, rows (" << maxpool.size1() << ", " << maxpool.size2() << ")" << pid << endl;
+
+        } else {
+          // Avg Pool
+          ublas::matrix<myType> avgpool;
+          AveragePool(avgpool, after_relu, 2, 2);
+          avgpool *= inv2;
+          mpc.Trunc(avgpool);
+          act.push_back(avgpool);
+          if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
+
+        }
+      } else {
+        act.push_back(after_relu);
+      }
+      relus.push_back(relu);
+
+    }
+  } else if (Param::NETWORK_TYPE == 1) {
+
+    for (int l = 0; l < Param::N_HIDDEN; l++) {
+
+      if (pid == 2)
+        if (Param::DEBUG) tcout() << "Forward prop, multiplication. layer #" << l << endl;
+
+      /* Multiply weight matrix. */
+      ublas::matrix<myType> activation;
+
+      // Conv1d LAYER START
+      if (l == 0) {
+
+        if (Param::DEBUG) tcout() << "before initial reshape" << endl;
+
+        // Reshape (N, row * channel) -> (N * row, channel)
+        initial_reshape(X_reshape, X, 3, Param::BATCH_SIZE);
+
+        if (Param::DEBUG) tcout() << "Reshape X to X_reshape : (" << X.size1() << "," << X.size2()
+                                  << "), X_reshape : (" << X_reshape.size1() << ", " << X_reshape.size2() << ")" << endl;
+
+        // MultMat by reshaping after beaver partition
+        mpc.MultMatForConv(activation, X_reshape, W[l], 7);
+
+        if (Param::DEBUG) tcout() << "First CNN Layer (" << activation.size1() << "," << activation.size2() << ")" << endl;
 
       } else {
-        // Avg Pool
-        ublas::matrix<myType> avgpool;
-        AveragePool(avgpool, after_relu, 2, 2);
-        avgpool *= inv2;
-        mpc.Trunc(avgpool);
-        act.push_back(avgpool);
-        if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
 
+        if (Param::DEBUG) tcout() << "l = " << l << ", activation size " << act[l-1].size1() << ", " << act[l-1].size2() << endl;
+
+        // 2 conv1d layers
+        if (l > 0 && l < 5) {
+          // Add residual block l==3, 4
+          if (l == 3 || l == 4) {
+            if (Param::DEBUG) tcout() << "l-1 = " << l-1 << ", activation size " << act[l-2].size1() << ", " << act[l-2].size2() << endl;
+
+            /* Concatenate layers. */
+            ublas::matrix<myType> act_concat;
+
+            if (l == 3) {
+
+              // Concatenate two layers
+              mpc.Concatenate(act_concat, act[l-1], act[l-2]);
+            } else if (l == 4) {
+              // Concatenate three layers
+              mpc.Concatenate3(act_concat, act[l-1], act[l-2], act[l-3]);
+            }
+            vconcat.push_back(act_concat);
+
+            // MultMat by reshaping after beaver partition
+            mpc.MultMatForConv(activation, act_concat, W[l], 7);
+
+          } else {
+
+            // MultMat by reshaping after beaver partition
+            mpc.MultMatForConv(activation, act[l-1], W[l], 7);
+          }
+
+
+
+          // first layer of FC layers
+        } else if (l == 5) {
+
+          if (Param::DEBUG) tcout() << "l======5" << endl;
+
+          ublas::matrix<myType> ann;
+          int channels = act[l-1].size2();
+          int row = act[l-1].size1() / Param::BATCH_SIZE;
+          Init(ann, Param::BATCH_SIZE, row * channels);
+//          ann.resize(Param::BATCH_SIZE, row * channels);
+//          ann.clear();
+
+          for (int b = 0; b < Param::BATCH_SIZE; b++) {
+            for (int c = 0; c < channels; c++) {
+              for (int r = 0; r < row; r++) {
+                ann(b, c * row + r) = act[l-1](b * row + r, c);
+              }
+            }
+          }
+          act[l-1] = ann;
+          mpc.MultMat(activation, act[l-1], W[l]);
+
+          // the rest of FC layers
+        } else {
+          mpc.MultMat(activation, act[l-1], W[l]);
+        }
       }
-    } else {
-      act.push_back(after_relu);
-    }
-    relus.push_back(relu);
+      mpc.Trunc(activation);
+      if (Param::DEBUG) tcout() << "activation[i, j] -> r, c (" << activation.size1() << ", " << activation.size2() << ")" << pid << endl;
+      if (Param::DEBUG) tcout() << "b[l] -> col, rows (" << b[l].size() << ", " << b[l].size() << ")" << pid << endl;
 
+
+      /* Add bias term; */
+      for (int i = 0; i < activation.size1(); i++) {
+        for (int j = 0; j < activation.size2(); j++) {
+          activation(i, j) += b[l][j];
+        }
+      }
+
+      /* Apply ReLU non-linearity. */
+      ublas::matrix<myType> relu;
+      relu.resize(activation.size1(), activation.size2());
+      mpc.IsPositive(relu, activation);
+      ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
+      assert(activation.size1() == relu.size1());
+      assert(activation.size2() == relu.size2());
+      mpc.MultElem(after_relu, activation, relu);
+
+      /* Note: Do not call Trunc() here because IsPositive()
+         returns a secret shared integer, not a fixed point.*/
+      // TODO: Implement dropout.
+      /* Save activation for backpropagation. */
+      if (Param::DEBUG) tcout() << "ReLU -> col, rows (" << relu.size1() << ", " << relu.size2() << ")" << pid << endl;
+      if (Param::DEBUG) tcout() << "after ReLU -> col, rows (" << after_relu.size1() << ", " << after_relu.size2() << ")" << pid << endl;
+      if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
+
+      if (l == 1 || l == 4) {
+        if (Param::POOL == "max") {
+          // Max Pool
+          ublas::matrix<myType> maxpool;
+          ublas::matrix<myType> max_index;
+          MaxPool(maxpool, max_index, after_relu, 2, 2, mpc, pid);
+          act.push_back(maxpool);
+          vpool.push_back(max_index);
+          if (Param::DEBUG) tcout() << "MAX POOL -> col, rows (" << maxpool.size1() << ", " << maxpool.size2() << ")" << pid << endl;
+
+        } else {
+          // Avg Pool
+          ublas::matrix<myType> avgpool;
+          AveragePool(avgpool, after_relu, 2, 2);
+          avgpool *= inv2;
+          mpc.Trunc(avgpool);
+          act.push_back(avgpool);
+          if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
+
+        }
+      } else {
+        act.push_back(after_relu);
+      }
+      relus.push_back(relu);
+
+    }
+  } else {
+
+    for (int l = 0; l < Param::N_HIDDEN; l++) {
+
+      if (pid == 2)
+        if (Param::DEBUG) tcout() << "Forward prop, multiplication. layer #" << l << endl;
+
+      /* Multiply weight matrix. */
+      ublas::matrix<myType> activation;
+
+      // Conv1d LAYER START
+      if (l == 0) {
+
+        if (Param::DEBUG) tcout() << "before initial reshape" << endl;
+
+        // Reshape (N, row * channel) -> (N * row, channel)
+        initial_reshape(X_reshape, X, 12, Param::BATCH_SIZE);
+
+        if (Param::DEBUG) tcout() << "Reshape X to X_reshape : (" << X.size1() << "," << X.size2()
+                                  << "), X_reshape : (" << X_reshape.size1() << ", " << X_reshape.size2() << ")" << endl;
+
+        // MultMat by reshaping after beaver partition
+        mpc.MultMatForConv(activation, X_reshape, W[l], 71);
+
+        if (Param::DEBUG) tcout() << "First CNN Layer (" << activation.size1() << "," << activation.size2() << ")" << endl;
+
+      } else {
+
+        if (Param::DEBUG) tcout() << "l = " << l << ", activation size " << act[l-1].size1() << ", " << act[l-1].size2() << endl;
+        // Concatenate after conv layers
+        if (l > 0 && l < 11) {
+          // Add residual block l==3, 4, 6, 7, 9, 10
+          if (l == 3 || l == 4 || l == 6 || l == 7 || l == 9 || l == 10) {
+            if (Param::DEBUG) tcout() << "l-1 = " << l-1 << ", activation size " << act[l-2].size1() << ", " << act[l-2].size2() << endl;
+
+            /* Concatenate layers. */
+            ublas::matrix<myType> act_concat;
+
+            if (l % 3 == 0) {
+
+              // Concatenate two layers
+              mpc.Concatenate(act_concat, act[l-1], act[l-2]);
+            } else if (l % 3 == 1) {
+              // Concatenate three layers
+              mpc.Concatenate3(act_concat, act[l-1], act[l-2], act[l-3]);
+            }
+            if (l < 10)
+              vconcat.push_back(act_concat);
+
+            if (l == 10) {
+
+              if (Param::DEBUG)
+                tcout() << "l======5" << endl;
+
+              ublas::matrix<myType> ann;
+              int channels = act_concat.size2();
+              int row = act_concat.size1() / Param::BATCH_SIZE;
+              Init(ann, Param::BATCH_SIZE, row * channels);
+              //          ann.resize(Param::BATCH_SIZE, row * channels);
+              //          ann.clear();
+
+              for (int b = 0; b < Param::BATCH_SIZE; b++) {
+                for (int c = 0; c < channels; c++) {
+                  for (int r = 0; r < row; r++) {
+                    ann(b, c * row + r) = act_concat(b * row + r, c);
+                  }
+                }
+              }
+              act[l - 1] = ann;
+              mpc.MultMat(activation, act[l - 1], W[l]);
+            } else {
+              // MultMat by reshaping after beaver partition
+              mpc.MultMatForConv(activation, act_concat, W[l], 71);
+            }
+
+          } else {
+
+            // MultMat by reshaping after beaver partition
+            mpc.MultMatForConv(activation, act[l-1], W[l], 71);
+          }
+
+          // first layer of FC layers
+
+          // the rest of FC layers
+        } else {
+          mpc.MultMat(activation, act[l-1], W[l]);
+        }
+      }
+      mpc.Trunc(activation);
+      if (Param::DEBUG) tcout() << "activation[i, j] -> r, c (" << activation.size1() << ", " << activation.size2() << ")" << pid << endl;
+      if (Param::DEBUG) tcout() << "b[l] -> col, rows (" << b[l].size() << ", " << b[l].size() << ")" << pid << endl;
+
+
+      /* Add bias term; */
+      for (int i = 0; i < activation.size1(); i++) {
+        for (int j = 0; j < activation.size2(); j++) {
+          activation(i, j) += b[l][j];
+        }
+      }
+
+      /* Apply ReLU non-linearity. */
+      ublas::matrix<myType> relu;
+      relu.resize(activation.size1(), activation.size2());
+      mpc.IsPositive(relu, activation);
+      ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
+      assert(activation.size1() == relu.size1());
+      assert(activation.size2() == relu.size2());
+      mpc.MultElem(after_relu, activation, relu);
+
+      /* Note: Do not call Trunc() here because IsPositive()
+         returns a secret shared integer, not a fixed point.*/
+      // TODO: Implement dropout.
+      /* Save activation for backpropagation. */
+      if (Param::DEBUG) tcout() << "ReLU -> col, rows (" << relu.size1() << ", " << relu.size2() << ")" << pid << endl;
+      if (Param::DEBUG) tcout() << "after ReLU -> col, rows (" << after_relu.size1() << ", " << after_relu.size2() << ")" << pid << endl;
+      if (Param::DEBUG) tcout() << "ReLU non-linearity end pid:" << pid << endl;
+
+      if (l == 1 || l == 4 || l == 7) {
+        if (Param::POOL == "max") {
+          // Max Pool
+          ublas::matrix<myType> maxpool;
+          ublas::matrix<myType> max_index;
+          MaxPool(maxpool, max_index, after_relu, 2, 2, mpc, pid);
+          act.push_back(maxpool);
+          vpool.push_back(max_index);
+          if (Param::DEBUG) tcout() << "MAX POOL -> col, rows (" << maxpool.size1() << ", " << maxpool.size2() << ")" << pid << endl;
+
+        } else {
+          // Avg Pool
+          ublas::matrix<myType> avgpool;
+          AveragePool(avgpool, after_relu, 2, 2);
+          avgpool *= inv2;
+          mpc.Trunc(avgpool);
+          act.push_back(avgpool);
+          if (Param::DEBUG) tcout() << "AVG POOL -> col, rows (" << avgpool.size1() << ", " << avgpool.size2() << ")" << pid << endl;
+
+        }
+      } else {
+        act.push_back(after_relu);
+      }
+      relus.push_back(relu);
+
+    }
   }
+
 
   
   /**************************
@@ -739,36 +1149,27 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       if (Param::DEBUG) tcout() << "dhidden : (" << dhidden.size1() << ", " << dhidden.size2() << ")" << endl;
     }
 
+    int idx_conv_to_fc_layer = 3;
+    if (Param::NETWORK_TYPE == 1) {
+      idx_conv_to_fc_layer = 5;
+    } else {
+      idx_conv_to_fc_layer = 10;
+    }
+
     // resize
     if (X_T.size2() != dhidden.size1()) {
-      ublas::matrix<myType> resize_x_t;
-
-      if (l == 3) {
-        int row = X_T.size2() / Param::BATCH_SIZE;
-        int channel = X_T.size1();
-        Init(resize_x_t, row * channel, Param::BATCH_SIZE);
-        for (int b = 0; b < Param::BATCH_SIZE; b++) {
-          for (int c = 0; c < channel; c++) {
-            for (int r = 0; r < row; r++) {
-              resize_x_t(c * row + r, b) = X_T(c, b * row + r);
-            }
-          }
-        }
-        X_T = resize_x_t;
-
-        if (Param::DEBUG) tcout() << "X_T -> converted : (" << X_T.size1() << ", " << X_T.size2() << ")" << endl;
-
-        mpc.MultMat(dW[l], X_T, dhidden);
-      } else {
-        if (Param::DEBUG) tcout() << "mult mat for conv back start" << endl;
-        mpc.MultMatForConvBack(dW[l], X_T, dhidden, 7);
-        if (Param::DEBUG) tcout() << "mult mat for conv back end" << endl;
-      }
+      if (Param::DEBUG) tcout() << "mult mat for conv back start" << endl;
+      mpc.MultMatForConvBack(dW[l], X_T, dhidden, 71);
+      if (Param::DEBUG) tcout() << "mult mat for conv back end" << endl;
     } else {
 
       // same, zero padding back prop for l < 3
-      if (l < 3) {
-        mpc.MultMatForConvBack(dW[l], X_T, dhidden, 7);
+      if (l < idx_conv_to_fc_layer) {
+        if (l == 3 || l == 4 || l == 6 || l == 7 || l == 9) {
+          X_T = ublas::trans(vconcat.back());
+          vconcat.pop_back();
+        }
+        mpc.MultMatForConvBack(dW[l], X_T, dhidden, 71);
       } else {
         mpc.MultMat(dW[l], X_T, dhidden);
       }
@@ -827,21 +1228,34 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
       if (dhidden_new.size2() != relu.size2() || dhidden_new.size1() != relu.size1()) {
 
-        if (l > 2) {
+        if (l > idx_conv_to_fc_layer) {
           ublas::matrix<myType> temp;
           int row = dhidden_new.size2() / relu.size2();
           Init(temp, row * Param::BATCH_SIZE, relu.size2());
           for (int b = 0; b < Param::BATCH_SIZE; b++) {
             for (int c = 0; c < relu.size2(); c++) {
               for (int r = 0; r < row; r++) {
-                temp(b * row + r, c) = dhidden_new(b, c * row + r );
+                temp(b * row + r, c) = dhidden_new(b, c * row + r);
+              }
+            }
+          }
+          dhidden_new = temp;
+        } else if (l == idx_conv_to_fc_layer) {
+          ublas::matrix<myType> temp;
+          int channel = relu.size2()* 3;
+          int row = dhidden_new.size2() / (relu.size2()* 3);
+          Init(temp, row * Param::BATCH_SIZE, channel);
+          for (int b = 0; b < Param::BATCH_SIZE; b++) {
+            for (int c = 0; c < channel; c++) {
+              for (int r = 0; r < row; r++) {
+                temp(b * row + r, c) = dhidden_new(b, c * row + r);
               }
             }
           }
           dhidden_new = temp;
         } else {
           ublas::matrix<myType> temp;
-          back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
+          back_reshape_conv(temp, dhidden_new, 71, Param::BATCH_SIZE);
 
           if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
                                     << "), conv1d: (" << dhidden_new.size1() << ", " << dhidden_new.size2() << ")"
@@ -854,44 +1268,177 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
           tcout() << "relu: " << relu.size1() << "/" << relu.size2() << endl;
         }
 
+        // for concatenation
+        if (dhidden_new.size2() != relu.size2()) {
+
+          if (pid == 2 && Param::DEBUG) {
+            tcout() << "CONCATTTTTT" << endl;
+            tcout() << "relu: " << relu.size1() << "/" << relu.size2() << endl;
+          }
+
+          if (l % 3 == 0) {
+
+            ublas::matrix<myType> temp_from_vec1;
+            ublas::matrix<myType> temp_from_vec2;
+            temp_from_vec2 = dhidden_concat.back();
+            dhidden_concat.pop_back();
+            temp_from_vec1 = dhidden_concat.back();
+            dhidden_concat.pop_back();
+            for (size_t i = 0; i < relu.size1(); ++i) {
+              for (size_t j = 0; j < relu.size2(); ++j) {
+                temp_from_vec1(i, j) += dhidden_new(i, j);
+                temp_from_vec2(i, j) += dhidden_new(i, relu.size2() + j);
+              }
+            }
+            dhidden_new = temp_from_vec1;
+            dhidden_concat.push_back(temp_from_vec2);
+          } else if (l % 3 == 1) {
+
+            ublas::matrix<myType> temp;
+            ublas::matrix<myType> temp1;
+            ublas::matrix<myType> temp2;
+            Init(temp, relu.size1(), relu.size2());
+            Init(temp1, relu.size1(), relu.size2());
+            Init(temp2, relu.size1(), relu.size2());
+            for (size_t i = 0; i < relu.size1(); ++i) {
+              for (size_t j = 0; j < relu.size2(); ++j) {
+                temp(i, j) = dhidden_new(i, j);
+                temp1(i, j) = dhidden_new(i, relu.size2() + j);
+                temp2(i, j) = dhidden_new(i, relu.size2()*2 + j);
+              }
+            }
+            dhidden_new = temp;
+            dhidden_concat.push_back(temp1);
+            dhidden_concat.push_back(temp2);
+          }
+
+        }
+
+      } else {
+
+        // start of concat
+        if (l % 3 == 2 && l < 10) {
+          if (Param::DEBUG && pid == 2) tcout() << "Start of concat l = " << l << endl;
+          dhidden_new += dhidden_concat.back();
+          dhidden_concat.pop_back();
+        }
       }
 
       // Compute backpropagated pool
       /* Apply derivative of AvgPool1D or MaxPool1D (stride 2, kernel_size 2). */
-      if (l <= 3) {
-        ublas::matrix<myType> back_pool;
+      if (Param::NETWORK_TYPE == 0) {
 
-        // add size of relu
-        BackPool(back_pool, dhidden_new, 2, 2, relu.size1());
+        if (l <= idx_conv_to_fc_layer) {
+          ublas::matrix<myType> back_pool;
 
-        if (Param::POOL == "max") {
-          ublas::matrix<myType> max_pool_back;
-          ublas::matrix<myType> max_pool = vpool.back();
-          mpc.MultElem(max_pool_back, back_pool, max_pool);
-          mpc.MultElem(dhidden, max_pool_back, relu);
+          // add size of relu
+          BackPool(back_pool, dhidden_new, 2, 2, relu.size1());
 
-          if (Param::DEBUG && pid > 0) {
+          if (Param::POOL == "max") {
+            ublas::matrix<myType> max_pool_back;
+            ublas::matrix<myType> max_pool = vpool.back();
+            mpc.MultElem(max_pool_back, back_pool, max_pool);
+            mpc.MultElem(dhidden, max_pool_back, relu);
 
-            tcout() << "Print back_pool:" << endl;
-            mpc.PrintFP(back_pool);
+            if (Param::DEBUG && pid > 0) {
 
-            tcout() << "Print max pool:" << endl;
-            mpc.PrintFP(max_pool);
-            tcout() << "Print max pool back:" << endl;
-            mpc.PrintFP(max_pool_back);
+              tcout() << "Print back_pool:" << endl;
+              mpc.PrintFP(back_pool);
+
+              tcout() << "Print max pool:" << endl;
+              mpc.PrintFP(max_pool);
+              tcout() << "Print max pool back:" << endl;
+              mpc.PrintFP(max_pool_back);
+            }
+
+
+            vpool.pop_back();
+          } else {
+            back_pool *= inv2;
+            mpc.Trunc(back_pool);
+
+            mpc.MultElem(dhidden, back_pool, relu);
           }
-
-
-          vpool.pop_back();
+          if (Param::DEBUG) tcout() << "back pool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
         } else {
-          back_pool *= inv2;
-          mpc.Trunc(back_pool);
-
-          mpc.MultElem(dhidden, back_pool, relu);
+          mpc.MultElem(dhidden, dhidden_new, relu);
         }
-        if (Param::DEBUG) tcout() << "back pool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
+      } else if (Param::NETWORK_TYPE == 1) {
+
+        // pooling layer conv index + 1
+        if (l == (1 + 1) || l == (4+1)) {
+          ublas::matrix<myType> back_pool;
+
+          // add size of relu
+          BackPool(back_pool, dhidden_new, 2, 2, relu.size1());
+
+          if (Param::POOL == "max") {
+            ublas::matrix<myType> max_pool_back;
+            ublas::matrix<myType> max_pool = vpool.back();
+            mpc.MultElem(max_pool_back, back_pool, max_pool);
+            mpc.MultElem(dhidden, max_pool_back, relu);
+
+            if (Param::DEBUG && pid > 0) {
+
+              tcout() << "Print back_pool:" << endl;
+              mpc.PrintFP(back_pool);
+
+              tcout() << "Print max pool:" << endl;
+              mpc.PrintFP(max_pool);
+              tcout() << "Print max pool back:" << endl;
+              mpc.PrintFP(max_pool_back);
+            }
+
+
+            vpool.pop_back();
+          } else {
+            back_pool *= inv2;
+            mpc.Trunc(back_pool);
+
+            mpc.MultElem(dhidden, back_pool, relu);
+          }
+          if (Param::DEBUG) tcout() << "back pool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
+        } else {
+          mpc.MultElem(dhidden, dhidden_new, relu);
+        }
       } else {
-        mpc.MultElem(dhidden, dhidden_new, relu);
+
+        // pooling layer conv index + 1
+        if (l == (1 + 1) || l == (4+1)|| l == (7+1)) {
+          ublas::matrix<myType> back_pool;
+
+          // add size of relu
+          BackPool(back_pool, dhidden_new, 2, 2, relu.size1());
+
+          if (Param::POOL == "max") {
+            ublas::matrix<myType> max_pool_back;
+            ublas::matrix<myType> max_pool = vpool.back();
+            mpc.MultElem(max_pool_back, back_pool, max_pool);
+            mpc.MultElem(dhidden, max_pool_back, relu);
+
+            if (Param::DEBUG && pid > 0) {
+
+              tcout() << "Print back_pool:" << endl;
+              mpc.PrintFP(back_pool);
+
+              tcout() << "Print max pool:" << endl;
+              mpc.PrintFP(max_pool);
+              tcout() << "Print max pool back:" << endl;
+              mpc.PrintFP(max_pool_back);
+            }
+
+
+            vpool.pop_back();
+          } else {
+            back_pool *= inv2;
+            mpc.Trunc(back_pool);
+
+            mpc.MultElem(dhidden, back_pool, relu);
+          }
+          if (Param::DEBUG) tcout() << "back pool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
+        } else {
+          mpc.MultElem(dhidden, dhidden_new, relu);
+        }
       }
 
       /* Note: No need to call Trunc().*/

@@ -59,8 +59,8 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
 //        k /= (156.820 + 1e-7);
 //      }
 
-      if (j % 500 == 0)
-        tcout() << "Read Column k " << k << endl;
+      if (i % 1000 == 0)
+        tcout() << "Read row, value: " << i << ", " << k << endl;
 
       myType val_mytype;
       val_mytype = DoubleToFP(k);

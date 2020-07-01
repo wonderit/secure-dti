@@ -28,12 +28,16 @@ parser.add_argument("-seed", "--seed", help="Set random seed", type=int, default
 parser.add_argument("-m", "--mean", help="Set mean of Y", type=float, default=61.9)
 parser.add_argument("-s", "--std", help="Set std of Y", type=float, default=10.6)
 parser.add_argument("-r", "--spearman", help="Set std of Y", action='store_true')
-parser.add_argument("-model", "--model_type", help="model name(shallow, normal, ann, mpc, cnn2d, cnnmax)", type=str, default='cnnmax')
+parser.add_argument("-model", "--model_type", help="model name(shallow, normal, ann, mpc, cnn2d, cnnmax, cnnavg_concat)", type=str, default='cnnmax')
 parser.add_argument("-cp", "--cnn_padding", help="padding type (valid, same, zero)", type=str, default='same')
 
 args = parser.parse_args()
 
-N_HIDDEN = 5
+if args.model_type == 'cnnavg_concat':
+    N_HIDDEN = 7
+else:
+    N_HIDDEN = 5
+
 LOSS = 'mse'
 
 # threshold maxabs<64
@@ -114,42 +118,95 @@ def load_model(model, epoch, batch):
     for l in range(N_HIDDEN + 1):
         b[l] = np.loadtxt('mpc/{}/ecg_P1_{}_{}_b{}.bin'.format(args.cache_folder, epoch, batch, l))
 
-    W[0] = np.transpose(W[0])
-    w0_from_text = torch.from_numpy(W[0].reshape(6, 3, 7))
-    model.conv1.weight = torch.nn.Parameter(w0_from_text)
-    b0_from_text = torch.from_numpy(b[0])
-    model.conv1.bias = torch.nn.Parameter(b0_from_text)
 
-    W[1] = np.transpose(W[1])
-    w1_from_text = torch.from_numpy(W[1].reshape(6, 6, 7))
-    model.conv2.weight = torch.nn.Parameter(w1_from_text)
-    b1_from_text = torch.from_numpy(b[1])
-    model.conv2.bias = torch.nn.Parameter(b1_from_text)
+    if args.model_type == 'cnnavg_concat':
+        W[0] = np.transpose(W[0])
+        w0_from_text = torch.from_numpy(W[0].reshape(6, 3, 7))
+        model.conv1.weight = torch.nn.Parameter(w0_from_text)
+        b0_from_text = torch.from_numpy(b[0])
+        model.conv1.bias = torch.nn.Parameter(b0_from_text)
 
-    W[2] = np.transpose(W[2])
-    w2_from_text = torch.from_numpy(W[2].reshape(6, 6, 7))
-    model.conv3.weight = torch.nn.Parameter(w2_from_text)
-    b2_from_text = torch.from_numpy(b[2])
-    model.conv3.bias = torch.nn.Parameter(b2_from_text)
+        W[1] = np.transpose(W[1])
+        w1_from_text = torch.from_numpy(W[1].reshape(6, 6, 7))
+        model.conv2.weight = torch.nn.Parameter(w1_from_text)
+        b1_from_text = torch.from_numpy(b[1])
+        model.conv2.bias = torch.nn.Parameter(b1_from_text)
 
-    W[3] = np.transpose(W[3])
-    w3_from_text = torch.from_numpy(W[3])
-    model.fc1.weight = torch.nn.Parameter(w3_from_text)
+        W[2] = np.transpose(W[2])
+        w2_from_text = torch.from_numpy(W[2].reshape(6, 6, 7))
+        model.conv3.weight = torch.nn.Parameter(w2_from_text)
+        b2_from_text = torch.from_numpy(b[2])
+        model.conv3.bias = torch.nn.Parameter(b2_from_text)
 
-    b3_from_text = torch.from_numpy(b[3])
-    model.fc1.bias = torch.nn.Parameter(b3_from_text)
 
-    W[4] = np.transpose(W[4])
-    w4_from_text = torch.from_numpy(W[4])
-    model.fc2.weight = torch.nn.Parameter(w4_from_text)
-    b4_from_text = torch.from_numpy(b[4])
-    model.fc2.bias = torch.nn.Parameter(b4_from_text)
+        W[3] = np.transpose(W[3])
+        w_from_text = torch.from_numpy(W[3].reshape(6, 12, 7))
+        model.conv4.weight = torch.nn.Parameter(w_from_text)
+        b_from_text = torch.from_numpy(b[3])
+        model.conv4.bias = torch.nn.Parameter(b_from_text)
 
-    w5_from_text = torch.from_numpy(W[5])
-    w5_from_text = w5_from_text.reshape(1, 64)
-    model.fc3.weight = torch.nn.Parameter(w5_from_text)
-    b5_from_text = torch.from_numpy(b[5])
-    model.fc3.bias = torch.nn.Parameter(b5_from_text)
+        W[4] = np.transpose(W[4])
+        w2_from_text = torch.from_numpy(W[4].reshape(4, 18, 7))
+        model.conv5.weight = torch.nn.Parameter(w2_from_text)
+        b2_from_text = torch.from_numpy(b[4])
+        model.conv5.bias = torch.nn.Parameter(b2_from_text)
+
+        W[5] = np.transpose(W[5])
+        w3_from_text = torch.from_numpy(W[5])
+        model.fc1.weight = torch.nn.Parameter(w3_from_text)
+        b3_from_text = torch.from_numpy(b[5])
+        model.fc1.bias = torch.nn.Parameter(b3_from_text)
+
+        W[6] = np.transpose(W[6])
+        w4_from_text = torch.from_numpy(W[6])
+        model.fc2.weight = torch.nn.Parameter(w4_from_text)
+        b4_from_text = torch.from_numpy(b[6])
+        model.fc2.bias = torch.nn.Parameter(b4_from_text)
+
+        w5_from_text = torch.from_numpy(W[7])
+        w5_from_text = w5_from_text.reshape(1, 64)
+        model.fc3.weight = torch.nn.Parameter(w5_from_text)
+        b5_from_text = torch.from_numpy(b[7])
+        model.fc3.bias = torch.nn.Parameter(b5_from_text)
+
+
+    else:
+        W[0] = np.transpose(W[0])
+        w0_from_text = torch.from_numpy(W[0].reshape(6, 3, 7))
+        model.conv1.weight = torch.nn.Parameter(w0_from_text)
+        b0_from_text = torch.from_numpy(b[0])
+        model.conv1.bias = torch.nn.Parameter(b0_from_text)
+
+        W[1] = np.transpose(W[1])
+        w1_from_text = torch.from_numpy(W[1].reshape(6, 6, 7))
+        model.conv2.weight = torch.nn.Parameter(w1_from_text)
+        b1_from_text = torch.from_numpy(b[1])
+        model.conv2.bias = torch.nn.Parameter(b1_from_text)
+
+        W[2] = np.transpose(W[2])
+        w2_from_text = torch.from_numpy(W[2].reshape(6, 6, 7))
+        model.conv3.weight = torch.nn.Parameter(w2_from_text)
+        b2_from_text = torch.from_numpy(b[2])
+        model.conv3.bias = torch.nn.Parameter(b2_from_text)
+
+        W[3] = np.transpose(W[3])
+        w3_from_text = torch.from_numpy(W[3])
+        model.fc1.weight = torch.nn.Parameter(w3_from_text)
+
+        b3_from_text = torch.from_numpy(b[3])
+        model.fc1.bias = torch.nn.Parameter(b3_from_text)
+
+        W[4] = np.transpose(W[4])
+        w4_from_text = torch.from_numpy(W[4])
+        model.fc2.weight = torch.nn.Parameter(w4_from_text)
+        b4_from_text = torch.from_numpy(b[4])
+        model.fc2.bias = torch.nn.Parameter(b4_from_text)
+
+        w5_from_text = torch.from_numpy(W[5])
+        w5_from_text = w5_from_text.reshape(1, 64)
+        model.fc3.weight = torch.nn.Parameter(w5_from_text)
+        b5_from_text = torch.from_numpy(b[5])
+        model.fc3.bias = torch.nn.Parameter(b5_from_text)
 
     model.eval()
 
@@ -298,6 +355,59 @@ class CNNMAX(nn.Module):
         return y
 
 
+class CNNAVG_CONCAT(nn.Module):
+    def __init__(self):
+        super(CNNAVG_CONCAT, self).__init__()
+        self.kernel_size = 7
+        self.padding_size = 0
+        self.channel_size = 6
+        self.avgpool1 = nn.AvgPool1d(kernel_size=2, stride=2)
+        self.avgpool2 = nn.AvgPool1d(kernel_size=2, stride=2)
+        self.avgpool3 = nn.AvgPool1d(kernel_size=2, stride=2)
+        if args.cnn_padding == 'valid':
+            self.conv1 = nn.Conv1d(3, self.channel_size, kernel_size=self.kernel_size, padding=self.padding_size)
+            self.conv2 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=self.padding_size)
+            self.conv3 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=self.padding_size)
+            self.fc1 = nn.Linear(342, 16)
+        else:
+            self.conv1 = nn.Conv1d(3, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=(self.kernel_size // 2))
+            self.conv2 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=(self.kernel_size // 2))
+            self.conv3 = nn.Conv1d(self.channel_size, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=(self.kernel_size // 2))
+            self.conv4 = nn.Conv1d(self.channel_size*2, self.channel_size, kernel_size=self.kernel_size,
+                                   padding=(self.kernel_size // 2))
+            self.conv5 = nn.Conv1d(self.channel_size*3, 4, kernel_size=self.kernel_size,
+                                   padding=(self.kernel_size // 2))
+            self.fc1 = nn.Linear(500, 16)
+        self.fc2 = nn.Linear(16, 64)
+        self.fc3 = nn.Linear(64, 1)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x))  # 32
+        x = F.relu(self.conv2(x))  # 32
+        x = self.avgpool1(x)  # 32
+
+        x1 = F.relu(self.conv3(x))
+
+        # Comment Temp
+        c1 = torch.cat((x, x1), dim=1)  # 64
+        x2 = F.relu(self.conv4(c1))  # 32
+
+        y = torch.cat((x, x1, x2), dim=1)  # 96
+        # downsizing
+        y = F.relu(self.conv5(y))  # 24
+        y = self.avgpool2(y)
+        y = y.view(y.shape[0], -1)
+        y = F.relu(self.fc1(y))
+        y = F.relu(self.fc2(y))
+        y = self.fc3(y)
+        return y
+
+
 if __name__ == '__main__':
     # Add the following code anywhere in your machine learning file
     if args.is_comet:
@@ -329,6 +439,8 @@ if __name__ == '__main__':
             # W, b, act = load_model(e, i * args.log_interval)
             if args.model_type == 'cnnavg':
                 model = CNNAVG()
+            elif args.model_type == 'cnnavg_concat':
+                model = CNNAVG_CONCAT()
             else:
                 model = CNNMAX()
 
