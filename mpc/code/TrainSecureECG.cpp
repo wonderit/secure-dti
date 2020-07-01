@@ -1152,15 +1152,37 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     int idx_conv_to_fc_layer = 3;
     if (Param::NETWORK_TYPE == 1) {
       idx_conv_to_fc_layer = 5;
-    } else {
+    } else if (Param::NETWORK_TYPE == 2) {
       idx_conv_to_fc_layer = 10;
     }
 
     // resize
     if (X_T.size2() != dhidden.size1()) {
-      if (Param::DEBUG) tcout() << "mult mat for conv back start" << endl;
-      mpc.MultMatForConvBack(dW[l], X_T, dhidden, 71);
-      if (Param::DEBUG) tcout() << "mult mat for conv back end" << endl;
+      if (Param::NETWORK_TYPE == 2) {
+        mpc.MultMatForConvBack(dW[l], X_T, dhidden, 71);
+      } else {
+        ublas::matrix<myType> resize_x_t;
+
+        if (l == 3) {
+          int row = X_T.size2() / Param::BATCH_SIZE;
+          int channel = X_T.size1();
+          Init(resize_x_t, row * channel, Param::BATCH_SIZE);
+          for (int b = 0; b < Param::BATCH_SIZE; b++) {
+            for (int c = 0; c < channel; c++) {
+              for (int r = 0; r < row; r++) {
+                resize_x_t(c * row + r, b) = X_T(c, b * row + r);
+              }
+            }
+          }
+          X_T = resize_x_t;
+
+          if (Param::DEBUG) tcout() << "X_T -> converted : (" << X_T.size1() << ", " << X_T.size2() << ")" << endl;
+
+          mpc.MultMat(dW[l], X_T, dhidden);
+        } else {
+          mpc.MultMatForConvBack(dW[l], X_T, dhidden, 7);
+        }
+      }
     } else {
 
       // same, zero padding back prop for l < 3
@@ -1169,7 +1191,10 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
           X_T = ublas::trans(vconcat.back());
           vconcat.pop_back();
         }
-        mpc.MultMatForConvBack(dW[l], X_T, dhidden, 71);
+        if (Param::NETWORK_TYPE == 2)
+          mpc.MultMatForConvBack(dW[l], X_T, dhidden, 71);
+        else
+          mpc.MultMatForConvBack(dW[l], X_T, dhidden, 7);
       } else {
         mpc.MultMat(dW[l], X_T, dhidden);
       }
@@ -1227,41 +1252,73 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       }
 
       if (dhidden_new.size2() != relu.size2() || dhidden_new.size1() != relu.size1()) {
+        if (Param::NETWORK_TYPE == 2) {
+          if (l > idx_conv_to_fc_layer) {
+            ublas::matrix<myType> temp;
+            int row = dhidden_new.size2() / relu.size2();
+            Init(temp, row * Param::BATCH_SIZE, relu.size2());
+            for (int b = 0; b < Param::BATCH_SIZE; b++) {
+              for (int c = 0; c < relu.size2(); c++) {
+                for (int r = 0; r < row; r++) {
+                  temp(b * row + r, c) = dhidden_new(b, c * row + r);
+                }
+              }
+            }
+            dhidden_new = temp;
+          } else if (l == idx_conv_to_fc_layer) {
+            ublas::matrix<myType> temp;
+            int channel = relu.size2() * 3;
+            int row = dhidden_new.size2() / (relu.size2() * 3);
+            Init(temp, row * Param::BATCH_SIZE, channel);
+            for (int b = 0; b < Param::BATCH_SIZE; b++) {
+              for (int c = 0; c < channel; c++) {
+                for (int r = 0; r < row; r++) {
+                  temp(b * row + r, c) = dhidden_new(b, c * row + r);
+                }
+              }
+            }
+            dhidden_new = temp;
+          } else {
+            ublas::matrix<myType> temp;
+            back_reshape_conv(temp, dhidden_new, 71, Param::BATCH_SIZE);
 
-        if (l > idx_conv_to_fc_layer) {
-          ublas::matrix<myType> temp;
-          int row = dhidden_new.size2() / relu.size2();
-          Init(temp, row * Param::BATCH_SIZE, relu.size2());
-          for (int b = 0; b < Param::BATCH_SIZE; b++) {
-            for (int c = 0; c < relu.size2(); c++) {
-              for (int r = 0; r < row; r++) {
-                temp(b * row + r, c) = dhidden_new(b, c * row + r);
-              }
-            }
+            if (Param::DEBUG)
+              tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
+                      << "), conv1d: (" << dhidden_new.size1() << ", " << dhidden_new.size2() << ")"
+                      << endl;
+            dhidden_new = temp;
           }
-          dhidden_new = temp;
-        } else if (l == idx_conv_to_fc_layer) {
-          ublas::matrix<myType> temp;
-          int channel = relu.size2()* 3;
-          int row = dhidden_new.size2() / (relu.size2()* 3);
-          Init(temp, row * Param::BATCH_SIZE, channel);
-          for (int b = 0; b < Param::BATCH_SIZE; b++) {
-            for (int c = 0; c < channel; c++) {
-              for (int r = 0; r < row; r++) {
-                temp(b * row + r, c) = dhidden_new(b, c * row + r);
-              }
-            }
-          }
-          dhidden_new = temp;
         } else {
-          ublas::matrix<myType> temp;
-          back_reshape_conv(temp, dhidden_new, 71, Param::BATCH_SIZE);
+          if (l >= idx_conv_to_fc_layer) {
+            ublas::matrix<myType> temp;
+            int row = dhidden_new.size2() / relu.size2();
+            Init(temp, row * Param::BATCH_SIZE, relu.size2());
+            for (int b = 0; b < Param::BATCH_SIZE; b++) {
+              for (int c = 0; c < relu.size2(); c++) {
+                for (int r = 0; r < row; r++) {
+                  temp(b * row + r, c) = dhidden_new(b, c * row + r);
+                }
+              }
+            }
+            dhidden_new = temp;
+          } else {
+            ublas::matrix<myType> temp;
+            back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
 
-          if (Param::DEBUG) tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
-                                    << "), conv1d: (" << dhidden_new.size1() << ", " << dhidden_new.size2() << ")"
-                                    << endl;
-          dhidden_new = temp;
+            if (Param::DEBUG)
+              tcout() << "back_reshape_conv: x : (" << temp.size1() << ", " << temp.size2()
+                      << "), conv1d: (" << dhidden_new.size1() << ", " << dhidden_new.size2() << ")"
+                      << endl;
+            dhidden_new = temp;
+          }
+          if (pid == 2 && Param::DEBUG) {
+            tcout() << "dhidden_new: " << dhidden_new.size1() << "/" << dhidden_new.size2() << endl;
+            tcout() << "l=" << l << "----CHANGED---------" << endl;
+            tcout() << "relu: " << relu.size1() << "/" << relu.size2() << endl;
+          }
         }
+
+
         if (pid == 2 && Param::DEBUG) {
           tcout() << "dhidden_new: " << dhidden_new.size1() << "/" << dhidden_new.size2() << endl;
           tcout() << "l=" << l << "----CHANGED---------" << endl;
@@ -1269,58 +1326,63 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         }
 
         // for concatenation
-        if (dhidden_new.size2() != relu.size2()) {
+        if (Param::NETWORK_TYPE == 2) {
 
-          if (pid == 2 && Param::DEBUG) {
-            tcout() << "CONCATTTTTT" << endl;
-            tcout() << "relu: " << relu.size1() << "/" << relu.size2() << endl;
-          }
+          if (dhidden_new.size2() != relu.size2()) {
 
-          if (l % 3 == 0) {
-
-            ublas::matrix<myType> temp_from_vec1;
-            ublas::matrix<myType> temp_from_vec2;
-            temp_from_vec2 = dhidden_concat.back();
-            dhidden_concat.pop_back();
-            temp_from_vec1 = dhidden_concat.back();
-            dhidden_concat.pop_back();
-            for (size_t i = 0; i < relu.size1(); ++i) {
-              for (size_t j = 0; j < relu.size2(); ++j) {
-                temp_from_vec1(i, j) += dhidden_new(i, j);
-                temp_from_vec2(i, j) += dhidden_new(i, relu.size2() + j);
-              }
+            if (pid == 2 && Param::DEBUG) {
+              tcout() << "CONCATTTTTT" << endl;
+              tcout() << "relu: " << relu.size1() << "/" << relu.size2() << endl;
             }
-            dhidden_new = temp_from_vec1;
-            dhidden_concat.push_back(temp_from_vec2);
-          } else if (l % 3 == 1) {
 
-            ublas::matrix<myType> temp;
-            ublas::matrix<myType> temp1;
-            ublas::matrix<myType> temp2;
-            Init(temp, relu.size1(), relu.size2());
-            Init(temp1, relu.size1(), relu.size2());
-            Init(temp2, relu.size1(), relu.size2());
-            for (size_t i = 0; i < relu.size1(); ++i) {
-              for (size_t j = 0; j < relu.size2(); ++j) {
-                temp(i, j) = dhidden_new(i, j);
-                temp1(i, j) = dhidden_new(i, relu.size2() + j);
-                temp2(i, j) = dhidden_new(i, relu.size2()*2 + j);
+            if (l % 3 == 0) {
+
+              ublas::matrix<myType> temp_from_vec1;
+              ublas::matrix<myType> temp_from_vec2;
+              temp_from_vec2 = dhidden_concat.back();
+              dhidden_concat.pop_back();
+              temp_from_vec1 = dhidden_concat.back();
+              dhidden_concat.pop_back();
+              for (size_t i = 0; i < relu.size1(); ++i) {
+                for (size_t j = 0; j < relu.size2(); ++j) {
+                  temp_from_vec1(i, j) += dhidden_new(i, j);
+                  temp_from_vec2(i, j) += dhidden_new(i, relu.size2() + j);
+                }
               }
-            }
-            dhidden_new = temp;
-            dhidden_concat.push_back(temp1);
-            dhidden_concat.push_back(temp2);
-          }
+              dhidden_new = temp_from_vec1;
+              dhidden_concat.push_back(temp_from_vec2);
+            } else if (l % 3 == 1) {
 
+              ublas::matrix<myType> temp;
+              ublas::matrix<myType> temp1;
+              ublas::matrix<myType> temp2;
+              Init(temp, relu.size1(), relu.size2());
+              Init(temp1, relu.size1(), relu.size2());
+              Init(temp2, relu.size1(), relu.size2());
+              for (size_t i = 0; i < relu.size1(); ++i) {
+                for (size_t j = 0; j < relu.size2(); ++j) {
+                  temp(i, j) = dhidden_new(i, j);
+                  temp1(i, j) = dhidden_new(i, relu.size2() + j);
+                  temp2(i, j) = dhidden_new(i, relu.size2() * 2 + j);
+                }
+              }
+              dhidden_new = temp;
+              dhidden_concat.push_back(temp1);
+              dhidden_concat.push_back(temp2);
+            }
+
+          }
         }
 
       } else {
+        if (Param::NETWORK_TYPE == 2) {
 
-        // start of concat
-        if (l % 3 == 2 && l < 10) {
-          if (Param::DEBUG && pid == 2) tcout() << "Start of concat l = " << l << endl;
-          dhidden_new += dhidden_concat.back();
-          dhidden_concat.pop_back();
+          // start of concat
+          if (l % 3 == 2 && l < 10) {
+            if (Param::DEBUG && pid == 2) tcout() << "Start of concat l = " << l << endl;
+            dhidden_new += dhidden_concat.back();
+            dhidden_concat.pop_back();
+          }
         }
       }
 
