@@ -1782,6 +1782,7 @@ void MPCEnv::IsPositive(ublas::matrix<myType>& b, ublas::matrix<myType>& a) {
 void MPCEnv::IsPositive(ublas::vector<myType>& b, ublas::vector<myType>& a) {
   if (Param::DEBUG) tcout() << "IsPositive: " << a.size() << endl;
 
+
   ComputeMsb(a, b);
 
   for (size_t i = 0; i < b.size(); i++) {
