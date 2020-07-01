@@ -3,9 +3,33 @@
 ## Setup
 
 ### Dependencies
-- Boost : `brew install boost`
-- Openssl : `brew install openssl` 
-- gmp : `brew install gmp`
+- Boost : 
+```
+# mac
+brew install boost
+
+# ubuntu
+sudo apt-get install libboost-all-dev
+```
+- Openssl : 
+```
+# mac
+brew install openssl
+
+# ubuntu
+sudo apt-get install libssl-dev
+
+``` 
+- gmp : 
+
+```
+# mac
+brew install gmp
+
+# ubuntu
+sudo apt-get install libgmp3-dev
+
+``` 
 
 ```
 # if error occurs: Mac OSX fatal error: ‘openssl/sha.h’ file not found

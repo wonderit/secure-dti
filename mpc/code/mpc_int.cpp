@@ -2206,7 +2206,7 @@ void MPCEnv::Trunc(ublas::matrix<myType>& a) {
         if (pid == 1)
           a(i, j) = static_cast<myType>(static_cast<myTypeSigned>(a(i, j)) >> FIXED_POINT_FRACTIONAL_BITS);
         else
-          a(i, j) = - static_cast<myType>(static_cast<myTypeSigned>(- a(i, j)) >> FIXED_POINT_FRACTIONAL_BITS);
+          a(i, j) = -1 * static_cast<myType>(static_cast<myTypeSigned>(-a(i, j)) >> FIXED_POINT_FRACTIONAL_BITS);
       }
 
     }
