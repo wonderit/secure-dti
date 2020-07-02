@@ -1,1 +1,1 @@
-nohup python ./bin/ecg_evaluate_loss_wait.py -e 4 -c > evaluate_ecg.log &
+nohup ./ecg_evaluate.sh >evaluate_ecg.log &
