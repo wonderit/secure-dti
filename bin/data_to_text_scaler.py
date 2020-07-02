@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
-import torch
+import argparse
 import glob
+import os
+
 import h5py
 import numpy as np
-import argparse
-import os
-from sklearn.model_selection import train_test_split
-from scipy import stats
+import torch
 from biosppy.signals import tools as st
-import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--seed", help="Set random seed", type=int, default=1234)
@@ -99,7 +98,8 @@ for hdf_file in hdf5_files:
     if (np.max(np.abs(x_list)) > 1000) and args.is_remove_outlier_x:
         continue
 
-    if (f['continuous']['VentricularRate'][0] > 150 or f['continuous']['VentricularRate'][0] < 20) and args.is_remove_outlier_y:
+    if (f['continuous']['VentricularRate'][0] > 200 or f['continuous']['VentricularRate'][
+        0] < 1) and args.is_remove_outlier_y:
         continue
 
     y_all.append(f['continuous']['VentricularRate'][0])
