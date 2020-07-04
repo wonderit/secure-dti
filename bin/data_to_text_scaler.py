@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
-import torch
+import argparse
 import glob
+import os
+
 import h5py
 import numpy as np
-import argparse
-import os
-from sklearn.model_selection import train_test_split
-from scipy import stats
+import torch
 from biosppy.signals import tools as st
-import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--seed", help="Set random seed", type=int, default=1234)
@@ -27,15 +26,15 @@ ecg_key_string_list = [
     "strip_I",
     "strip_II",
     "strip_III",
-    # "strip_aVR",
-    # "strip_aVL",
-    # "strip_aVF",
-    # "strip_V1",
-    # "strip_V2",
-    # "strip_V3",
-    # "strip_V4",
-    # "strip_V5",
-    # "strip_V6",
+    "strip_aVR",
+    "strip_aVL",
+    "strip_aVF",
+    "strip_V1",
+    "strip_V2",
+    "strip_V3",
+    "strip_V4",
+    "strip_V5",
+    "strip_V6",
 ]
 
 hdf5_files = []
@@ -94,7 +93,7 @@ for hdf_file in hdf5_files:
         x = f['ecg_rest'][key][:]
         x_list.append(x)
     x_list = np.stack(x_list)
-    x_list = x_list.reshape([3, 12 // 12, 500, 5000 // 500]).mean(3).mean(1)
+    # x_list = x_list.reshape([3, 12 // 12, 500, 5000 // 500]).mean(3).mean(1)
 
     if (np.max(np.abs(x_list)) > 1000) and args.is_remove_outlier_x:
         continue
@@ -192,7 +191,7 @@ y = scale(y, np.round(y.mean(), 1), np.round(y.std(), 1))
 # indices = sample(range(sum(total_lengths)), args.n_test_items)
 train_x, test_x, train_y, test_y = train_test_split(x, y, test_size = args.n_test_items / sum(total_lengths))
 print(train_x.shape, train_y.shape, test_x.shape, test_y.shape)
-data_dir = '../data/ecg/text_demo_{}'.format(sum(total_lengths))
+data_dir = '../data/ecg/text_original_{}'.format(sum(total_lengths))
 
 if not os.path.exists(data_dir):
     os.makedirs(data_dir)
