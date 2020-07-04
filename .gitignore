@@ -17,3 +17,5 @@ demo_data/text_demo/
 mpc/code/cmake-*/**
 ntl-10.3.0/
 result/**
+
+.keep

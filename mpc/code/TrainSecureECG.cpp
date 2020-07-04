@@ -142,8 +142,10 @@ void MaxPool(ublas::matrix<myType>& maxpool, ublas::matrix<myType>& input_max_in
   }
 
   input_right = input_right - input_left;
-  mpc.IsPositive(maxpool_index, input_right);
 
+  mpc.ProfilerPushState("is_positive/maxpool");
+  mpc.IsPositive(maxpool_index, input_right);
+  mpc.ProfilerPopState(true);
   ublas::matrix<myType> xor_maxpool_index;
   Init(xor_maxpool_index, maxpool_index.size1(), maxpool_index.size2());
 
@@ -720,7 +722,11 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       /* Apply ReLU non-linearity. */
       ublas::matrix<myType> relu;
       relu.resize(activation.size1(), activation.size2());
+
+      // Measure running time for private comparison
+      mpc.ProfilerPushState("is_positive/relu");
       mpc.IsPositive(relu, activation);
+      mpc.ProfilerPopState(true);
       ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
       assert(activation.size1() == relu.size1());
       assert(activation.size2() == relu.size2());
@@ -1440,7 +1446,7 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     }
   }
 
-  if (Param::DEBUG) tcout() << "FIN? "<< endl;
+  if (Param::DEBUG) tcout() << "FIN? " << endl;
 
   assert(act.size() == 0);
   assert(relus.size() == 0);
@@ -1448,6 +1454,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
   if (Param::DEBUG && pid == 2) {
     tic();
   }
+
+
+  mpc.ProfilerPushState("optimizer/" + Param::OPTIMIZER);
 
   // ADAM START
   if (Param::OPTIMIZER == "adam") {
@@ -1583,6 +1592,7 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     toc();
   }
 
+  mpc.ProfilerPopState(true);
 
   // ADAM END
   ublas::matrix<myType> mse;
