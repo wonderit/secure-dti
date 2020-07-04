@@ -1011,7 +1011,10 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       /* Apply ReLU non-linearity. */
       ublas::matrix<myType> relu;
       relu.resize(activation.size1(), activation.size2());
+
+      mpc.ProfilerPushState("is_positive/relu");
       mpc.IsPositive(relu, activation);
+      mpc.ProfilerPopState(true);
       ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
       assert(activation.size1() == relu.size1());
       assert(activation.size2() == relu.size2());
