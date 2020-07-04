@@ -5,7 +5,7 @@ ifeq ($(OS),Darwin)
   INCPATHS = -I~/projects/local/include
 else
   # check for Linux and run other commands
-  CPP = g++
+  CPP = clang++
   INCPATHS = -I/usr/bin/include -Iinclude
 endif
 
