@@ -429,70 +429,55 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
       mpc.PrintFP(activation[0]);
     }
 
-    if (l == 0) {
+    /* Apply ReLU non-linearity. */
+    Mat<ZZ_p> relu;
 
+    // Measure running time for private comparison
+    mpc.ProfilerPushState("is_positive/relu");
+    mpc.IsPositive(relu, activation);
+    mpc.ProfilerPopState(true);
+    Mat<ZZ_p> after_relu;
+    assert(activation.NumRows() == relu.NumRows());
+    assert(activation.NumCols() == relu.NumCols());
+    mpc.MultElem(after_relu, activation, relu);
+    /* Note: Do not call Trunc() here because IsPositive()
+       returns a secret shared integer, not a fixed point.*/
+    // TODO: Implement dropout.
+    /* Save activation for backpropagation. */
+    if (Param::DEBUG)
+      tcout() << "ReLU -> col, rows (" << relu.NumRows() << ", "
+              << relu.NumCols() << ")" << pid << endl;
+    if (Param::DEBUG)
+      tcout() << "after ReLU -> col, rows (" << after_relu.NumRows() << ", "
+              << after_relu.NumCols() << ")" << pid << endl;
+    if (Param::DEBUG)
+      tcout() << "ReLU non-linearity end pid:" << pid << endl;
+
+    if (Param::DEBUG && pid > 0) {
+      tcout() << "relu l = " << l << endl;
+      mpc.PrintFP(relu[0]);
+      tcout() << "activation after relu l = " << l << endl;
+      mpc.PrintFP(after_relu[0]);
+    }
+    if (l <= 2) {
       // Avg Pool
       Mat<ZZ_p> avgpool;
-      AveragePool(avgpool, activation, 2, 2);
+      AveragePool(avgpool, after_relu, 2, 2);
       avgpool *= inv2;
       mpc.Trunc(avgpool);
+      act.push_back(avgpool);
       if (Param::DEBUG)
         tcout() << "AVG POOL -> col, rows (" << avgpool.NumRows() << ", "
                 << avgpool.NumCols() << ")" << pid << endl;
-      act.push_back(avgpool);
 
       if (Param::DEBUG && pid > 0) {
         tcout() << "activation after avg pool l = " << l << endl;
         mpc.PrintFP(avgpool[0]);
       }
     } else {
-
-      /* Apply ReLU non-linearity. */
-      Mat<ZZ_p> relu;
-      mpc.IsPositive(relu, activation);
-      Mat<ZZ_p> after_relu;
-      assert(activation.NumRows() == relu.NumRows());
-      assert(activation.NumCols() == relu.NumCols());
-      mpc.MultElem(after_relu, activation, relu);
-      /* Note: Do not call Trunc() here because IsPositive()
-         returns a secret shared integer, not a fixed point.*/
-      // TODO: Implement dropout.
-      /* Save activation for backpropagation. */
-      if (Param::DEBUG)
-        tcout() << "ReLU -> col, rows (" << relu.NumRows() << ", "
-                << relu.NumCols() << ")" << pid << endl;
-      if (Param::DEBUG)
-        tcout() << "after ReLU -> col, rows (" << after_relu.NumRows() << ", "
-                << after_relu.NumCols() << ")" << pid << endl;
-      if (Param::DEBUG)
-        tcout() << "ReLU non-linearity end pid:" << pid << endl;
-
-      if (Param::DEBUG && pid > 0) {
-        tcout() << "relu l = " << l << endl;
-        mpc.PrintFP(relu[0]);
-        tcout() << "activation after relu l = " << l << endl;
-        mpc.PrintFP(after_relu[0]);
-      }
-      if (l <= 2) {
-        // Avg Pool
-        Mat<ZZ_p> avgpool;
-        AveragePool(avgpool, after_relu, 2, 2);
-        avgpool *= inv2;
-        mpc.Trunc(avgpool);
-        act.push_back(avgpool);
-        if (Param::DEBUG)
-          tcout() << "AVG POOL -> col, rows (" << avgpool.NumRows() << ", "
-                  << avgpool.NumCols() << ")" << pid << endl;
-
-        if (Param::DEBUG && pid > 0) {
-          tcout() << "activation after avg pool l = " << l << endl;
-          mpc.PrintFP(avgpool[0]);
-        }
-      } else {
-        act.push_back(after_relu);
-      }
-      relus.push_back(relu);
+      act.push_back(after_relu);
     }
+    relus.push_back(relu);
   }
 
   /**************************
@@ -702,90 +687,90 @@ double gradient_descent(Mat<ZZ_p> &X, Mat<ZZ_p> &y, vector<Mat<ZZ_p>> &W,
       /* Apply derivative of ReLU. */
       Init(dhidden, dhidden_new.NumRows(), dhidden_new.NumCols());
 
-      if (l == 1) {
-        Mat<ZZ_p> temp;
-        back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
+//      if (l == 1) {
+//        Mat<ZZ_p> temp;
+//        back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
+//
+//        if (Param::DEBUG)
+//          tcout() << "back_reshape_conv: x : (" << temp.NumRows() << ", "
+//                  << temp.NumCols() << "), conv1d: (" << dhidden_new.NumRows()
+//                  << ", " << dhidden_new.NumCols() << ")" << endl;
+//
+//        // Compute backpropagated avgpool
+//        Mat<ZZ_p> backAvgPool;
+//        BackAveragePool(backAvgPool, temp, 2, 2);
+//        backAvgPool *= inv2;
+//        mpc.Trunc(backAvgPool);
+//        if (Param::DEBUG)
+//          tcout() << "backAvgPool: " << backAvgPool.NumRows() << "/"
+//                  << backAvgPool.NumCols() << endl;
+//
+//        dhidden = backAvgPool;
+//      } else {
+      Mat<ZZ_p> relu = relus.back();
 
-        if (Param::DEBUG)
-          tcout() << "back_reshape_conv: x : (" << temp.NumRows() << ", "
-                  << temp.NumCols() << "), conv1d: (" << dhidden_new.NumRows()
-                  << ", " << dhidden_new.NumCols() << ")" << endl;
+      if (pid == 2 && Param::DEBUG) {
+        tcout() << "dhidden_new: " << dhidden_new.NumRows() << "/"
+                << dhidden_new.NumCols() << endl;
+        tcout() << "relu : " << relu.NumRows() << "/" << relu.NumCols()
+                << endl;
+        tcout() << "l=" << l << "-------------" << endl;
+      }
 
-        // Compute backpropagated avgpool
+      if (dhidden_new.NumCols() != relu.NumCols() ||
+          dhidden_new.NumRows() != relu.NumRows()) {
+
+        if (l > 2) {
+          Mat<ZZ_p> temp;
+          int row = dhidden_new.NumCols() / relu.NumCols();
+          temp.SetDims(row * Param::BATCH_SIZE, relu.NumCols());
+          for (int b = 0; b < Param::BATCH_SIZE; b++) {
+            for (int c = 0; c < relu.NumCols(); c++) {
+              for (int r = 0; r < row; r++) {
+                temp[b * row + r][c] = dhidden_new[b][c * row + r];
+              }
+            }
+          }
+          dhidden_new = temp;
+        } else {
+          Mat<ZZ_p> temp;
+          back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
+
+          if (Param::DEBUG)
+            tcout() << "back_reshape_conv: x : (" << temp.NumRows() << ", "
+                    << temp.NumCols() << "), conv1d: ("
+                    << dhidden_new.NumRows() << ", " << dhidden_new.NumCols()
+                    << ")" << endl;
+          dhidden_new = temp;
+        }
+        if (pid == 2 && Param::DEBUG) {
+          tcout() << "dhidden_new: " << dhidden_new.NumRows() << "/"
+                  << dhidden_new.NumCols() << endl;
+          tcout() << "l=" << l << "----CHANGED---------" << endl;
+        }
+      }
+
+      // Compute backpropagated avgpool
+      /* Apply derivative of AvgPool1D (stride 2, kernel_size 2). */
+      if (l <= 3) {
         Mat<ZZ_p> backAvgPool;
-        BackAveragePool(backAvgPool, temp, 2, 2);
+        if (l == 2)
+          BackAveragePool(backAvgPool, dhidden_new, 2, 2, true);
+        else
+          BackAveragePool(backAvgPool, dhidden_new, 2, 2);
         backAvgPool *= inv2;
         mpc.Trunc(backAvgPool);
         if (Param::DEBUG)
           tcout() << "backAvgPool: " << backAvgPool.NumRows() << "/"
                   << backAvgPool.NumCols() << endl;
-
-        dhidden = backAvgPool;
+        mpc.MultElem(dhidden, backAvgPool, relu);
       } else {
-        Mat<ZZ_p> relu = relus.back();
-
-        if (pid == 2 && Param::DEBUG) {
-          tcout() << "dhidden_new: " << dhidden_new.NumRows() << "/"
-                  << dhidden_new.NumCols() << endl;
-          tcout() << "relu : " << relu.NumRows() << "/" << relu.NumCols()
-                  << endl;
-          tcout() << "l=" << l << "-------------" << endl;
-        }
-
-        if (dhidden_new.NumCols() != relu.NumCols() ||
-            dhidden_new.NumRows() != relu.NumRows()) {
-
-          if (l > 2) {
-            Mat<ZZ_p> temp;
-            int row = dhidden_new.NumCols() / relu.NumCols();
-            temp.SetDims(row * Param::BATCH_SIZE, relu.NumCols());
-            for (int b = 0; b < Param::BATCH_SIZE; b++) {
-              for (int c = 0; c < relu.NumCols(); c++) {
-                for (int r = 0; r < row; r++) {
-                  temp[b * row + r][c] = dhidden_new[b][c * row + r];
-                }
-              }
-            }
-            dhidden_new = temp;
-          } else {
-            Mat<ZZ_p> temp;
-            back_reshape_conv(temp, dhidden_new, 7, Param::BATCH_SIZE);
-
-            if (Param::DEBUG)
-              tcout() << "back_reshape_conv: x : (" << temp.NumRows() << ", "
-                      << temp.NumCols() << "), conv1d: ("
-                      << dhidden_new.NumRows() << ", " << dhidden_new.NumCols()
-                      << ")" << endl;
-            dhidden_new = temp;
-          }
-          if (pid == 2 && Param::DEBUG) {
-            tcout() << "dhidden_new: " << dhidden_new.NumRows() << "/"
-                    << dhidden_new.NumCols() << endl;
-            tcout() << "l=" << l << "----CHANGED---------" << endl;
-          }
-        }
-
-        // Compute backpropagated avgpool
-        /* Apply derivative of AvgPool1D (stride 2, kernel_size 2). */
-        if (l <= 3) {
-          Mat<ZZ_p> backAvgPool;
-          if (l == 2)
-            BackAveragePool(backAvgPool, dhidden_new, 2, 2, true);
-          else
-            BackAveragePool(backAvgPool, dhidden_new, 2, 2);
-          backAvgPool *= inv2;
-          mpc.Trunc(backAvgPool);
-          if (Param::DEBUG)
-            tcout() << "backAvgPool: " << backAvgPool.NumRows() << "/"
-                    << backAvgPool.NumCols() << endl;
-          mpc.MultElem(dhidden, backAvgPool, relu);
-        } else {
-          mpc.MultElem(dhidden, dhidden_new, relu);
-        }
-
-        /* Note: No need to not call Trunc().*/
-        relus.pop_back();
+        mpc.MultElem(dhidden, dhidden_new, relu);
       }
+
+      /* Note: No need to not call Trunc().*/
+      relus.pop_back();
+//      }
     }
   }
   assert(act.size() == 0);

@@ -19,7 +19,7 @@ set(SOURCE_FILES
 #        ShareData.cpp
 #        TrainSecureMNIST.cpp
 #        TrainSecureDTI.cpp
-#        TrainSecureECG.cpp
+        TrainSecureECG.cpp
 #        GenerateKey.cpp
 #        AnalyzeFeature.cpp
 #        boost_test.cpp

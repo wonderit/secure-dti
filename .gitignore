@@ -18,3 +18,5 @@ mpc/code/cmake-*/**
 ntl-10.3.0/
 result/**
 mpc/cache_*/*
+
+.keep
