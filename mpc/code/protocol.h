@@ -116,7 +116,7 @@ bool unit_test(MPCEnv& mpc, int pid) {
   }
   tcout() << endl;
 
-  tcout() << "[FP multiplcation] ";
+  if (pid == 2) tcout() << "[FP multiplcation] " << endl;
 //  TODO MUCH BIGGER
 
 //  Init(xv, 3); Init(yv, 3);
@@ -137,7 +137,7 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  mpc.Trunc(zv);
 //  tcout() << "after trunc" << endl;
 
-  size_t size = 100;
+  size_t size = Param::DIV_MAX_N;
   Init(xv, size); Init(yv, size);
   if (pid == 2) {
 
@@ -151,14 +151,14 @@ bool unit_test(MPCEnv& mpc, int pid) {
 
   if (pid == 2)
     tic();
-//  mpc.MultElem(zv, xv, yv);
+  mpc.MultElem(zv, xv, yv);
 //  tcout() << "before trunc" << endl;
 //  mpc.PrintFP(zv);
-//  mpc.Trunc(zv);
+  mpc.Trunc(zv);
 //  tcout() << "after trunc" << endl;
 //
-//  if (pid == 2)
-//    toc();
+  if (pid == 2)
+    toc();
 //
 //  return true;
 
@@ -177,12 +177,15 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  }
 //  tcout() << endl;
 
-  tcout() << "[PrivateCompare]" << endl;
+  if (pid == 2) tcout() << "[PrivateCompare] length : " << Param::DIV_MAX_N << endl;
   Init(pc, 3);
 //  mpc.PrintFP(xv);
 //  mpc.PrintFP(yv);
+
+  if (pid == 2)
+    tic();
   mpc.LessThan(pc, xv, yv);
-  tcout() << "pc: " << pc << endl;
+//  tcout() << "pc: " << pc << endl;
 //  mpc.Print(pc);
 
   if (pid == 2)
