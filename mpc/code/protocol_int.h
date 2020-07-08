@@ -331,7 +331,7 @@ bool unit_test_combined(MPCEnv& mpc, int pid) {
 
 bool unit_test(MPCEnv& mpc, int pid) {
   myType x;
-  size_t size = 3;
+  size_t size = Param::DIV_MAX_N;
   ublas::vector<myType> xv(size, 0), yv(size, 0);
   boost::numeric::ublas::vector<myType> xv1(size, 0), yv1(size, 0), zv(size, 0), wv, pc(size, 0);
   boost::numeric::ublas::vector<double> xdv(size, 0), ydv, zdv(size, 0), wdv;
@@ -481,9 +481,9 @@ bool unit_test(MPCEnv& mpc, int pid) {
 
 //  use int to test multiply
   xv += yv; // 2
-  if (pid > 0){
-    mpc.PrintFP(xv);
-  }
+//  if (pid > 0){
+//    mpc.PrintFP(xv);
+//  }
 
 //  Time MULT START
   if (pid == 2) {
@@ -496,9 +496,9 @@ bool unit_test(MPCEnv& mpc, int pid) {
     toc();
   }
 //  Time MULT END
-  if (pid > 0) {
-    mpc.PrintFP(zv);
-  }
+//  if (pid > 0) {
+//    mpc.PrintFP(zv);
+//  }
 
 //
 //  if (pid > 0) {
@@ -507,11 +507,18 @@ bool unit_test(MPCEnv& mpc, int pid) {
 //  }
   ublas::vector<myType> sc_xv(xv.size(), 0);
   ublas::vector<myType> relu_deriv(xv.size(), 0);
-  mpc.IsPositive(relu_deriv, zv );
+
+
+  if (pid == 2) {
+    tic();
+  }
+  mpc.IsPositive(relu_deriv, zv);
 
   if (pid == 2) {
     toc();
   }
+
+  return true;
 
   if (pid > 0) {
     mpc.Print(relu_deriv);
