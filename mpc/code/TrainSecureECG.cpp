@@ -670,7 +670,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
                                   << "), X_reshape : (" << X_reshape.size1() << ", " << X_reshape.size2() << ")" << endl;
 
         // MultMat by reshaping after beaver partition
+        mpc.ProfilerPushState("multmat/conv_forward");
         mpc.MultMatForConv(activation, X_reshape, W[l], 71);
+        mpc.ProfilerPopState(true);
 
         if (Param::DEBUG) tcout() << "First CNN Layer (" << activation.size1() << "," << activation.size2() << ")" << endl;
 
@@ -682,7 +684,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         if (l == 1 || l == 2) {
 
           // MultMat by reshaping after beaver partition
-          mpc.MultMatForConv(activation, act[l-1], W[l], 71);
+          mpc.ProfilerPushState("multmat/conv_forward");
+          mpc.MultMatForConv(activation, act[l - 1], W[l], 71);
+          mpc.ProfilerPopState(true);
 
           // first layer of FC layers
         } else if (l == 3) {
@@ -695,16 +699,21 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
           for (int b = 0; b < Param::BATCH_SIZE; b++) {
             for (int c = 0; c < channels; c++) {
               for (int r = 0; r < row; r++) {
-                ann(b, c * row + r) = act[l-1](b * row + r, c);
+                ann(b, c * row + r) = act[l - 1](b * row + r, c);
               }
             }
           }
-          act[l-1] = ann;
-          mpc.MultMat(activation, act[l-1], W[l]);
+          act[l - 1] = ann;
+
+          mpc.ProfilerPushState("multmat");
+          mpc.MultMat(activation, act[l - 1], W[l]);
+          mpc.ProfilerPopState(true);
 
           // the rest of FC layers
         } else {
-          mpc.MultMat(activation, act[l-1], W[l]);
+          mpc.ProfilerPushState("multmat");
+          mpc.MultMat(activation, act[l - 1], W[l]);
+          mpc.ProfilerPopState(true);
         }
       }
       mpc.Trunc(activation);
@@ -730,7 +739,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
       assert(activation.size1() == relu.size1());
       assert(activation.size2() == relu.size2());
+      mpc.ProfilerPushState("multelem");
       mpc.MultElem(after_relu, activation, relu);
+      mpc.ProfilerPopState(true);
 
       /* Note: Do not call Trunc() here because IsPositive()
          returns a secret shared integer, not a fixed point.*/
@@ -788,7 +799,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
                                   << "), X_reshape : (" << X_reshape.size1() << ", " << X_reshape.size2() << ")" << endl;
 
         // MultMat by reshaping after beaver partition
+        mpc.ProfilerPushState("multmat/conv_forward");
         mpc.MultMatForConv(activation, X_reshape, W[l], 7);
+        mpc.ProfilerPopState(true);
 
         if (Param::DEBUG) tcout() << "First CNN Layer (" << activation.size1() << "," << activation.size2() << ")" << endl;
 
@@ -816,12 +829,17 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
             vconcat.push_back(act_concat);
 
             // MultMat by reshaping after beaver partition
+            mpc.ProfilerPushState("multmat/conv_forward");
             mpc.MultMatForConv(activation, act_concat, W[l], 7);
+            mpc.ProfilerPopState(true);
 
           } else {
 
             // MultMat by reshaping after beaver partition
-            mpc.MultMatForConv(activation, act[l-1], W[l], 7);
+
+            mpc.ProfilerPushState("multmat/conv_forward");
+            mpc.MultMatForConv(activation, act[l - 1], W[l], 7);
+            mpc.ProfilerPopState(true);
           }
 
 
@@ -845,12 +863,16 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
               }
             }
           }
-          act[l-1] = ann;
-          mpc.MultMat(activation, act[l-1], W[l]);
+          act[l - 1] = ann;
+          mpc.ProfilerPushState("multmat");
+          mpc.MultMat(activation, act[l - 1], W[l]);
+          mpc.ProfilerPopState(true);
 
           // the rest of FC layers
         } else {
-          mpc.MultMat(activation, act[l-1], W[l]);
+          mpc.ProfilerPushState("multmat");
+          mpc.MultMat(activation, act[l - 1], W[l]);
+          mpc.ProfilerPopState(true);
         }
       }
       mpc.Trunc(activation);
@@ -872,7 +894,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
       assert(activation.size1() == relu.size1());
       assert(activation.size2() == relu.size2());
+      mpc.ProfilerPushState("multelem");
       mpc.MultElem(after_relu, activation, relu);
+      mpc.ProfilerPopState(true);
 
       /* Note: Do not call Trunc() here because IsPositive()
          returns a secret shared integer, not a fixed point.*/
@@ -930,7 +954,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
                                   << "), X_reshape : (" << X_reshape.size1() << ", " << X_reshape.size2() << ")" << endl;
 
         // MultMat by reshaping after beaver partition
+        mpc.ProfilerPushState("multmat/conv_forward");
         mpc.MultMatForConv(activation, X_reshape, W[l], 71);
+        mpc.ProfilerPopState(true);
 
         if (Param::DEBUG) tcout() << "First CNN Layer (" << activation.size1() << "," << activation.size2() << ")" << endl;
 
@@ -977,23 +1003,33 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
                 }
               }
               act[l - 1] = ann;
+              mpc.ProfilerPushState("multmat");
               mpc.MultMat(activation, act[l - 1], W[l]);
+              mpc.ProfilerPopState(true);
             } else {
               // MultMat by reshaping after beaver partition
+
+              mpc.ProfilerPushState("multmat/conv_forward");
               mpc.MultMatForConv(activation, act_concat, W[l], 71);
+              mpc.ProfilerPopState(true);
             }
 
           } else {
 
             // MultMat by reshaping after beaver partition
-            mpc.MultMatForConv(activation, act[l-1], W[l], 71);
+
+            mpc.ProfilerPushState("multmat/conv_forward");
+            mpc.MultMatForConv(activation, act[l - 1], W[l], 71);
+            mpc.ProfilerPopState(true);
           }
 
           // first layer of FC layers
 
           // the rest of FC layers
         } else {
-          mpc.MultMat(activation, act[l-1], W[l]);
+          mpc.ProfilerPushState("multmat");
+          mpc.MultMat(activation, act[l - 1], W[l]);
+          mpc.ProfilerPopState(true);
         }
       }
       mpc.Trunc(activation);
@@ -1018,7 +1054,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       ublas::matrix<myType> after_relu(activation.size1(), activation.size2(), 0);
       assert(activation.size1() == relu.size1());
       assert(activation.size2() == relu.size2());
+      mpc.ProfilerPushState("multelem");
       mpc.MultElem(after_relu, activation, relu);
+      mpc.ProfilerPopState(true);
 
       /* Note: Do not call Trunc() here because IsPositive()
          returns a secret shared integer, not a fixed point.*/
@@ -1069,13 +1107,14 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     if (Param::DEBUG) tcout() << "W.back() : (" << W.back().size1() << ", " << W.back().size2() << ")" << endl;
     if (Param::DEBUG) tcout() << "act.back() : (" << act.back().size1() << ", " << act.back().size2() << ")" << endl;
   }
-
+  mpc.ProfilerPushState("multmat/score");
   if (Param::N_HIDDEN == 0) {
     mpc.MultMat(scores, X, W.back());
   } else {
     mpc.MultMat(scores, act.back(), W.back());
   }
   mpc.Trunc(scores);
+  mpc.ProfilerPopState(true);
 
   /* Add bias term; */
   for (int i = 0; i < scores.size1(); i++) {
@@ -1162,7 +1201,10 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
     // resize
     if (X_T.size2() != dhidden.size1()) {
       if (Param::DEBUG) tcout() << "mult mat for conv back start" << endl;
+
+      mpc.ProfilerPushState("multmat/conv_back");
       mpc.MultMatForConvBack(dW[l], X_T, dhidden, 71);
+      mpc.ProfilerPopState(true);
       if (Param::DEBUG) tcout() << "mult mat for conv back end" << endl;
     } else {
 
@@ -1172,9 +1214,14 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
           X_T = ublas::trans(vconcat.back());
           vconcat.pop_back();
         }
+
+        mpc.ProfilerPushState("multmat/conv_back");
         mpc.MultMatForConvBack(dW[l], X_T, dhidden, 71);
+        mpc.ProfilerPopState(true);
       } else {
+        mpc.ProfilerPushState("multmat");
         mpc.MultMat(dW[l], X_T, dhidden);
+        mpc.ProfilerPopState(true);
       }
 
     }
@@ -1211,8 +1258,9 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
         tcout() << "W_T: " << W_T.size1() << "/" << W_T.size2() << endl;
         tcout() << "l=" << l << "-------------" << endl;
       }
-
+      mpc.ProfilerPushState("multmat");
       mpc.MultMat(dhidden_new, dhidden, W_T);
+      mpc.ProfilerPopState(true);
       mpc.Trunc(dhidden_new);
 
       if (pid == 2)
@@ -1340,8 +1388,10 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
           if (Param::POOL == "max") {
             ublas::matrix<myType> max_pool_back;
             ublas::matrix<myType> max_pool = vpool.back();
+            mpc.ProfilerPushState("multelem");
             mpc.MultElem(max_pool_back, back_pool, max_pool);
             mpc.MultElem(dhidden, max_pool_back, relu);
+            mpc.ProfilerPopState(true);
 
             if (Param::DEBUG && pid > 0) {
 
@@ -1359,12 +1409,15 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
           } else {
             back_pool *= inv2;
             mpc.Trunc(back_pool);
-
+            mpc.ProfilerPushState("multelem");
             mpc.MultElem(dhidden, back_pool, relu);
+            mpc.ProfilerPopState(true);
           }
           if (Param::DEBUG) tcout() << "back pool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
         } else {
+          mpc.ProfilerPushState("multelem");
           mpc.MultElem(dhidden, dhidden_new, relu);
+          mpc.ProfilerPopState(true);
         }
       } else if (Param::NETWORK_TYPE == 1) {
 
@@ -1378,8 +1431,10 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
           if (Param::POOL == "max") {
             ublas::matrix<myType> max_pool_back;
             ublas::matrix<myType> max_pool = vpool.back();
+            mpc.ProfilerPushState("multelem");
             mpc.MultElem(max_pool_back, back_pool, max_pool);
             mpc.MultElem(dhidden, max_pool_back, relu);
+            mpc.ProfilerPopState(true);
 
             if (Param::DEBUG && pid > 0) {
 
@@ -1397,12 +1452,15 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
           } else {
             back_pool *= inv2;
             mpc.Trunc(back_pool);
-
+            mpc.ProfilerPushState("multelem");
             mpc.MultElem(dhidden, back_pool, relu);
+            mpc.ProfilerPopState(true);
           }
           if (Param::DEBUG) tcout() << "back pool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
         } else {
+          mpc.ProfilerPushState("multelem");
           mpc.MultElem(dhidden, dhidden_new, relu);
+          mpc.ProfilerPopState(true);
         }
       } else {
 
@@ -1416,8 +1474,10 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
           if (Param::POOL == "max") {
             ublas::matrix<myType> max_pool_back;
             ublas::matrix<myType> max_pool = vpool.back();
+            mpc.ProfilerPushState("multelem");
             mpc.MultElem(max_pool_back, back_pool, max_pool);
             mpc.MultElem(dhidden, max_pool_back, relu);
+            mpc.ProfilerPopState(true);
 
             if (Param::DEBUG && pid > 0) {
 
@@ -1435,12 +1495,15 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
           } else {
             back_pool *= inv2;
             mpc.Trunc(back_pool);
-
+            mpc.ProfilerPushState("multelem");
             mpc.MultElem(dhidden, back_pool, relu);
+            mpc.ProfilerPopState(true);
           }
           if (Param::DEBUG) tcout() << "back pool: " << back_pool.size1() << "/" << back_pool.size2() << endl;
         } else {
+          mpc.ProfilerPushState("multelem");
           mpc.MultElem(dhidden, dhidden_new, relu);
+          mpc.ProfilerPopState(true);
         }
       }
 
@@ -1505,7 +1568,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
 
       to_mytype(inv_vWsqrt, zzp_inv_vWsqrt);
 
-
       mpc.MultElem(W_update, mW[l], inv_vWsqrt);
       mpc.Trunc(W_update);
 
@@ -1537,7 +1599,6 @@ double gradient_descent(ublas::matrix<myType>& X, ublas::matrix<myType>& y,
       Init(inv_vbsqrt, zzp_inv_vbsqrt.length());
 
       to_mytype(inv_vbsqrt, zzp_inv_vbsqrt);
-
       mpc.MultElem(b_update, mb[l], inv_vbsqrt);
       mpc.Trunc(b_update);
       b_update *= fp_new_learn_rate;
