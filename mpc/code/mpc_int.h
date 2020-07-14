@@ -1422,7 +1422,9 @@ public:
 
   template<class T>
   void MultMatForConv(ublas::matrix<T>& c, ublas::matrix<T>& a, ublas::matrix<T>& b, int filter_size, int fid = 0) {
-    if(Param::DEBUG) cout << "MultMatForConv: (" << a.size1() << ", " << a.size2() << "), (" << b.size1() << ", " << b.size2() << ")" << endl;
+    cout << "MultMatForConv: (" << a.size1() << ", " << a.size2() << "), (" << b.size1() << ", " << b.size2() << ")"
+         << endl;
+//    if(Param::DEBUG) cout << "MultMatForConv: (" << a.size1() << ", " << a.size2() << "), (" << b.size1() << ", " << b.size2() << ")" << endl;
 
     ublas::matrix<T> ar, am, br, bm, ar_conv, am_conv;
     BeaverPartition(ar, am, a, fid);
@@ -1436,14 +1438,7 @@ public:
     assert(ar_conv.size2() == br.size1());
     assert(am_conv.size2() == bm.size1());
 
-//    int out_rows = ar_conv.NumRows();
-//    int out_cols = b.NumCols();
-//    assert(ar_conv.NumCols() == br.NumRows());
-//    assert(am_conv.NumCols() == bm.NumRows());
-
-//    Init(c, out_rows, out_cols);
-    c.resize(out_rows, out_cols);
-    c.clear();
+    Init(c, out_rows, out_cols);
     BeaverMult(c, ar_conv, am_conv, br, bm, false, fid);
 
     BeaverReconstruct(c, fid);
@@ -1467,9 +1462,7 @@ public:
     int out_rows = am_conv_t.size1();
     int out_cols = b.size2();
 
-//    Init(c, out_rows, out_cols);
     Init(c, out_rows, out_cols);
-//    c.resize(out_rows, out_cols);
 
     if(Param::DEBUG) cout << "am_conv_t: (" << am_conv_t.size1() << ", " << am_conv_t.size2() << "), (" << br.size1() << ", " << br.size2() << ")" << endl;
     // dimension mismatch bc of pooling layers
@@ -1479,8 +1472,6 @@ public:
       ublas::matrix<T> new_am_conv_t;
       new_ar_conv_t.resize(ar_conv_t.size1(), br.size1());
       new_am_conv_t.resize(am_conv_t.size1(), bm.size1());
-//      Init(new_ar_conv_t, ar_conv_t.NumRows(), br.NumRows()); // 21, 4920
-//      Init(new_am_conv_t, am_conv_t.NumRows(), bm.NumRows()); // 21, 4920
 
       int prev_row = ar_conv_t.size2() / Param::BATCH_SIZE; // 494
       int row = br.size1() / Param::BATCH_SIZE; // 492
@@ -1490,8 +1481,6 @@ public:
           for (int c = 0; c < channel; c++) {
             new_ar_conv_t(c, b * row + r) = ar_conv_t(c, b * prev_row + r);
             new_am_conv_t(c, b * row + r) = am_conv_t(c, b * prev_row + r);
-//            new_ar_conv_t[c][b * row + r] = ar_conv_t[c][b * prev_row + r];
-//            new_am_conv_t[c][b * row + r] = am_conv_t[c][b * prev_row + r];
           }
         }
       }
