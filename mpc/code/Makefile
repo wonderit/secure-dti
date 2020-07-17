@@ -2,14 +2,14 @@ OS := $(shell uname)
 ifeq ($(OS),Darwin)
   # Run MacOS commands
   CPP = /usr/bin/clang++
-  INCPATHS = -I~/projects/local/include
+  INCPATHS = -I~/projects/local/include -Iinclude
 else
   # check for Linux and run other commands
   CPP = clang++
   INCPATHS = -I/usr/bin/include -Iinclude
 endif
 
-CFLAGS = -g -Wall -O3 $(INCPATHS) -march=native -std=c++11 -pthread -Wno-sign-compare
+CFLAGS = -g -Wall -O3 $(INCPATHS) -march=native -std=c++11 -pthread -Wno-sign-compare -DNDEBUG -DBOOST_UBLAS_NDEBUG
 LDLIBS = -lssl -lcrypto -lntl -lgmp -lm -ldl -lboost_system -lboost_filesystem
 LDPATH = -L/usr/local/lib
 

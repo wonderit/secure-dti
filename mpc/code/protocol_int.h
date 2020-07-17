@@ -22,9 +22,12 @@
 
 #include <chrono>
 
+#include <Eigen/Dense>
+
 using namespace boost::numeric;
 using namespace NTL;
 using namespace std;
+using namespace Eigen;
 using msec = chrono::milliseconds;
 using get_time = chrono::steady_clock;
 
@@ -39,7 +42,7 @@ void tic() {
 int toc() {
   auto clock_end = get_time::now();
   int duration = chrono::duration_cast<msec>(clock_end - clock_start).count();
-  tcout() << "Elapsed time is " << duration / 1000.0 << " secs" << endl;
+  tcout() << "Elapsed time is " << duration / 1000.0 << " secs, " << duration << endl;
   return duration;
 }
 
@@ -495,6 +498,22 @@ bool unit_test(MPCEnv& mpc, int pid) {
   if (pid == 2) {
     toc();
   }
+
+
+//  ublas::matrix<myType> mat_xv(Param::BATCH_SIZE * Param::N_FILE_BATCH, size, 0), mat_yv(size, Param::BATCH_SIZE, 0), mat_zv(Param::BATCH_SIZE * Param::N_FILE_BATCH, Param::BATCH_SIZE, 0);
+  ublas::matrix<myType> mat_xv(size, size, 0), mat_yv(size, size, 0), mat_zv(size, size, 0);
+//  if (pid == 2) {
+//    tcout() << " MULT MAT benchmark : " << endl;
+//    tic();
+//  }
+//  mpc.MultMat(mat_zv, mat_xv, mat_yv);  // (1 2 3) * (1 2 -4) -> (1 4 -12)
+//  mpc.Trunc(mat_zv);
+//
+//  if (pid == 2) {
+//    toc();
+//  }
+
+
 //  Time MULT END
 //  if (pid > 0) {
 //    mpc.PrintFP(zv);
@@ -508,16 +527,47 @@ bool unit_test(MPCEnv& mpc, int pid) {
   ublas::vector<myType> sc_xv(xv.size(), 0);
   ublas::vector<myType> relu_deriv(xv.size(), 0);
 
-
   if (pid == 2) {
+    tcout() << " MULT MAT PLAINTEXT Eigen : benchmark : " << endl;
     tic();
   }
-  mpc.IsPositive(relu_deriv, zv);
+
+  Matrix2d m = Matrix2d::Random(Param::BATCH_SIZE * Param::N_FILE_BATCH, Param::BATCH_SIZE);
+  Matrix2d m1 = Matrix2d::Random(Param::BATCH_SIZE * Param::N_FILE_BATCH, size);
+  Matrix2d m2 = Matrix2d::Random(size, Param::BATCH_SIZE);
+
+  clock_t t;
+  t = clock();
+//  Matrix2d m = Matrix2d::Random(size, size);
+//  Matrix2d m1 = Matrix2d::Random(size, size);
+//  Matrix2d m2 = Matrix2d::Random(size, size);
+  m = m1 * m2;
+
+//  if (pid == 2) {
+//    tcout() << "M1 :  " << m1 << endl;
+//    tcout() << "M2 :  " << m2 << endl;
+//    tcout() << "M :  " << m << endl;
+//  }
+
+
+//  mpc.IsPositive(relu_deriv, zv);
 
   if (pid == 2) {
+
+    tcout() << "CPU time: " << (double) (clock() - t) / CLOCKS_PER_SEC << endl;
+    tcout() << "Central cell: " << m(500, 500) << endl;
     toc();
   }
 
+  if (pid == 2) {
+    tcout() << "MULT MAT PLAINTEXT ublas : benchmark : " << endl;
+    tic();
+  }
+
+  mat_zv = ublas::prod(mat_xv, mat_yv);
+  if (pid == 2) {
+    toc();
+  }
   return true;
 
   if (pid > 0) {

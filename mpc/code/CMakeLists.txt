@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.5.1)  # CMake version check
-project(secure_ecg)               # Create project "simple_example"
+project(secure_ecg)
+# Create project "simple_example"
 set(CMAKE_CXX_STANDARD 14)            # Enable c++14 standard
-set(INCPATHS -I/Users/wonsuk/projects/local/include)
+set(INCPATHS -I/Users/wonsuk/projects/local/include -Iinclude)
 set(LDLIBS -lssl -lcrypto -lntl -lgmp -lm -ldl)
 set(LDPATH -L/usr/local/lib)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -O1 ${INCPATHS} -march=native -std=c++11 -pthread -Wno-sign-compare")
@@ -26,3 +27,4 @@ set(SOURCE_FILES
 add_executable(ShareData ${SOURCE_FILES})
 
 include_directories(/usr/local/include/)
+include_directories(include)
