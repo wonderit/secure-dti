@@ -119,7 +119,9 @@ bool unit_test(MPCEnv& mpc, int pid) {
   tcout() << "[FP multiplcation] ";
 //  TODO MUCH BIGGER
 
-  Init(xv, 3); Init(yv, 3);
+  size_t size = Param::DIV_MAX_N;
+  Init(xv, size);
+  Init(yv, size);
   if (pid == 2) {
     xv[0] = DoubleToFP(1.34, Param::NBIT_K, Param::NBIT_F);
     xv[1] = DoubleToFP(100.3, Param::NBIT_K, Param::NBIT_F);
@@ -128,13 +130,19 @@ bool unit_test(MPCEnv& mpc, int pid) {
     yv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
     yv[2] = DoubleToFP(-539, Param::NBIT_K, Param::NBIT_F);
   }
+  if (pid == 2)
+    tic();
   mpc.MultElem(zv, xv, yv);
-  tcout() << "before trunc" << endl;
-  mpc.PrintFP(zv);
+//  tcout() << "before trunc" << endl;
+//  mpc.PrintFP(zv);
   mpc.Trunc(zv);
-  tcout() << "after trunc" << endl;
-  mpc.PrintFP(zv);
-  mpc.RevealSym(zv);
+
+  if (pid == 2)
+    toc();
+
+//  tcout() << "after trunc" << endl;
+//  mpc.PrintFP(zv);
+//  mpc.RevealSym(zv);
 
   FPToDouble(zdv, zv, Param::NBIT_K, Param::NBIT_F);
   if (pid > 0) {
@@ -148,13 +156,21 @@ bool unit_test(MPCEnv& mpc, int pid) {
   }
   tcout() << endl;
 
-  tcout() << "[PrivateCompare]" << endl;
-  Init(pc, 3);
-  mpc.PrintFP(xv);
-  mpc.PrintFP(yv);
+  if (pid == 2) tcout() << "[PrivateCompare] length : " << Param::DIV_MAX_N << endl;
+  Init(pc, size);
+//  mpc.PrintFP(xv);
+//  mpc.PrintFP(yv);
+
+  if (pid == 2)
+    tic();
   mpc.LessThan(pc, xv, yv);
-  tcout() << "pc: " << pc << endl;
-  mpc.PrintFP(pc);
+//  tcout() << "pc: " << pc << endl;
+//  mpc.PrintFP(pc);
+
+  if (pid == 2)
+    toc();
+
+  return true;
 
   tcout() << "[Powers]" << endl;;
   Init(xv, 5);

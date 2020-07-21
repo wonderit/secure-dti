@@ -2,14 +2,14 @@ OS := $(shell uname)
 ifeq ($(OS),Darwin)
   # Run MacOS commands
   CPP = /usr/bin/clang++
-  INCPATHS = -I~/projects/local/include
+  INCPATHS = -I~/projects/local/include -Iinclude
 else
   # check for Linux and run other commands
-  CPP = g++
+  CPP = clang++
   INCPATHS = -I/usr/bin/include -Iinclude
 endif
 
-CFLAGS = -g -Wall -O3 $(INCPATHS) -march=native -std=c++11 -pthread -Wno-sign-compare
+CFLAGS = -g -Wall -O3 $(INCPATHS) -march=native -std=c++11 -pthread -Wno-sign-compare -DNDEBUG -DBOOST_UBLAS_NDEBUG
 LDLIBS = -lssl -lcrypto -lntl -lgmp -lm -ldl -lboost_system -lboost_filesystem
 LDPATH = -L/usr/local/lib
 
@@ -19,7 +19,7 @@ PROGS = bin
 SRC = crypto.cpp param.cpp connect.cpp aesstream.cpp mpc_int.cpp
 #PROGNAMES = ShareData TrainSecureDTI GenerateKey AnalyzeFeature test UnitTestClient
 #PROGNAMES = UnitTestClient
-PROGNAMES = TrainSecureECG ShareDataECG UnitTestClient
+PROGNAMES = GenerateKey TrainSecureECG ShareDataECG UnitTestClient
 #PROGNAMES = TrainSecureMNIST ShareDataMNIST
 
 OBJPATHS = $(patsubst %.cpp,$(BUILD)/%.o, $(SRC))
