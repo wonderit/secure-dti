@@ -1273,7 +1273,6 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
                 (Param::NETWORK_TYPE == 0 && l > (idx_conv_to_fc_layer - 1))
                 ) {
           MatrixXm temp;
-          tcout() << "dhidden_new / relu " << dhidden_new.cols() << "/" << relu.cols() << endl;
           int row = dhidden_new.cols() / relu.cols();
           Init(temp, row * Param::BATCH_SIZE, relu.cols());
           for (int b = 0; b < Param::BATCH_SIZE; b++) {
