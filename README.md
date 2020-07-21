@@ -7,6 +7,8 @@
 - Openssl : `brew install openssl` 
 - gmp : `brew install gmp`
 
+- Eigen (ubuntu): `sudo apt-get install libeigen3-dev`
+
 ```
 # if error occurs: Mac OSX fatal error: ‘openssl/sha.h’ file not found
 cd /usr/local/include 

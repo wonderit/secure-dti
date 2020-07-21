@@ -6,7 +6,7 @@ ifeq ($(OS),Darwin)
 else
   # check for Linux and run other commands
   CPP = clang++
-  INCPATHS = -I/usr/bin/include -Iinclude
+  INCPATHS = -I/usr/include/eigen3
 endif
 
 CFLAGS = -g -Wall -O3 $(INCPATHS) -march=native -std=c++11 -pthread -Wno-sign-compare

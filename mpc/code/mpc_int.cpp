@@ -3119,7 +3119,6 @@ void MPCEnv::BeaverMult(MatrixXm &ab, MatrixXm &ar,
   if (pid == 0) {
     MatrixXm ambm;
     if (elem_wise) {
-      tcout() << "pid beaver mult 01" << endl;
       ambm.setZero(am.rows(), am.cols());
       ambm = am.cwiseProduct(bm);
     } else {
@@ -3129,12 +3128,8 @@ void MPCEnv::BeaverMult(MatrixXm &ab, MatrixXm &ar,
     ab += ambm;
   } else {
     if (elem_wise) {
-      tcout() << "pid beaver mult 02 : " << ar.rows() << ", " << ar.cols() << " || " <<
-              bm.rows() << ", " << bm.cols() << endl;
       ab += ar.cwiseProduct(bm);
-      tcout() << "pid beaver mult 03" << endl;
       ab += am.cwiseProduct(br);
-      tcout() << "pid beaver mult 04" << endl;
       if (pid == 1)
         ab += ar.cwiseProduct(br);
     } else {

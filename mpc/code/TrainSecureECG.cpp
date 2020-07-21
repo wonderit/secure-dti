@@ -1399,20 +1399,13 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
 
             vpool.pop_back();
           } else {
-            if (Param::DEBUG && pid == 2) tcout() << "Start of backpool mult elem1" << endl;
             back_pool *= inv2;
-            if (Param::DEBUG && pid == 2) tcout() << "Start of backpool mult elem2" << endl;
             mpc.Trunc(back_pool);
-            if (Param::DEBUG && pid == 2) tcout() << "Start of backpool mult elem3" << endl;
 
             mpc.MultElem(dhidden, back_pool, relu);
-            if (Param::DEBUG && pid == 2) tcout() << "Start of backpool mult elem4" << endl;
           }
           if (Param::DEBUG) tcout() << "back pool: " << back_pool.rows() << "/" << back_pool.cols() << endl;
         } else {
-          if (pid == 2 && Param::DEBUG) {
-            tcout() << "COMPUTE BACKPROP POOL : " << dhidden.rows() << "/" << dhidden.cols() << endl;
-          }
           mpc.MultElem(dhidden, dhidden_new, relu);
         }
       } else if (Param::NETWORK_TYPE == 1) {
