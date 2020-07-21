@@ -1202,7 +1202,6 @@ public:
   template<class T>
   void BeaverPartition(ublas::vector<T>& ar, ublas::vector<T>& am, ublas::vector<T>& a, int fid = 0) {
     int n = a.size();
-//    tcout() << "bp 1" << endl;
     if (pid == 0) {
       ublas::vector<T> x1(n, 0);
       ublas::vector<T> x2(n, 0);
@@ -1217,61 +1216,42 @@ public:
 
       am = x1 + x2;
       ar.resize(am.size());
-//      tcout() << "am[0] from pid "<< pid << " : " << am[0] << endl;
-//      tcout() << "bp 1 - sizes : " << ar.size() << "/" << am.size() << "/" << a.size() << endl;
-//      tcout() << "bp 1 - pid = 0 e" << endl;
     } else {
 
-//      tcout() << "a[0] from pid "<< pid << " : " << a[0] << endl;
       SwitchSeed(0);
       RandVec(am, fid);
       RestoreSeed();
-//      tcout() << "am[0] from pid "<< pid << " : " << am[0] << "/" << am[1] << "/" << am[2] << endl;
       ar = a - am;
-
-//      tcout() << "ar[0] from pid  before revealsym "<< pid << " : " << ar[0] << endl;
       RevealSym(ar, fid);
-
-//      tcout() << "ar[0] from pid "<< pid << " : " << ar[0] << endl;
     }
   }
 
-    void BeaverPartition(MatrixXm &ar, MatrixXm &am, MatrixXm &a, int fid = 0) {
+  void BeaverPartition(MatrixXm &ar, MatrixXm &am, MatrixXm &a, int fid = 0) {
 
-      if (Param::DEBUG) tcout() << "BeaverPartition: " << a.rows() << ", " << a.cols() << endl;
-      int nrow = a.rows();
-      int ncol = a.cols();
+    if (Param::DEBUG) tcout() << "BeaverPartition: " << a.rows() << ", " << a.cols() << endl;
+    int nrow = a.rows();
+    int ncol = a.cols();
 
-      if (pid == 0) {
-        MatrixXm x1;
-        MatrixXm x2;
+    if (pid == 0) {
+      MatrixXm x1;
+      MatrixXm x2;
 
-        SwitchSeed(1);
-        RandMat(x1, nrow, ncol, fid);
-        RestoreSeed();
+      SwitchSeed(1);
+      RandMat(x1, nrow, ncol, fid);
+      RestoreSeed();
 
-        SwitchSeed(2);
-        RandMat(x2, nrow, ncol, fid);
-        RestoreSeed();
+      SwitchSeed(2);
+      RandMat(x2, nrow, ncol, fid);
+      RestoreSeed();
 
-        am = x1 + x2;
-        ar.setZero(am.rows(), am.cols());
-//      tcout() << "am[0] from pid "<< pid << " : " << am(0,0) << endl;
-        tcout() << "bp 1 - sizes : " << ar.size() << "/" << am.size() << "/" << a.size() << endl;
-        tcout() << "bp 1 - pid = 0 e" << endl;
-      } else {
-
-        tcout() << "a[0] from pid " << pid << " : " << a(0, 0) << endl;
-        SwitchSeed(0);
+      am = x1 + x2;
+      ar.setZero(am.rows(), am.cols());
+    } else {
+      SwitchSeed(0);
       RandMat(am, nrow, ncol, fid);
       RestoreSeed();
-//      tcout() << "am[0] from pid "<< pid << " : " << am[0] << "/" << am[1] << "/" << am[2] << endl;
       ar = a - am;
-
-//      tcout() << "ar[0] from pid  before revealsym "<< pid << " : " << ar[0] << endl;
       RevealSym(ar, fid);
-
-        tcout() << "ar[0] from pid " << pid << " : " << ar(0, 0) << endl;
     }
   }
 
