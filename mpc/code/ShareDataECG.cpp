@@ -31,33 +31,19 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
   }
 
   /* Read in matrix. */
-  ublas::matrix<myType> matrix (n_rows, n_cols);
+  tcout() << "Read row, col: " << n_rows << ", " << n_cols << endl;
+  MatrixXm matrix = MatrixXm::Zero(n_rows, n_cols);
+//  matrix.setZero();
 
   string line;
   int i = 0;
-  while(getline(fin, line)) {
-//    if (i  < 10) {
-//      stringstream ss(line);
-//      tcout() << "Reading line " << line << endl;
-//      for(float k; ss >> k;)
-//      {
-//        if (ss.peek() == ',')
-//          ss.ignore();
-//        tcout() << "k : " << k << endl;
-//      }
-//    }
+  while (getline(fin, line)) {
 
     stringstream ss(line);
     int j = 0;
-    for(double k; ss >> k;) {
+    for (double k; ss >> k;) {
       if (ss.peek() == ',')
         ss.ignore();
-
-//      if(name.rfind("X") == 0) {
-//        // Normalize
-//        k -= 1.547;
-//        k /= (156.820 + 1e-7);
-//      }
 
       if (i % 1000 == 0)
         tcout() << "Read row, value: " << i << ", " << k << endl;
@@ -77,7 +63,9 @@ bool mask_matrix(string data_dir, MPCEnv& mpc, string name,
   fin.close();
 
   /* Mask matrix. */
-  ublas::matrix<myType> mask(n_rows, n_cols);
+  MatrixXm mask(n_rows, n_cols);
+  mask.setZero();
+
   mpc.RandMat(mask, n_rows, n_cols);
   matrix -= mask; /* Masked `matrix' should be sent to CP2. */
 

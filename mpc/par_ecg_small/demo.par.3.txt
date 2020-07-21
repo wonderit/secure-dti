@@ -1,0 +1,22 @@
+# Network
+PORT_P1_P3 8004
+PORT_P2_P3 8003
+IP_ADDR_P1 127.0.0.1
+IP_ADDR_P2 127.0.0.1
+
+# MPC
+NBIT_K 44
+NBIT_F 18
+NBIT_V 0
+BASE_P 18446744073709551557
+MPC_BUF_SIZE 2000000
+
+# DTI
+CACHE_FILE_PREFIX ../cache/ecg
+TRAIN_SUFFIXES ../../demo_data/text_demo/train_suffixes.txt
+TEST_SUFFIXES ../../demo_data/text_demo/test_suffixes.txt
+FEATURE_RANK 1500
+N_FILE_BATCH 5000
+
+# FILES
+KEY_PATH ../key/

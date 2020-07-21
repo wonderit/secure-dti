@@ -14,7 +14,9 @@
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <cstring>
+#include <Eigen/Dense>
 
+using namespace Eigen;
 using namespace boost::numeric;
 using namespace std;
 using namespace NTL;
@@ -55,8 +57,8 @@ void AddScalar(Vec<T>& a, T b) {
 
 template<class T>
 void AddScalar(Mat<T>& a, T b) {
-  for (int i = 0; i < a.size1(); i++) {
-    for (int j = 0; j < a.size2(); j++) {
+  for (int i = 0; i < a.rows(); i++) {
+    for (int j = 0; j < a.cols(); j++) {
       a[i][j] += b;
     }
   }
@@ -70,9 +72,9 @@ void AddScalar(ublas::vector<T>& a, T b) {
 }
 
 template<class T>
-void AddScalar(ublas::matrix<T>& a, T b) {
-  for (int i = 0; i < a.size1(); i++) {
-    for (int j = 0; j < a.size2(); j++) {
+void AddScalar(MatrixXm &a, T b) {
+  for (int i = 0; i < a.rows(); i++) {
+    for (int j = 0; j < a.cols(); j++) {
       a(i, j) += b;
     }
   }
@@ -84,17 +86,6 @@ static T Sum(ublas::vector<T>& a) {
   val = 0;
   for (int i = 0; i < a.length(); i++) {
     val += a[i];
-  }
-  return val;
-}
-template<class T>
-static T Sum(ublas::matrix<T>& a) {
-  T val;
-  val = 0;
-  for (int i = 0; i < a.size1(); i++) {
-    for (int j = 0; j < a.size2(); j++) {
-      val += a(i, j);
-    }
   }
   return val;
 }
@@ -191,11 +182,10 @@ static inline void FPToDouble(ublas::vector<double>& b, ublas::vector<T>& a) {
   }
 }
 
-template<class T>
-static inline void FPToDouble(ublas::matrix<double>& b, ublas::matrix<T>& a) {
-  b.resize(a.size1(), a.size2());
-  for (int i = 0; i < a.size1(); i++) {
-    for (int j = 0; j < a.size2(); j++) {
+static inline void FPToDouble(MatrixXd &b, MatrixXm &a) {
+  b.resize(a.rows(), a.cols());
+  for (int i = 0; i < a.rows(); i++) {
+    for (int j = 0; j < a.cols(); j++) {
       b(i, j) = FPToDouble(a(i, j));
     }
   }
@@ -221,10 +211,10 @@ static inline void Init(Mat<T>& a, int nrow, int ncol) {
 }
 
 
-template<class T>
-static inline void Init(ublas::matrix<T>& a, int nrow, int ncol) {
-  a.resize(nrow, ncol);
-  a.clear();
+static inline void Init(MatrixXm &a, int nrow, int ncol) {
+  a.setZero(nrow, ncol);
+//  a.resize(nrow, ncol);
+//  a.clear();
 }
 
 template<class T>
@@ -235,7 +225,7 @@ static inline void ReshapeMat(Mat<T>& b, T& a) {
 
 
 template<class T>
-static inline void ReshapeMat(ublas::matrix<T>& b, ublas::vector<T>& a, int nrows, int ncols) {
+static inline void ReshapeMat(MatrixXm &b, ublas::vector<T> &a, int nrows, int ncols) {
   assert(a.size() == nrows * ncols);
   Init(b, nrows, ncols);
 
@@ -374,8 +364,8 @@ static inline void int_to_vector(ublas::vector<T>&x, T a)
 }
 
 //for pre conversion
-static inline void initial_reshape(ublas::matrix<myType>& x_2d, ublas::matrix<myType>& x, int input_channel, int batch_size) {
-  int row = x.size2() / input_channel;
+static inline void initial_reshape(MatrixXm &x_2d, MatrixXm &x, int input_channel, int batch_size) {
+  int row = x.cols() / input_channel;
 
   Init(x_2d, batch_size * row, input_channel);
 
@@ -388,16 +378,18 @@ static inline void initial_reshape(ublas::matrix<myType>& x_2d, ublas::matrix<my
   }
 }
 
-static inline void reshape_conv(ublas::matrix<myType>& conv1d, ublas::matrix<myType>& x, int kernel_size, int batch_size) {
-  int channels = x.size2(); // 12
-  int prev_row = x.size1() / batch_size;  // 500
+static inline void reshape_conv(MatrixXm &conv1d, MatrixXm &x, int kernel_size, int batch_size) {
+  int channels = x.cols(); // 12
+  int prev_row = x.rows() / batch_size;  // 500
 
   int row = prev_row;
   if (Param::CNN_PADDING == "valid")
     row = prev_row - kernel_size + 1;  // 494
 
   Init(conv1d, batch_size * row, kernel_size * channels);
-  if(Param::DEBUG) cout << "reshape_conv: (" << conv1d.size1() << ", " << conv1d.size2() << "), (" << x.size1() << ", " << x.size2() << ")" << endl;
+  if (Param::DEBUG)
+    cout << "reshape_conv: (" << conv1d.rows() << ", " << conv1d.cols() << "), (" << x.rows() << ", " << x.cols() << ")"
+         << endl;
 
   int padding_size = kernel_size / 2;
   if (Param::CNN_PADDING == "valid") {
@@ -421,16 +413,18 @@ static inline void reshape_conv(ublas::matrix<myType>& conv1d, ublas::matrix<myT
   }
 }
 
-static inline void back_reshape_conv(ublas::matrix<myType>& x, ublas::matrix<myType>& conv1d, int kernel_size, int batch_size) {
-  int input_channel = conv1d.size2() / kernel_size;
-  int row = conv1d.size1() / batch_size; // 482
+static inline void back_reshape_conv(MatrixXm &x, MatrixXm &conv1d, int kernel_size, int batch_size) {
+  int input_channel = conv1d.cols() / kernel_size;
+  int row = conv1d.rows() / batch_size; // 482
   int prev_row = row;
   if (Param::CNN_PADDING == "valid")
     prev_row = row + kernel_size - 1;  // 494
 
   Init(x, batch_size * prev_row, input_channel);
 
-  if(Param::DEBUG) cout << "back_reshape_conv x: (" << x.size1() << ", " << x.size2() << "), conv1d(" << conv1d.size1() << ", " << conv1d.size2() << ")" << endl;
+  if (Param::DEBUG)
+    cout << "back_reshape_conv x: (" << x.rows() << ", " << x.cols() << "), conv1d(" << conv1d.rows() << ", "
+         << conv1d.cols() << ")" << endl;
 
   for (int batch = 0; batch < batch_size; batch++) {
     for (int index = 0; index < row; index++) {
@@ -616,15 +610,15 @@ static inline void to_zz(Vec<ZZ_p>& c, ublas::vector<myType>& x) {
   }
 }
 
-static inline void to_zz(Mat<ZZ_p>& c, ublas::matrix<myType>& x) {
-  for (size_t i = 0; i < x.size1(); i++) {
-    for (size_t j = 0; j < x.size2(); j++) {
+static inline void to_zz(Mat<ZZ_p> &c, MatrixXm &x) {
+  for (size_t i = 0; i < x.rows(); i++) {
+    for (size_t j = 0; j < x.cols(); j++) {
 //      string str_x(std::to_string(x(i, j)));
       string str_x;
       if (INT_TYPE == 64) {
-        str_x = std::to_string((uint64_t)x(i, j));
+        str_x = std::to_string((uint64_t) x(i, j));
       } else if (INT_TYPE == 128) {
-        str_x = ((uint128_t)x(i, j)).str();
+        str_x = ((uint128_t) x(i, j)).str();
       }
 //      string str_x(x(i, j).str());
       c[i][j] = to_ZZ_p(conv<ZZ>(str_x.c_str()));
@@ -641,10 +635,10 @@ static inline void to_mytype(ublas::vector<myType>& x, Vec<ZZ_p>& c) {
 }
 
 
-static inline void to_mytype(ublas::matrix<myType>& x, Mat<ZZ_p>& c) {
+static inline void to_mytype(MatrixXm &x, Mat<ZZ_p> &c) {
   string str;
-  for (size_t i = 0; i < x.size1(); i++) {
-    for (size_t j = 0; j < x.size2(); j++) {
+  for (size_t i = 0; i < x.rows(); i++) {
+    for (size_t j = 0; j < x.cols(); j++) {
       zToString(rep(c[i][j]), str);
       x(i, j) = static_cast<myType>(boost::lexical_cast<myTypeunSigned>(str.c_str()));
 //      x(i, j) = boost::lexical_cast<myType>(str.c_str());

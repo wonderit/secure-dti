@@ -73,6 +73,7 @@ class Param {
     static string POOL;
     static string CNN_PADDING;
     static int NETWORK_TYPE;
+    static int FILTER_SIZE;
     
     /* Software parameters */
     static uint64_t MPC_BUF_SIZE; // size of data buffer in bytes

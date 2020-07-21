@@ -4,8 +4,10 @@
 #pragma once
 
 #include <boost/multiprecision/cpp_int.hpp>
+#include <Eigen/Dense>
 using namespace boost::multiprecision;
 using namespace std;
+using namespace Eigen;
 
 #define INT_TYPE 64
 
@@ -48,4 +50,5 @@ const myType LARGEST_NEG = ((myType)1 << (BIT_SIZE - 1));
 #define PRIME_NUMBER 67
 #define INT_FIELD INT_TYPE
 
+typedef Matrix<myType, Dynamic, Dynamic> MatrixXm;
 #endif

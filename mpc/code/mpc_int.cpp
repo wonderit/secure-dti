@@ -1776,14 +1776,15 @@ void MPCEnv::IsPositive(Mat<ZZ_p>& b, Mat<ZZ_p>& a) {
   IsPositive(bv, av);
 }
 
-void MPCEnv::IsPositive(ublas::matrix<myType>& b, ublas::matrix<myType>& a) {
+void MPCEnv::IsPositive(MatrixXm &b, MatrixXm &a) {
   ublas::vector<myType> av, bv;
-  int size = a.size1() * a.size2();
-  Init(b, a.size1(), a.size2());
-  Init(av, size); Init(bv, size);
+  int size = a.rows() * a.cols();
+  Init(b, a.rows(), a.cols());
+  Init(av, size);
+  Init(bv, size);
   Reshape(av, a);
   IsPositive(bv, av);
-  Reshape(b, bv, b.size1(), b.size2());
+  Reshape(b, bv, b.rows(), b.cols());
 }
 
 void MPCEnv::IsPositive(ublas::vector<myType>& b, ublas::vector<myType>& a) {
@@ -2197,17 +2198,17 @@ void MPCEnv::FPDiv(Vec<ZZ_p>& c, Vec<ZZ_p>& a, Vec<ZZ_p>& b) {
   Trunc(c);
 }
 
-void MPCEnv::Trunc(ublas::matrix<myType>& a) {
+void MPCEnv::Trunc(MatrixXm &a) {
 
   if (pid > 0) {
 
     // get rid of k lower bits : 12014 -> 12000
-    for (int i = 0; i < a.size1(); i++) {
-      for (int j = 0; j < a.size2(); j++) {
+    for (int i = 0; i < a.rows(); i++) {
+      for (int j = 0; j < a.cols(); j++) {
         if (pid == 1)
           a(i, j) = static_cast<myType>(static_cast<myTypeSigned>(a(i, j)) >> FIXED_POINT_FRACTIONAL_BITS);
         else
-          a(i, j) = - static_cast<myType>(static_cast<myTypeSigned>(- a(i, j)) >> FIXED_POINT_FRACTIONAL_BITS);
+          a(i, j) = -static_cast<myType>(static_cast<myTypeSigned>(-a(i, j)) >> FIXED_POINT_FRACTIONAL_BITS);
       }
 
     }
@@ -2709,14 +2710,15 @@ void MPCEnv::ReadFromFile(Mat<ZZ_p>& a, ifstream& ifs, int nrow, int ncol) {
   }
 }
 
-void MPCEnv::ReadFromFile(ublas::matrix<myType>& a, ifstream& ifs) {
+void MPCEnv::ReadFromFile(MatrixXm &a, ifstream &ifs) {
   if (pid > 0) {
     Read(a, ifs);
   } else {
 //    a.SetDims(nrow, ncol);
   }
 }
-void MPCEnv::WriteToFile(ZZ_p& a, fstream& ofs) {
+
+void MPCEnv::WriteToFile(ZZ_p &a, fstream &ofs) {
   if (pid > 0) {
     Vec<ZZ_p> avec;
     avec.SetLength(1);
@@ -2735,7 +2737,7 @@ void MPCEnv::WriteToFile(Mat<ZZ_p>& a, fstream& ofs) {
   }
 }
 
-void MPCEnv::WriteToFile(ublas::matrix<myType>& a, fstream& ofs) {
+void MPCEnv::WriteToFile(MatrixXm &a, fstream &ofs) {
   if (pid > 0) {
     Write(a, ofs);
   }
@@ -2821,20 +2823,20 @@ void MPCEnv::Write(Mat<ZZ_p>& a, fstream& ofs) {
 }
 
 
-void MPCEnv::Write(ublas::matrix<myType>& a, fstream& ofs) {
+void MPCEnv::Write(MatrixXm &a, fstream &ofs) {
   assert(ofs.is_open());
 
   unsigned char *buf_ptr = buf;
   uint64_t stored_in_buf = 0;
-  for (int i = 0; i < a.size1(); i++) {
-    for (int j = 0; j < a.size2(); j++) {
+  for (int i = 0; i < a.rows(); i++) {
+    for (int j = 0; j < a.cols(); j++) {
       if (stored_in_buf == ZZ_per_buf[0]) {
-        ofs.write((const char *)buf, ZZ_bytes[0] * stored_in_buf);
+        ofs.write((const char *) buf, ZZ_bytes[0] * stored_in_buf);
         stored_in_buf = 0;
         buf_ptr = buf;
       }
 
-      memcpy(buf_ptr, (char*)&a(i, j), ZZ_bytes[0]);
+      memcpy(buf_ptr, (char *) &a(i, j), ZZ_bytes[0]);
 //      BytesFromZZ(buf_ptr, rep(a[i][j]), ZZ_bytes[0]);
       stored_in_buf++;
       buf_ptr += ZZ_bytes[0];
@@ -2892,14 +2894,14 @@ void MPCEnv::Read(Mat<ZZ_p>& a, ifstream& ifs, int nrows, int ncols) {
 }
 
 
-void MPCEnv::Read(ublas::matrix<myType>& a, ifstream& ifs) {
+void MPCEnv::Read(MatrixXm &a, ifstream &ifs) {
   assert(ifs.is_open());
 
   unsigned char *buf_ptr = buf;
   uint64_t stored_in_buf = 0;
-  uint64_t remaining = a.size1() * a.size2();
-  for (int i = 0; i < a.size1(); i++) {
-    for (int j = 0; j < a.size2(); j++) {
+  uint64_t remaining = a.rows() * a.cols();
+  for (int i = 0; i < a.rows(); i++) {
+    for (int j = 0; j < a.cols(); j++) {
       if (stored_in_buf == 0) {
         uint64_t count;
         if (remaining < ZZ_per_buf[0]) {
@@ -2907,7 +2909,7 @@ void MPCEnv::Read(ublas::matrix<myType>& a, ifstream& ifs) {
         } else {
           count = ZZ_per_buf[0];
         }
-        ifs.read((char *)buf, count * ZZ_bytes[0]);
+        ifs.read((char *) buf, count * ZZ_bytes[0]);
         stored_in_buf += count;
         remaining -= count;
         buf_ptr = buf;
@@ -3043,7 +3045,7 @@ void MPCEnv::BeaverMultElem(ublas::vector<myType>& ab, ublas::vector<myType>& ar
   }
 }
 
-void MPCEnv::BeaverMultElem(Vec<ZZ_p>& ab, Vec<ZZ_p>& ar, Vec<ZZ_p>& am, Vec<ZZ_p>& br, Vec<ZZ_p>& bm, int fid) {
+void MPCEnv::BeaverMultElem(Vec<ZZ_p> &ab, Vec<ZZ_p> &ar, Vec<ZZ_p> &am, Vec<ZZ_p> &br, Vec<ZZ_p> &bm, int fid) {
   if (pid == 0) {
     Vec<ZZ_p> ambm;
     mul_elem(ambm, am, bm);
@@ -3055,21 +3057,22 @@ void MPCEnv::BeaverMultElem(Vec<ZZ_p>& ab, Vec<ZZ_p>& ar, Vec<ZZ_p>& am, Vec<ZZ_
 
     NTL_GEXEC_RANGE(ab.length() > Param::PAR_THRES, ab.length(), first, last)
 
-    context.restore();
+          context.restore();
 
-    for (int i = first; i < last; i++) {
-      ab[i] += ar[i] * bm[i];
-      ab[i] += am[i] * br[i];
-      if (pid == 1) {
-        ab[i] += ar[i] * br[i];
-      }
-    }
+          for (int i = first; i < last; i++) {
+            ab[i] += ar[i] * bm[i];
+            ab[i] += am[i] * br[i];
+            if (pid == 1) {
+              ab[i] += ar[i] * br[i];
+            }
+          }
 
     NTL_GEXEC_RANGE_END
   }
 }
 
-void MPCEnv::BeaverMult(Mat<ZZ_p>& ab, Mat<ZZ_p>& ar, Mat<ZZ_p>& am, Mat<ZZ_p>& br, Mat<ZZ_p>& bm, bool elem_wise, int fid) {
+void MPCEnv::BeaverMult(Mat<ZZ_p> &ab, Mat<ZZ_p> &ar, Mat<ZZ_p> &am, Mat<ZZ_p> &br, Mat<ZZ_p> &bm, bool elem_wise,
+                        int fid) {
   if (pid == 0) {
     Mat<ZZ_p> ambm;
     if (elem_wise) {
@@ -3086,17 +3089,17 @@ void MPCEnv::BeaverMult(Mat<ZZ_p>& ab, Mat<ZZ_p>& ar, Mat<ZZ_p>& am, Mat<ZZ_p>& 
 
       NTL_GEXEC_RANGE(ab.NumRows() > Param::PAR_THRES, ab.NumRows(), first, last)
 
-      context.restore();
+            context.restore();
 
-      for (int i = first; i < last; i++) {
-        for (int j = 0; j < ab.NumCols(); j++) {
-          ab[i][j] += ar[i][j] * bm[i][j];
-          ab[i][j] += am[i][j] * br[i][j];
-          if (pid == 1) {
-            ab[i][j] += ar[i][j] * br[i][j];
-          }
-        }
-      }
+            for (int i = first; i < last; i++) {
+              for (int j = 0; j < ab.NumCols(); j++) {
+                ab[i][j] += ar[i][j] * bm[i][j];
+                ab[i][j] += am[i][j] * br[i][j];
+                if (pid == 1) {
+                  ab[i][j] += ar[i][j] * br[i][j];
+                }
+              }
+            }
 
       NTL_GEXEC_RANGE_END
 
@@ -3110,37 +3113,40 @@ void MPCEnv::BeaverMult(Mat<ZZ_p>& ab, Mat<ZZ_p>& ar, Mat<ZZ_p>& am, Mat<ZZ_p>& 
   }
 }
 
-void MPCEnv::BeaverMult(ublas::matrix<myType>& ab, ublas::matrix<myType>& ar,
-                        ublas::matrix<myType>& am, ublas::matrix<myType>& br,
-                        ublas::matrix<myType>& bm, bool elem_wise, int fid) {
+void MPCEnv::BeaverMult(MatrixXm &ab, MatrixXm &ar,
+                        MatrixXm &am, MatrixXm &br,
+                        MatrixXm &bm, bool elem_wise, int fid) {
   if (pid == 0) {
-    ublas::matrix<myType> ambm;
+    MatrixXm ambm;
     if (elem_wise) {
-      ambm.resize(am.size1(), am.size2());
-      ambm = ublas::element_prod(am, bm);
+      tcout() << "pid beaver mult 01" << endl;
+      ambm.setZero(am.rows(), am.cols());
+      ambm = am.cwiseProduct(bm);
     } else {
-      ambm.resize(am.size1(), bm.size2());
-      ambm = ublas::prod(am, bm);
+      ambm.setZero(am.rows(), bm.cols());
+      ambm = am * bm;
     }
     ab += ambm;
   } else {
     if (elem_wise) {
-
-      ab += ublas::element_prod(ar, bm);
-      ab += ublas::element_prod(am, br);
+      tcout() << "pid beaver mult 02 : " << ar.rows() << ", " << ar.cols() << " || " <<
+              bm.rows() << ", " << bm.cols() << endl;
+      ab += ar.cwiseProduct(bm);
+      tcout() << "pid beaver mult 03" << endl;
+      ab += am.cwiseProduct(br);
+      tcout() << "pid beaver mult 04" << endl;
       if (pid == 1)
-        ab += ublas::element_prod(ar, br);
+        ab += ar.cwiseProduct(br);
     } else {
-      ab += ublas::prod(ar, bm);
-      ab += ublas::prod(am, br);
+      ab += ar * bm;
+      ab += am * br;
       if (pid == 1)
-        ab += ublas::prod(ar, br);
-
+        ab += ar * br;
     }
   }
 }
 
-void MPCEnv::BeaverMultElem(Vec<ZZ>& ab, Vec<ZZ>& ar, Vec<ZZ>& am, Vec<ZZ>& br, Vec<ZZ>& bm, int fid) {
+void MPCEnv::BeaverMultElem(Vec<ZZ> &ab, Vec<ZZ> &ar, Vec<ZZ> &am, Vec<ZZ> &br, Vec<ZZ> &bm, int fid) {
   if (pid == 0) {
     Vec<ZZ> ambm;
     mul_elem(ambm, am, bm);
@@ -3148,13 +3154,13 @@ void MPCEnv::BeaverMultElem(Vec<ZZ>& ab, Vec<ZZ>& ar, Vec<ZZ>& am, Vec<ZZ>& br, 
   } else {
     NTL_GEXEC_RANGE(ab.length() > Param::PAR_THRES, ab.length(), first, last)
 
-    for (int i = first; i < last; i++) {
-      ab[i] += ar[i] * bm[i];
-      ab[i] += am[i] * br[i];
-      if (pid == 1) {
-        ab[i] += ar[i] * br[i];
-      }
-    }
+          for (int i = first; i < last; i++) {
+            ab[i] += ar[i] * bm[i];
+            ab[i] += am[i] * br[i];
+            if (pid == 1) {
+              ab[i] += ar[i] * br[i];
+            }
+          }
 
     NTL_GEXEC_RANGE_END
   }
@@ -3162,7 +3168,7 @@ void MPCEnv::BeaverMultElem(Vec<ZZ>& ab, Vec<ZZ>& ar, Vec<ZZ>& am, Vec<ZZ>& br, 
   Mod(ab, fid);
 }
 
-void MPCEnv::BeaverMult(Mat<ZZ>& ab, Mat<ZZ>& ar, Mat<ZZ>& am, Mat<ZZ>& br, Mat<ZZ>& bm, bool elem_wise, int fid) {
+void MPCEnv::BeaverMult(Mat<ZZ> &ab, Mat<ZZ> &ar, Mat<ZZ> &am, Mat<ZZ> &br, Mat<ZZ> &bm, bool elem_wise, int fid) {
   if (pid == 0) {
     Mat<ZZ> ambm;
     if (elem_wise) {
@@ -3175,15 +3181,15 @@ void MPCEnv::BeaverMult(Mat<ZZ>& ab, Mat<ZZ>& ar, Mat<ZZ>& am, Mat<ZZ>& br, Mat<
     if (elem_wise) {
       NTL_GEXEC_RANGE(ab.NumRows() > Param::PAR_THRES, ab.NumRows(), first, last)
 
-      for (int i = first; i < last; i++) {
-        for (int j = 0; j < ab.NumCols(); j++) {
-          ab[i][j] += ar[i][j] * bm[i][j];
-          ab[i][j] += am[i][j] * br[i][j];
-          if (pid == 1) {
-            ab[i][j] += ar[i][j] * br[i][j];
-          }
-        }
-      }
+            for (int i = first; i < last; i++) {
+              for (int j = 0; j < ab.NumCols(); j++) {
+                ab[i][j] += ar[i][j] * bm[i][j];
+                ab[i][j] += am[i][j] * br[i][j];
+                if (pid == 1) {
+                  ab[i][j] += ar[i][j] * br[i][j];
+                }
+              }
+            }
 
       NTL_GEXEC_RANGE_END
 

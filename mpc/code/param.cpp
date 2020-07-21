@@ -101,6 +101,8 @@ bool Param::ParseFile(const char *param_file) {
       ret = Convert(v, Param::MAX_EPOCHS, k);
     } else if (k == "NETWORK_TYPE") {
       ret = Convert(v, Param::NETWORK_TYPE, k);
+    } else if (k == "FILTER_SIZE") {
+      ret = Convert(v, Param::FILTER_SIZE, k);
     } else if (k == "MOMENTUM") {
       ret = Convert(v, Param::MOMENTUM, k);
     } else if (k == "LEARN_RATE") {
@@ -204,6 +206,7 @@ int Param::N_NEURONS_2 = 64;
 int Param::BATCH_SIZE = 50;
 int Param::MAX_EPOCHS = 20000;
 int Param::NETWORK_TYPE = 0;
+int Param::FILTER_SIZE = 7;
 
 string Param::FEATURES_FILE = "../test_data/features_masked.bin";
 string Param::LABELS_FILE = "../test_data/labels_masked.bin";

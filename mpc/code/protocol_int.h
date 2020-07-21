@@ -336,8 +336,8 @@ bool unit_test(MPCEnv& mpc, int pid) {
   myType x;
   size_t size = Param::DIV_MAX_N;
   ublas::vector<myType> xv(size, 0), yv(size, 0);
-  boost::numeric::ublas::vector<myType> xv1(size, 0), yv1(size, 0), zv(size, 0), wv, pc(size, 0);
-  boost::numeric::ublas::vector<double> xdv(size, 0), ydv, zdv(size, 0), wdv;
+  ublas::vector<myType> xv1(size, 0), yv1(size, 0), zv(size, 0), wv, pc(size, 0);
+  ublas::vector<double> xdv(size, 0), ydv, zdv(size, 0), wdv;
   double d;
 //  double eps = 1e-6;
   double eps = 1e-1;
@@ -531,19 +531,24 @@ bool unit_test(MPCEnv& mpc, int pid) {
     tcout() << " MULT MAT PLAINTEXT Eigen : benchmark : " << endl;
     tic();
   }
-
-  Matrix2d m = Matrix2d::Random(Param::BATCH_SIZE * Param::N_FILE_BATCH, Param::BATCH_SIZE);
-  Matrix2d m1 = Matrix2d::Random(Param::BATCH_SIZE * Param::N_FILE_BATCH, size);
-  Matrix2d m2 = Matrix2d::Random(size, Param::BATCH_SIZE);
+  MatrixXm m(Param::BATCH_SIZE * Param::N_FILE_BATCH, Param::BATCH_SIZE);
+  MatrixXm m1(Param::BATCH_SIZE * Param::N_FILE_BATCH, size);
+  MatrixXm m2(size, Param::BATCH_SIZE);
+//  m.setZero(Param::BATCH_SIZE * Param::N_FILE_BATCH, Param::BATCH_SIZE);
+//  m1.setZero(Param::BATCH_SIZE * Param::N_FILE_BATCH, size);
+//  m2.setZero(size, Param::BATCH_SIZE);
+//  MatrixXi m = MatrixXi::Random(Param::BATCH_SIZE * Param::N_FILE_BATCH, Param::BATCH_SIZE);
+//  MatrixXi m1 = MatrixXi::Random(Param::BATCH_SIZE * Param::N_FILE_BATCH, size);
+//  MatrixXi m2 = MatrixXi::Random(size, Param::BATCH_SIZE);
 
   clock_t t;
   t = clock();
-//  Matrix2d m = Matrix2d::Random(size, size);
-//  Matrix2d m1 = Matrix2d::Random(size, size);
-//  Matrix2d m2 = Matrix2d::Random(size, size);
+//  MatrixXm m = MatrixXm::Random(size, size);
+//  MatrixXm m1 = MatrixXm::Random(size, size);
+//  MatrixXm m2 = MatrixXm::Random(size, size);
   m = m1 * m2;
 
-//  if (pid == 2) {
+//  if (pid == 2) {220
 //    tcout() << "M1 :  " << m1 << endl;
 //    tcout() << "M2 :  " << m2 << endl;
 //    tcout() << "M :  " << m << endl;
@@ -555,7 +560,8 @@ bool unit_test(MPCEnv& mpc, int pid) {
   if (pid == 2) {
 
     tcout() << "CPU time: " << (double) (clock() - t) / CLOCKS_PER_SEC << endl;
-    tcout() << "Central cell: " << m(500, 500) << endl;
+    tcout() << "m size " << m.rows() << "," << m.cols() << endl;
+//    tcout() << "Central cell: " << m(500, 500) << endl;
     toc();
   }
 
