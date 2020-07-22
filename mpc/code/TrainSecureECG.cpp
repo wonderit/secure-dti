@@ -145,7 +145,9 @@ void MaxPool(MatrixXm &maxpool, MatrixXm &input_max_index, MatrixXm &input, int 
   }
 
   input_right = input_right - input_left;
+  mpc.ProfilerPushState("is_positive/maxpool");
   mpc.IsPositive(maxpool_index, input_right);
+  mpc.ProfilerPopState(true);
 
   MatrixXm xor_maxpool_index;
   Init(xor_maxpool_index, maxpool_index.rows(), maxpool_index.cols());
@@ -736,10 +738,14 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
       /* Apply ReLU non-linearity. */
       MatrixXm relu;
       relu.resize(activation.rows(), activation.cols());
+
+      // Measure running time for private comparison
+      mpc.ProfilerPushState("is_positive/relu");
       mpc.IsPositive(relu, activation);
+      mpc.ProfilerPopState(true);
+
       MatrixXm after_relu;
       after_relu.setZero(activation.rows(), activation.cols());
-//      MatrixXm after_relu(activation.rows(), activation.cols(), 0);
       assert(activation.rows() == relu.rows());
       assert(activation.cols() == relu.cols());
       mpc.MultElem(after_relu, activation, relu);
@@ -1490,7 +1496,7 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
     }
   }
 
-  if (Param::DEBUG) tcout() << "FIN? "<< endl;
+  if (Param::DEBUG) tcout() << "FIN? " << endl;
 
   assert(act.size() == 0);
   assert(relus.size() == 0);
@@ -1498,6 +1504,8 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
   if (Param::DEBUG && pid == 2) {
     tic();
   }
+
+  mpc.ProfilerPushState("optimizer/" + Param::OPTIMIZER);
 
   // ADAM START
   if (Param::OPTIMIZER == "adam") {
@@ -1633,6 +1641,7 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
     toc();
   }
 
+  mpc.ProfilerPopState(true);
 
   // ADAM END
   MatrixXm mse;
