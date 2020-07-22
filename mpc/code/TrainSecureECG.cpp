@@ -895,7 +895,11 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
       /* Apply ReLU non-linearity. */
       MatrixXm relu;
       relu.resize(activation.rows(), activation.cols());
+
+      // Measure running time for private comparison
+      mpc.ProfilerPushState("is_positive/relu");
       mpc.IsPositive(relu, activation);
+      mpc.ProfilerPopState(true);
 
       MatrixXm after_relu;
       after_relu.setZero(activation.rows(), activation.cols());
@@ -1050,7 +1054,11 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
       /* Apply ReLU non-linearity. */
       MatrixXm relu;
       relu.resize(activation.rows(), activation.cols());
+      // Measure running time for private comparison
+      mpc.ProfilerPushState("is_positive/relu");
       mpc.IsPositive(relu, activation);
+      mpc.ProfilerPopState(true);
+
 
       MatrixXm after_relu;
       after_relu.setZero(activation.rows(), activation.cols());
