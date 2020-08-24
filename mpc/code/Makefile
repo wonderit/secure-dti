@@ -2,7 +2,7 @@ OS := $(shell uname)
 ifeq ($(OS),Darwin)
   # Run MacOS commands
   CPP = /usr/bin/clang++
-  INCPATHS = -I~/projects/local/include -Iinclude
+  INCPATHS = -I/usr/local/include/eigen3 -Iinclude
 else
   # check for Linux and run other commands
   CPP = clang++

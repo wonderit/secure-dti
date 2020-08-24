@@ -579,9 +579,12 @@ void MPCEnv::LogisticRegression(ZZ_p& nll, ZZ_p& b0, Vec<ZZ_p>& b, Mat<ZZ_p>& x,
   PrintFP(nll);
 }
 
+//a input (-a or a)
+// b output , b_grad
 void MPCEnv::NegLogSigmoid(Vec<ZZ_p>& b, Vec<ZZ_p>& b_grad, Vec<ZZ_p>& a) {
   size_t n = a.length();
 
+  // number of comparison hyperparameter
   int depth = 6;
 
   Vec<ZZ_p> cur = a; // copy
@@ -590,6 +593,7 @@ void MPCEnv::NegLogSigmoid(Vec<ZZ_p>& b, Vec<ZZ_p>& b_grad, Vec<ZZ_p>& a) {
   a_ind.SetLength(a.length());
   clear(a_ind);
 
+  // size of segment
   double step = 4;
 
   for (int i = 0; i < depth; i++) {
@@ -616,6 +620,8 @@ void MPCEnv::NegLogSigmoid(Vec<ZZ_p>& b, Vec<ZZ_p>& b_grad, Vec<ZZ_p>& a) {
       cur[j] -= step_fp * cur_sign[j];
     }
 
+    // at each depth
+    // size of the interval
     step /= 2;
   }
 
