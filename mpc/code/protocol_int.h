@@ -331,6 +331,20 @@ bool unit_test_combined(MPCEnv& mpc, int pid) {
   return true;
 }
 
+bool lse_test(MPCEnv& mpc, int pid) {
+  size_t size = 2;
+  ublas::vector<myType> xv(size, 0);
+
+  if (pid == 2) {
+
+    xv[0] = DoubleToFP(1);
+    xv[1] = DoubleToFP(4);
+  }
+
+  mpc.LogSumExp(xv);
+
+}
+
 
 bool unit_test(MPCEnv& mpc, int pid) {
   myType x;
@@ -768,14 +782,14 @@ bool unit_test_ZZ(MPCEnv& mpc, int pid) {
   tcout() << zdv;
   tcout() << endl;
 
-  tcout() << "[FP sqrt] ";
+  tcout() << "[FP NEGLOGSIG] ";
   Init(xv, 3);
   if (pid == 2) {
     xv[0] = DoubleToFP(0.001, Param::NBIT_K, Param::NBIT_F);
     xv[1] = DoubleToFP(303, Param::NBIT_K, Param::NBIT_F);
     xv[2] = DoubleToFP(539, Param::NBIT_K, Param::NBIT_F);
   }
-  mpc.FPSqrt(yv, zv, xv);
+  mpc.NegLogSigmoid(yv, zv, xv);
   mpc.PrintFP(yv);
   mpc.PrintFP(zv);
   tcout() << endl;

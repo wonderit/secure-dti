@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  bool success = unit_test(mpc, pid);
+  bool success = unit_test_ZZ(mpc, pid);
 
   // This is here just to keep P0 online until the end for data transfer
   // In practice, P0 would send data in advance before each phase and go offline

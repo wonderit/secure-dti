@@ -409,7 +409,6 @@ void MPCEnv::ProfilerWriteToFile() {
   logfs.close();
 }
 
-/*
 void MPCEnv::LogisticRegression(ZZ_p& nll, ZZ_p& b0, Vec<ZZ_p>& b, Mat<ZZ_p>& x, Vec<ZZ_p>& y) {
   size_t n = x.NumCols();
   size_t p = x.NumRows();
@@ -615,7 +614,80 @@ void MPCEnv::NegLogSigmoid(Vec<ZZ_p>& b, Vec<ZZ_p>& b_grad, Vec<ZZ_p>& a) {
 
   b_grad = param[1];
 }
-*/
+
+
+myType MPCEnv::LogSumExp(ublas::vector<myType>& a) {
+  size_t vector_length = a.size();
+  size_t input_length = vector_length;
+  size_t next_length = vector_length;
+  size_t iter = log2(vector_length);
+  myType lse = 0;
+
+  ublas::vector<myType> input_max_index, maxpool_tmp;
+
+  Init(input_max_index, input_length);
+  Init(maxpool_tmp, input_length);
+
+  for (size_t i = 0; i < iter; i++) {
+
+    next_length /= 2;
+
+    ublas::vector<myType> a_left, a_right, max_index, xor_max_index, maxpool;
+    Init(a_left, next_length);
+    Init(a_right, next_length);
+    Init(max_index, next_length);
+    Init(xor_max_index, next_length);
+    Init(maxpool, next_length);
+
+    for (size_t idx = 0; idx < next_length; idx++) {
+      a_left(idx) = a(2 * idx);
+      a_right(idx) = a(2 * idx + 1);
+    }
+
+    a_right = a_right - a_left;
+    IsPositive(max_index, a_right);
+
+    // Calculate 1 - B
+    for (size_t j = 0; j < max_index.size(); j++) {
+
+      if (pid == 1)
+        xor_max_index(j) = 1 - max_index(j);
+      else if (pid == 2)
+        xor_max_index(j) = - max_index(j);
+    }
+
+
+    // Calculate Max Pool Index
+    for (size_t idx = 0; idx < next_length; idx++) {
+
+      input_max_index(2 * idx) = xor_max_index(idx);
+      input_max_index(2 * idx + 1) = max_index(idx);
+    }
+
+    // Calculate Max Pool result
+    MultElem(maxpool_tmp, a, input_max_index);
+
+    // Resize Max Pool result
+    for (int i = 0; i < next_length; i++) {
+      maxpool(i) = maxpool_tmp(i * 2) + maxpool_tmp(i * 2 + 1);
+    }
+
+    PrintFP(maxpool);
+    Vec<ZZ_p> sigmoid, sigmoid_grad, input;
+    Init(sigmoid, maxpool.size());
+    Init(sigmoid_grad, maxpool.size());
+    Init(input, maxpool.size());
+
+    to_zz(input, maxpool);
+
+    NegLogSigmoid(sigmoid, sigmoid_grad, input);
+
+    PrintFP(sigmoid);
+
+  }
+
+
+}
 
 void MPCEnv::InnerProd(Vec<ZZ_p>& c, Mat<ZZ_p>& a) {
   if (debug) tcout() << "InnerProd: " << a.NumRows() << ", " << a.NumCols() << endl;
