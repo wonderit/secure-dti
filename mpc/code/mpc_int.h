@@ -147,8 +147,6 @@ public:
 
     int n = a.length();
 
-
-
     if (pow == 1) {
       Init(b, 2, n);
       if (pid > 0) {

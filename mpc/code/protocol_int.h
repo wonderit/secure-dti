@@ -336,11 +336,42 @@ bool lse_test(MPCEnv& mpc, int pid) {
   ublas::vector<myType> xv(size, 0);
 
   if (pid == 2) {
-
     xv[0] = DoubleToFP(1);
     xv[1] = DoubleToFP(4);
   }
+  tcout() << "print 1,4" << endl;
+  mpc.LogSumExp(xv);
 
+  if (pid == 2) {
+    xv[0] = DoubleToFP(0);
+    xv[1] = DoubleToFP(1);
+  }
+
+  tcout() << "print 0,1" << endl;
+  mpc.LogSumExp(xv);
+
+  if (pid == 2) {
+    xv[0] = DoubleToFP(2);
+    xv[1] = DoubleToFP(3);
+  }
+
+  tcout() << "print 2,3" << endl;
+  mpc.LogSumExp(xv);
+
+  if (pid == 2) {
+    xv[0] = DoubleToFP(5);
+    xv[1] = DoubleToFP(10);
+  }
+
+  tcout() << "print 5,10" << endl;
+  mpc.LogSumExp(xv);
+
+  if (pid == 2) {
+    xv[0] = DoubleToFP(-1);
+    xv[1] = DoubleToFP(15);
+  }
+
+  tcout() << "print -1,15" << endl;
   mpc.LogSumExp(xv);
 
 }

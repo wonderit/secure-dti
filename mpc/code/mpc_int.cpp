@@ -94,10 +94,10 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
 
   tcout() << "Setting up lookup tables" << endl;
 
-  table_cache.SetLength(2);
-  table_type_ZZ.SetLength(2);
-  table_field_index.SetLength(2);
-  lagrange_cache.SetLength(2);
+  table_cache.SetLength(3);
+  table_type_ZZ.SetLength(3);
+  table_field_index.SetLength(3);
+  lagrange_cache.SetLength(3);
 
   Mat<ZZ_p> table;
 
@@ -129,6 +129,35 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
   table_type_ZZ[1] = true;
   table_cache[1] = table;
   table_field_index[1] = 1;
+
+  // Table 2: parameters (intercept, slope) for piecewise-linear approximation of
+  //          negative log-sigmoid function
+  table.SetDims(2, 64);
+  if (pid > 0) {
+    ifstream ifs;
+    ifs.open("sigmoid_approx.txt");
+    if (!ifs.is_open()) {
+      cout << "Error opening sigmoid_approx.txt" << endl;
+      clear(table);
+    }
+    for (int i = 0; i < table.NumCols(); i++) {
+      double intercept, slope;
+      ifs >> intercept >> slope;
+
+      ZZ_p fp_intercept, fp_slope;
+      DoubleToFP(fp_intercept, intercept, Param::NBIT_K, Param::NBIT_F);
+      DoubleToFP(fp_slope, slope, Param::NBIT_K, Param::NBIT_F);
+
+      table[0][i] = fp_intercept;
+      table[1][i] = fp_slope;
+    }
+    ifs.close();
+  }
+  table_type_ZZ[2] = false;
+  table_cache[2] = table;
+  table_field_index[2] = 0;
+
+  cout << "Generating lagrange cache" << endl;
 
   for (int cid = 0; cid < table_cache.length(); cid++) {
     long nrow = table_cache[cid].NumRows();
@@ -601,7 +630,7 @@ void MPCEnv::NegLogSigmoid(Vec<ZZ_p>& b, Vec<ZZ_p>& b_grad, Vec<ZZ_p>& a) {
 
   // Fetch piecewise linear approx parameters
   Mat<ZZ_p> param;
-  TableLookup(param, a_ind, 3);
+  TableLookup(param, a_ind, 2);
 
   MultElem(b, param[1], a);
   Trunc(b);
@@ -632,12 +661,14 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& a) {
 
     next_length /= 2;
 
-    ublas::vector<myType> a_left, a_right, max_index, xor_max_index, maxpool;
+    ublas::vector<myType> a_left, a_right, max_index, xor_max_index, maxpool, a_add_b, input_nls;
     Init(a_left, next_length);
     Init(a_right, next_length);
     Init(max_index, next_length);
     Init(xor_max_index, next_length);
     Init(maxpool, next_length);
+    Init(a_add_b, next_length);
+    Init(input_nls, next_length);
 
     for (size_t idx = 0; idx < next_length; idx++) {
       a_left(idx) = a(2 * idx);
@@ -672,17 +703,31 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& a) {
       maxpool(i) = maxpool_tmp(i * 2) + maxpool_tmp(i * 2 + 1);
     }
 
+    // a+b result
+    for (int i = 0; i < next_length; i++) {
+      a_add_b(i) = a(i * 2) + a(i * 2 + 1);
+    }
+
     PrintFP(maxpool);
     Vec<ZZ_p> sigmoid, sigmoid_grad, input;
+    ublas::vector<myType> int_sigmoid;
+
     Init(sigmoid, maxpool.size());
     Init(sigmoid_grad, maxpool.size());
     Init(input, maxpool.size());
+    Init(int_sigmoid, maxpool.size());
 
-    to_zz(input, maxpool);
+    input_nls = maxpool * 2 - a_add_b;
+
+    to_zz(input, input_nls);
 
     NegLogSigmoid(sigmoid, sigmoid_grad, input);
 
-    PrintFP(sigmoid);
+    to_mytype(int_sigmoid, sigmoid);
+
+    int_sigmoid = int_sigmoid + maxpool;
+
+    PrintFP(int_sigmoid);
 
   }
 
