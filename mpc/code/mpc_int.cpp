@@ -645,19 +645,27 @@ void MPCEnv::NegLogSigmoid(Vec<ZZ_p>& b, Vec<ZZ_p>& b_grad, Vec<ZZ_p>& a) {
 }
 
 
-myType MPCEnv::LogSumExp(ublas::vector<myType>& a) {
-  size_t vector_length = a.size();
-  size_t input_length = vector_length;
-  size_t next_length = vector_length;
-  size_t iter = log2(vector_length);
-  myType lse = 0;
+myType MPCEnv::LogSumExpTwoElems(ublas::vector<myType>& input) {
 
-  ublas::vector<myType> input_max_index, maxpool_tmp;
+  size_t input_length = input.size();
+  size_t next_length = input.size();
+  size_t iter = log2(input.size());
+  myType lse = 0;
+  myType fp_one = DoubleToFP(1.0);
+
+  ublas::vector<myType> input_max_index, maxpool_input;
+  ublas::vector<myType> maxpool_tmp, int_sigmoid_grad_tmp, int_sigmoid_grad_for_input;
 
   Init(input_max_index, input_length);
+  Init(maxpool_input, input_length);
+  Init(int_sigmoid_grad_tmp, input_length);
+  Init(int_sigmoid_grad_for_input, input_length);
   Init(maxpool_tmp, input_length);
 
+  // 2 iters for 4 elems
   for (size_t i = 0; i < iter; i++) {
+    // [1,2,3,4]
+    PrintFP(input);
 
     next_length /= 2;
 
@@ -671,67 +679,301 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& a) {
     Init(input_nls, next_length);
 
     for (size_t idx = 0; idx < next_length; idx++) {
-      a_left(idx) = a(2 * idx);
-      a_right(idx) = a(2 * idx + 1);
+      a_left(idx) = input(2 * idx);
+      a_right(idx) = input(2 * idx + 1);
     }
 
     a_right = a_right - a_left;
+
+    // a_right = [1, 1]
+    PrintFP(a_right);
+
+    // max_index = [1, 1]
     IsPositive(max_index, a_right);
 
-    // Calculate 1 - B
+    // Calculate 1 - max_index
     for (size_t j = 0; j < max_index.size(); j++) {
-
       if (pid == 1)
         xor_max_index(j) = 1 - max_index(j);
       else if (pid == 2)
         xor_max_index(j) = - max_index(j);
     }
 
+    Init(input_max_index, next_length * 2);
 
-    // Calculate Max Pool Index
+    // Calculate max_grad
     for (size_t idx = 0; idx < next_length; idx++) {
-
       input_max_index(2 * idx) = xor_max_index(idx);
       input_max_index(2 * idx + 1) = max_index(idx);
     }
 
-    // Calculate Max Pool result
-    MultElem(maxpool_tmp, a, input_max_index);
+    // Calculate max
+    // maxpool : max_index * (a_right - a_left) + a_left
+    MultElem(maxpool, max_index, a_right);
+    maxpool = maxpool + a_left;
 
-    // Resize Max Pool result
-    for (int i = 0; i < next_length; i++) {
-      maxpool(i) = maxpool_tmp(i * 2) + maxpool_tmp(i * 2 + 1);
-    }
-
-    // a+b result
-    for (int i = 0; i < next_length; i++) {
-      a_add_b(i) = a(i * 2) + a(i * 2 + 1);
-    }
-
+    // maxpool = [2, 4]
     PrintFP(maxpool);
-    Vec<ZZ_p> sigmoid, sigmoid_grad, input;
-    ublas::vector<myType> int_sigmoid;
+
+    // a + b : b - a + 2a
+    a_add_b = a_right + 2 * a_left;
+
+    // a_add_b = [3, 7]
+    PrintFP(a_add_b);
+
+    Vec<ZZ_p> sigmoid, sigmoid_grad, zz_input_nls;
+    ublas::vector<myType> int_sigmoid, int_sigmoid_grad;
 
     Init(sigmoid, maxpool.size());
     Init(sigmoid_grad, maxpool.size());
-    Init(input, maxpool.size());
+    Init(zz_input_nls, maxpool.size());
     Init(int_sigmoid, maxpool.size());
+    Init(int_sigmoid_grad, maxpool.size());
 
     input_nls = maxpool * 2 - a_add_b;
 
-    to_zz(input, input_nls);
+    to_zz(zz_input_nls, input_nls);
 
-    NegLogSigmoid(sigmoid, sigmoid_grad, input);
+    //TODO zz -> myType
+    NegLogSigmoid(sigmoid, sigmoid_grad, zz_input_nls);
 
     to_mytype(int_sigmoid, sigmoid);
 
     int_sigmoid = int_sigmoid + maxpool;
 
+    // [2.31195, 4.31196]
     PrintFP(int_sigmoid);
 
+    if (int_sigmoid.size() == 1)
+      lse = int_sigmoid(0);
+    else
+      input = int_sigmoid;
+  }
+
+  return lse;
+}
+
+
+myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>& input) {
+  if (pid == 2) {
+    for (size_t k = 0; k < lse_grad.size(); k++)
+      lse_grad(k) = DoubleToFP(1.0);
+  }
+
+  size_t input_length = input.size();
+  size_t next_length = input.size();
+  size_t iter = log2(input.size());
+  myType lse = 0;
+  myType fp_one = DoubleToFP(1.0);
+
+  ublas::vector<myType> input_max_index, maxpool_input;
+  ublas::vector<myType> lse_grad_tmp, maxpool_tmp, int_sigmoid_grad_tmp, int_sigmoid_grad_for_input;
+
+  Init(input_max_index, input_length);
+  Init(maxpool_input, input_length);
+  Init(int_sigmoid_grad_tmp, input_length);
+  Init(int_sigmoid_grad_for_input, input_length);
+  Init(maxpool_tmp, input_length);
+
+  std::vector<ublas::vector<myType> > lse_grads, max_indexes, sigmoid_grads;
+//  Init(lse_grads, iter);
+//  Init(max_indexes, iter);
+//  Init(sigmoid_grads, iter);
+
+  // 2 iters for 4 elems
+  for (size_t i = 0; i < iter; i++) {
+    if (pid == 2) tcout() << "INPUT" << endl;
+    // [1,2,3,4]
+    PrintFP(input);
+
+    next_length /= 2;
+
+    Init(lse_grad_tmp, next_length);
+
+    ublas::vector<myType> a_left, a_right, max_index, xor_max_index, maxpool, a_add_b, input_nls;
+    Init(a_left, next_length);
+    Init(a_right, next_length);
+    Init(max_index, next_length);
+    Init(xor_max_index, next_length);
+    Init(maxpool, next_length);
+    Init(a_add_b, next_length);
+    Init(input_nls, next_length);
+
+    for (size_t idx = 0; idx < next_length; idx++) {
+      a_left(idx) = input(2 * idx);
+      a_right(idx) = input(2 * idx + 1);
+    }
+
+    a_right = a_right - a_left;
+
+    // a_right = [1, 1]
+    PrintFP(a_right);
+
+    // max_index = [1, 1]
+    IsPositive(max_index, a_right);
+
+    // Calculate 1 - max_index
+    for (size_t j = 0; j < max_index.size(); j++) {
+      if (pid == 1)
+        xor_max_index(j) = 1 - max_index(j);
+      else if (pid == 2)
+        xor_max_index(j) = - max_index(j);
+    }
+
+    Init(input_max_index, next_length * 2);
+
+    // Calculate max_grad
+    for (size_t idx = 0; idx < next_length; idx++) {
+      input_max_index(2 * idx) = xor_max_index(idx);
+      input_max_index(2 * idx + 1) = max_index(idx);
+    }
+
+    // save to vec
+    max_indexes.push_back(input_max_index);
+
+    // Calculate max
+    // maxpool : max_index * (a_right - a_left) + a_left
+    MultElem(maxpool, max_index, a_right);
+    maxpool = maxpool + a_left;
+
+    // maxpool = [2, 4]
+    PrintFP(maxpool);
+
+    //TODO optimize L -> L / 2
+    // Calculate Max Pool result
+    // MultElem(maxpool_tmp, input, input_max_index);
+
+    // a + b : b - a + 2a
+    a_add_b = a_right + 2 * a_left;
+
+    // a_add_b = [3, 7]
+    PrintFP(a_add_b);
+
+    Vec<ZZ_p> sigmoid, sigmoid_grad, zz_input_nls;
+    ublas::vector<myType> int_sigmoid, int_sigmoid_grad;
+
+    Init(sigmoid, maxpool.size());
+    Init(sigmoid_grad, maxpool.size());
+    Init(zz_input_nls, maxpool.size());
+    Init(int_sigmoid, maxpool.size());
+    Init(int_sigmoid_grad, maxpool.size());
+
+    input_nls = maxpool * 2 - a_add_b;
+
+    to_zz(zz_input_nls, input_nls);
+    //TODO zz -> myType
+    NegLogSigmoid(sigmoid, sigmoid_grad, zz_input_nls);
+
+    to_mytype(int_sigmoid, sigmoid);
+
+    // 1)  sigmoid_grad to myType
+    to_mytype(int_sigmoid_grad, sigmoid_grad);
+
+    // resize grad
+    // TODO size error (input -> prev layer)
+//    for (size_t s = 0; s < int_sigmoid_grad.size(); s ++) {
+//      for (size_t j = 0; j < pow(2, i+1); j++) {
+//
+//        int_sigmoid_grad_for_input(2 * s + j) = int_sigmoid_grad(s);
+//      }
+//    }
+    // Save To Vec
+    sigmoid_grads.push_back(int_sigmoid_grad);
+
+    // 2)  calculate gradient of LSE = softmax
+    // lse_grad : max_grad(a,b) + (2 * max_grad(a,b) - 1) * sigmoid_grad
+    //            = (1 + 2 * sigmoid_grad) * max_grad(a,b) - sigmoid_grad
+    ////int_sigmoid_grad = int_sigmoid_grad * 2;
+    ////AddPublic(int_sigmoid_grad, fp_one);
+    ////MultElem(lse_grad_tmp, int_sigmoid_grad, maxpool);
+    ////lse_grad_tmp = lse_grad_tmp - int_sigmoid_grad;
+
+
+//    previous
+//    int_sigmoid_grad_tmp = int_sigmoid_grad_for_input * 2;
+//    AddPublic(int_sigmoid_grad_tmp, fp_one);
+
+    // resize input_max_index
+//    ublas::vector<myType> input_max_index_resized;
+//    Init(input_max_index_resized, int_sigmoid_grad_tmp.size());
+//    // TODO size error (input -> prev layer)
+//    size_t resize = int(int_sigmoid_grad_tmp.size() / input_max_index.size());
+//    if (resize > 1) {
+//      tcout() << "resize : " << resize << endl;
+//      for (size_t s = 0; s < input_max_index.size(); s ++) {
+//        for (size_t j = 0; j < resize; j++) {
+//          input_max_index_resized(2 * s + j) = input_max_index(s);
+//        }
+//      }
+//    } else {
+//      input_max_index_resized = input_max_index;
+//    }
+
+//    MultElem(lse_grad_tmp, int_sigmoid_grad_tmp, input_max_index_resized);
+
+//    lse_grad_tmp = lse_grad_tmp - int_sigmoid_grad_for_input;
+
+    int_sigmoid = int_sigmoid + maxpool;
+
+    // [2.31195, 4.31196]
+    PrintFP(int_sigmoid);
+
+    if (int_sigmoid.size() == 1)
+      lse = int_sigmoid(0);
+    else
+      input = int_sigmoid;
+  }
+  // back prop
+  for (size_t bi = 0; bi < iter; bi ++) {
+
+    ublas::vector<myType> lse_g, lse_g_tmp, max_i, sigmoid_g, sigmoid_g_resized;
+
+    tcout() << "test 0" << endl;
+    max_i = max_indexes.back();
+    sigmoid_g = sigmoid_grads.back();
+    max_indexes.pop_back();
+    sigmoid_grads.pop_back();
+
+    // Initialize lsg_g
+    Init(lse_g, max_i.size());
+    Init(lse_g_tmp, max_i.size());
+    Init(sigmoid_g_resized, max_i.size());
+
+
+    if (pid == 2) tcout() << sigmoid_g.size() << "//" << max_i.size() << "//" << endl;
+
+    // TODO beaver triple before resizing?
+    // Resize sigmoid_grad to match size of max_index
+    for (size_t s_g_i = 0; s_g_i < sigmoid_g.size(); s_g_i++) {
+      sigmoid_g_resized(2 * s_g_i) = sigmoid_g(s_g_i);
+      sigmoid_g_resized(2 * s_g_i + 1) = sigmoid_g(s_g_i);
+    }
+
+    // Calculate Grad of LSE (= SoftMax)
+    // lse_grad : max_grad(a,b) + (2 * max_grad(a,b) - 1) * sigmoid_grad
+    //            = (1 + 2 * sigmoid_grad) * max_grad(a,b) - sigmoid_grad
+    lse_g_tmp = sigmoid_g_resized * 2;
+    AddPublic(lse_g_tmp, fp_one);
+    MultElem(lse_g, lse_g_tmp, max_i);
+    lse_g = lse_g - sigmoid_g;
+    ////int_sigmoid_grad = int_sigmoid_grad * 2;
+    ////AddPublic(int_sigmoid_grad, fp_one);
+    ////MultElem(lse_grad_tmp, int_sigmoid_grad, maxpool);
+    ////lse_grad_tmp = lse_grad_tmp - int_sigmoid_grad;
+
+    tcout() << "lse_grad_prev" << endl;
+    PrintFP(lse_g);
+
+    tcout() << "max_index" << endl;
+    PrintFP(max_i);
+
+    tcout() << "sigmoid_grads" << endl;
+
+    PrintFP(sigmoid_g);
   }
 
 
+  return lse;
 }
 
 void MPCEnv::InnerProd(Vec<ZZ_p>& c, Mat<ZZ_p>& a) {

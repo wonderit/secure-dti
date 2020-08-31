@@ -332,47 +332,33 @@ bool unit_test_combined(MPCEnv& mpc, int pid) {
 }
 
 bool lse_test(MPCEnv& mpc, int pid) {
-  size_t size = 2;
+  size_t size = 4;
+//  size_t size = 2;
   ublas::vector<myType> xv(size, 0);
+  ublas::vector<myType> lse_xv_grad(size, 0);
 
   if (pid == 2) {
     xv[0] = DoubleToFP(1);
-    xv[1] = DoubleToFP(4);
+    xv[1] = DoubleToFP(2);
+    xv[2] = DoubleToFP(3);
+    xv[3] = DoubleToFP(4);
+//    xv[4] = DoubleToFP(5);
+//    xv[5] = DoubleToFP(6);
+//    xv[6] = DoubleToFP(7);
+//    xv[7] = DoubleToFP(8);
+
+//    xv[8] = DoubleToFP(1);
+//    xv[9] = DoubleToFP(2);
+//    xv[10] = DoubleToFP(3);
+//    xv[11] = DoubleToFP(4);
+//    xv[12] = DoubleToFP(5);
+//    xv[13] = DoubleToFP(6);
+//    xv[14] = DoubleToFP(7);
+//    xv[15] = DoubleToFP(8);
   }
-  tcout() << "print 1,4" << endl;
-  mpc.LogSumExp(xv);
-
-  if (pid == 2) {
-    xv[0] = DoubleToFP(0);
-    xv[1] = DoubleToFP(1);
-  }
-
-  tcout() << "print 0,1" << endl;
-  mpc.LogSumExp(xv);
-
-  if (pid == 2) {
-    xv[0] = DoubleToFP(2);
-    xv[1] = DoubleToFP(3);
-  }
-
-  tcout() << "print 2,3" << endl;
-  mpc.LogSumExp(xv);
-
-  if (pid == 2) {
-    xv[0] = DoubleToFP(5);
-    xv[1] = DoubleToFP(10);
-  }
-
-  tcout() << "print 5,10" << endl;
-  mpc.LogSumExp(xv);
-
-  if (pid == 2) {
-    xv[0] = DoubleToFP(-1);
-    xv[1] = DoubleToFP(15);
-  }
-
-  tcout() << "print -1,15" << endl;
-  mpc.LogSumExp(xv);
+  tcout() << "print 1,2,3,4" << endl;
+//  mpc.LogSumExp(lse_xv_grad, xv);
+  myType lse = mpc.LogSumExpTwoElems( xv);
 
 }
 

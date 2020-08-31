@@ -39,7 +39,8 @@ public:
   /* Logistic regression */
   void LogisticRegression(ZZ_p& nll, ZZ_p& b0, Vec<ZZ_p>& b, Mat<ZZ_p>& x, Vec<ZZ_p>& y);
   void NegLogSigmoid(Vec<ZZ_p>& b, Vec<ZZ_p>& b_grad, Vec<ZZ_p>& a);
-  myType LogSumExp(ublas::vector<myType>& a);
+  myType LogSumExp(ublas::vector<myType>& b_grad, ublas::vector<myType>& a);
+  myType LogSumExpTwoElems(ublas::vector<myType>& a);
 
   /* Linear algebra operations */
   void Householder(Vec<ZZ_p>& v, Vec<ZZ_p>& x);
