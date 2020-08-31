@@ -651,7 +651,6 @@ myType MPCEnv::LogSumExpTwoElems(ublas::vector<myType>& input) {
   size_t next_length = input.size();
   size_t iter = log2(input.size());
   myType lse = 0;
-  myType fp_one = DoubleToFP(1.0);
 
   ublas::vector<myType> input_max_index, maxpool_input;
   ublas::vector<myType> maxpool_tmp, int_sigmoid_grad_tmp, int_sigmoid_grad_for_input;
@@ -755,34 +754,23 @@ myType MPCEnv::LogSumExpTwoElems(ublas::vector<myType>& input) {
 
 
 myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>& input) {
-  if (pid == 2) {
-    for (size_t k = 0; k < lse_grad.size(); k++)
-      lse_grad(k) = DoubleToFP(1.0);
-  }
-
   size_t input_length = input.size();
   size_t next_length = input.size();
   size_t iter = log2(input.size());
   myType lse = 0;
   myType fp_one = DoubleToFP(1.0);
 
-  ublas::vector<myType> input_max_index, maxpool_input;
-  ublas::vector<myType> lse_grad_tmp, maxpool_tmp, int_sigmoid_grad_tmp, int_sigmoid_grad_for_input;
+  ublas::vector<myType> input_max_index;
+  ublas::vector<myType> lse_grad_tmp, int_sigmoid_grad_tmp, int_sigmoid_grad_for_input;
 
   Init(input_max_index, input_length);
-  Init(maxpool_input, input_length);
   Init(int_sigmoid_grad_tmp, input_length);
   Init(int_sigmoid_grad_for_input, input_length);
-  Init(maxpool_tmp, input_length);
 
   std::vector<ublas::vector<myType> > lse_grads, max_indexes, sigmoid_grads;
-//  Init(lse_grads, iter);
-//  Init(max_indexes, iter);
-//  Init(sigmoid_grads, iter);
 
   // 2 iters for 4 elems
   for (size_t i = 0; i < iter; i++) {
-    if (pid == 2) tcout() << "INPUT" << endl;
     // [1,2,3,4]
     PrintFP(input);
 
@@ -839,10 +827,6 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>&
     // maxpool = [2, 4]
     PrintFP(maxpool);
 
-    //TODO optimize L -> L / 2
-    // Calculate Max Pool result
-    // MultElem(maxpool_tmp, input, input_max_index);
-
     // a + b : b - a + 2a
     a_add_b = a_right + 2 * a_left;
 
@@ -869,49 +853,8 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>&
     // 1)  sigmoid_grad to myType
     to_mytype(int_sigmoid_grad, sigmoid_grad);
 
-    // resize grad
-    // TODO size error (input -> prev layer)
-//    for (size_t s = 0; s < int_sigmoid_grad.size(); s ++) {
-//      for (size_t j = 0; j < pow(2, i+1); j++) {
-//
-//        int_sigmoid_grad_for_input(2 * s + j) = int_sigmoid_grad(s);
-//      }
-//    }
     // Save To Vec
     sigmoid_grads.push_back(int_sigmoid_grad);
-
-    // 2)  calculate gradient of LSE = softmax
-    // lse_grad : max_grad(a,b) + (2 * max_grad(a,b) - 1) * sigmoid_grad
-    //            = (1 + 2 * sigmoid_grad) * max_grad(a,b) - sigmoid_grad
-    ////int_sigmoid_grad = int_sigmoid_grad * 2;
-    ////AddPublic(int_sigmoid_grad, fp_one);
-    ////MultElem(lse_grad_tmp, int_sigmoid_grad, maxpool);
-    ////lse_grad_tmp = lse_grad_tmp - int_sigmoid_grad;
-
-
-//    previous
-//    int_sigmoid_grad_tmp = int_sigmoid_grad_for_input * 2;
-//    AddPublic(int_sigmoid_grad_tmp, fp_one);
-
-    // resize input_max_index
-//    ublas::vector<myType> input_max_index_resized;
-//    Init(input_max_index_resized, int_sigmoid_grad_tmp.size());
-//    // TODO size error (input -> prev layer)
-//    size_t resize = int(int_sigmoid_grad_tmp.size() / input_max_index.size());
-//    if (resize > 1) {
-//      tcout() << "resize : " << resize << endl;
-//      for (size_t s = 0; s < input_max_index.size(); s ++) {
-//        for (size_t j = 0; j < resize; j++) {
-//          input_max_index_resized(2 * s + j) = input_max_index(s);
-//        }
-//      }
-//    } else {
-//      input_max_index_resized = input_max_index;
-//    }
-
-//    MultElem(lse_grad_tmp, int_sigmoid_grad_tmp, input_max_index_resized);
-
-//    lse_grad_tmp = lse_grad_tmp - int_sigmoid_grad_for_input;
 
     int_sigmoid = int_sigmoid + maxpool;
 
@@ -923,55 +866,59 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>&
     else
       input = int_sigmoid;
   }
-  // back prop
+
+  // back prop start
+  ublas::vector<myType> prev_lse_g, prev_lse_g_resized;
+
   for (size_t bi = 0; bi < iter; bi ++) {
 
-    ublas::vector<myType> lse_g, lse_g_tmp, max_i, sigmoid_g, sigmoid_g_resized;
+    ublas::vector<myType> lse_g_tmp, max_i, sigmoid_g, sigmoid_g_resized;
 
-    tcout() << "test 0" << endl;
+    // 1. get last max_index, sigmoid_grad
     max_i = max_indexes.back();
     sigmoid_g = sigmoid_grads.back();
+
     max_indexes.pop_back();
     sigmoid_grads.pop_back();
 
     // Initialize lsg_g
-    Init(lse_g, max_i.size());
+    Init(lse_grad, max_i.size());
     Init(lse_g_tmp, max_i.size());
     Init(sigmoid_g_resized, max_i.size());
 
-
-    if (pid == 2) tcout() << sigmoid_g.size() << "//" << max_i.size() << "//" << endl;
-
     // TODO beaver triple before resizing?
-    // Resize sigmoid_grad to match size of max_index
+    // 2. Resize sigmoid_grad to match size of max_index
     for (size_t s_g_i = 0; s_g_i < sigmoid_g.size(); s_g_i++) {
       sigmoid_g_resized(2 * s_g_i) = sigmoid_g(s_g_i);
       sigmoid_g_resized(2 * s_g_i + 1) = sigmoid_g(s_g_i);
     }
 
-    // Calculate Grad of LSE (= SoftMax)
+    // 3. Calculate gradient of LSE (= SoftMax) from sigmoid_grad
     // lse_grad : max_grad(a,b) + (2 * max_grad(a,b) - 1) * sigmoid_grad
     //            = (1 + 2 * sigmoid_grad) * max_grad(a,b) - sigmoid_grad
     lse_g_tmp = sigmoid_g_resized * 2;
     AddPublic(lse_g_tmp, fp_one);
-    MultElem(lse_g, lse_g_tmp, max_i);
-    lse_g = lse_g - sigmoid_g;
-    ////int_sigmoid_grad = int_sigmoid_grad * 2;
-    ////AddPublic(int_sigmoid_grad, fp_one);
-    ////MultElem(lse_grad_tmp, int_sigmoid_grad, maxpool);
-    ////lse_grad_tmp = lse_grad_tmp - int_sigmoid_grad;
+    MultElem(lse_grad, lse_g_tmp, max_i);
+    lse_grad = lse_grad - sigmoid_g_resized;
 
-    tcout() << "lse_grad_prev" << endl;
-    PrintFP(lse_g);
+    // 4. Resize previous gradient of LSE
+    if (prev_lse_g.size() > 0) {
+      Init(prev_lse_g_resized, sigmoid_g_resized.size());
+      for (size_t l_g_i = 0; l_g_i < sigmoid_g.size(); l_g_i++) {
+        prev_lse_g_resized(2 * l_g_i) = prev_lse_g(l_g_i);
+        prev_lse_g_resized(2 * l_g_i + 1) = prev_lse_g(l_g_i);
+      }
 
-    tcout() << "max_index" << endl;
-    PrintFP(max_i);
+      // 5. multiply prev_grad to lse_grad
+      MultElem(lse_grad, lse_grad, prev_lse_g_resized);
+      Trunc(lse_grad);
+    }
 
-    tcout() << "sigmoid_grads" << endl;
+    prev_lse_g = lse_grad;
 
-    PrintFP(sigmoid_g);
+    if (pid == 2) tcout() << "lse_g" << endl;
+    PrintFP(lse_grad);
   }
-
 
   return lse;
 }
