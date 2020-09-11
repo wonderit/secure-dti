@@ -94,10 +94,10 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
 
   tcout() << "Setting up lookup tables" << endl;
 
-  table_cache.SetLength(3);
-  table_type_ZZ.SetLength(3);
-  table_field_index.SetLength(3);
-  lagrange_cache.SetLength(3);
+  table_cache.SetLength(4);
+  table_type_ZZ.SetLength(4);
+  table_field_index.SetLength(4);
+  lagrange_cache.SetLength(4);
 
   Mat<ZZ_p> table;
 
@@ -107,7 +107,8 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
     table[0][0] = 1;
     table[0][1] = 0;
   }
-  table_type_ZZ[0] = true;
+  // true -> 0
+  table_type_ZZ[0] = 1;
   table_cache[0] = table;
   table_field_index[0] = 2;
 
@@ -126,7 +127,7 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
     }
 
   }
-  table_type_ZZ[1] = true;
+  table_type_ZZ[1] = 1;
   table_cache[1] = table;
   table_field_index[1] = 1;
 
@@ -153,17 +154,44 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
     }
     ifs.close();
   }
-  table_type_ZZ[2] = false;
+  table_type_ZZ[2] = 0;
   table_cache[2] = table;
   table_field_index[2] = 0;
+
+  // Table 3: parameters (intercept, slope) for piecewise-linear approximation of
+  //          negative log-sigmoid function (myType version)
+  table.SetDims(2, 32);
+  if (pid > 0) {
+    ifstream ifs;
+    ifs.open("sigmoid_approx_32_linear.txt");
+    if (!ifs.is_open()) {
+      cout << "Error opening sigmoid_approx_32_linear.txt" << endl;
+      clear(table);
+    }
+    for (int i = 0; i < table.NumCols(); i++) {
+      double intercept, slope;
+      ifs >> intercept >> slope;
+
+      ZZ_p fp_intercept, fp_slope;
+      DoubleToFP(fp_intercept, intercept, Param::NBIT_K, Param::NBIT_F);
+      DoubleToFP(fp_slope, slope, Param::NBIT_K, Param::NBIT_F);
+
+      table[0][i] = fp_intercept;
+      table[1][i] = fp_slope;
+    }
+    ifs.close();
+  }
+  table_type_ZZ[3] = 2;
+  table_cache[3] = table;
+  table_field_index[3] = 0;
 
   cout << "Generating lagrange cache" << endl;
 
   for (int cid = 0; cid < table_cache.length(); cid++) {
     long nrow = table_cache[cid].NumRows();
     long ncol = table_cache[cid].NumCols();
-    bool index_by_ZZ = table_type_ZZ[cid];
-    if (index_by_ZZ) {
+    int table_type = table_type_ZZ[cid];
+    if (table_type > 0) {
       lagrange_cache[cid].SetDims(nrow, 2 * ncol);
     } else {
       lagrange_cache[cid].SetDims(nrow, ncol);
@@ -174,7 +202,7 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
       for (int i = 0; i < nrow; i++) {
         Vec<long> x;
         Vec<ZZ_p> y;
-        if (index_by_ZZ) {
+        if (table_type > 0) {
           x.SetLength(2 * ncol);
           y.SetLength(2 * ncol);
         } else {
@@ -184,8 +212,14 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
         for (int j = 0; j < ncol; j++) {
           x[j] = j + 1;
           y[j] = table_cache[cid][i][j];
-          if (index_by_ZZ) {
-            x[j + ncol] = x[j] + conv<long>(primes[table_field_index[cid]]);
+          if (table_type > 0) {
+            long shift;
+            if (table_type == 1) {
+              shift = conv<long>(primes[table_field_index[cid]]);
+            } else {
+              shift = conv<long>((ZZ(1) << INT_TYPE) - primes[table_field_index[cid]]);
+            }
+            x[j + ncol] = x[j] + shift;
             y[j + ncol] = table_cache[cid][i][j];
           }
         }
@@ -581,9 +615,101 @@ void MPCEnv::LogisticRegression(ZZ_p& nll, ZZ_p& b0, Vec<ZZ_p>& b, Mat<ZZ_p>& x,
   PrintFP(nll);
 }
 
-void MPCEnv::NegLogSigmoid(Vec<ZZ_p>& b, Vec<ZZ_p>& b_grad, Vec<ZZ_p>& a) {
+void MPCEnv::NegLogSigmoidPosDomain(ublas::vector<myType> &b, ublas::vector<myType> &b_grad, ublas::vector<myType> &a) {
+  size_t n = a.size();
+
+  int depth = 6;
+
+  ublas::vector<myType> cur = a; // copy
+
+  ublas::vector<myType> a_ind;
+  Init(a_ind, a.size());
+
+  double step = 4;
+
+  // Center at zero
+  myType step_fp = DoubleToFP(step);
+
+  for (size_t i = 0; i < cur.size(); i++)
+    cur[i] -= step_fp;
+
+  for (int i = 0; i < depth; i++) {
+    ublas::vector<myType> cur_sign;
+    Init(cur_sign, cur.size());
+    IsPositive(cur_sign, cur);
+
+    // to DoubleToFP
+    myType index_step = 1 << (depth - 1 - i);
+
+    for (int j = 0; j < n; j++) {
+      a_ind[j] += cur_sign[j] * index_step;
+    }
+
+    // 2 * cur_sign - 1 (0, 1 -> -1, 1)
+    cur_sign *= 2;
+    if (pid == 1) {
+      for (int j = 0; j < n; j++) {
+        cur_sign[j] -= 1;
+      }
+    }
+
+    step_fp = DoubleToFP(step);
+
+    for (int j = 0; j < n; j++) {
+      cur[j] -= step_fp * cur_sign[j];
+    }
+
+    step /= 2;
+  }
+
+  // Make indices 1-based
+  if (pid == 1) {
+    for (int j = 0; j < n; j++) {
+      a_ind[j]++;
+    }
+  }
+
+  // convert to zz_p
+  // myType: s1, s2 (s = s1 + s2 (mod 2^k))
+  //         s = s1 + s2 (case 1) or s1 + s2 - 2^k (case 2)
+  // pretend s1, s2 are ZZ_p
+  // s1 + s2 mod p
+  // case 1: s1 + s2 mod p = s
+  // case 2: s1 + s2 - p = s1 + s2 - 2^k + (2^k - p) = s + (2^k - p)
+  // as long as s + (2^k - p) does not coincide with another s' we're good
+  // TableLookup: s -> T(s) and s + (2^k - p) -> T(s)
+  // p : 2^64-59
+  // This means as long as s (input to TableLookup) [1, 59]
+  // We want number of segments in the approximation of NLS to be <= 59
+  // Fetch piecewise linear approx parameters
+  Mat<ZZ_p> param_ZZp;
+  TableLookup(param_ZZp, a_ind, 3, 0);
+
+  MatrixXm param = MatrixXm::Zero(param_ZZp.NumRows(), param_ZZp.NumCols());
+  to_mytype(param, param_ZZp);
+
+  ublas::vector<myType> c1;
+  Init(c1, param.cols());
+  for (size_t i = 0; i < c1.size(); i++)
+    c1(i) = param(1, i);
+
+  MultElem(b, c1, a);
+  Trunc(b);
+
+  if (pid > 0) {
+    for (int j = 0; j < n; j++) {
+      b[j] += param(0, j);
+    }
+  }
+
+  b_grad = c1;
+}
+
+
+void MPCEnv::NegLogSigmoid(Vec<ZZ_p> &b, Vec<ZZ_p> &b_grad, Vec<ZZ_p> &a) {
   size_t n = a.length();
 
+  // number of comparison hyperparameter
   int depth = 6;
 
   Vec<ZZ_p> cur = a; // copy
@@ -592,6 +718,7 @@ void MPCEnv::NegLogSigmoid(Vec<ZZ_p>& b, Vec<ZZ_p>& b_grad, Vec<ZZ_p>& a) {
   a_ind.SetLength(a.length());
   clear(a_ind);
 
+  // size of segment
   double step = 4;
 
   for (int i = 0; i < depth; i++) {
@@ -618,6 +745,8 @@ void MPCEnv::NegLogSigmoid(Vec<ZZ_p>& b, Vec<ZZ_p>& b_grad, Vec<ZZ_p>& a) {
       cur[j] -= step_fp * cur_sign[j];
     }
 
+    // at each depth
+    // size of the interval
     step /= 2;
   }
 
@@ -844,14 +973,14 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>&
 
     input_nls = maxpool * 2 - a_add_b;
 
-    to_zz(zz_input_nls, input_nls);
     //TODO zz -> myType
-    NegLogSigmoid(sigmoid, sigmoid_grad, zz_input_nls);
+//    to_zz(zz_input_nls, input_nls);
+//    NegLogSigmoid(sigmoid, sigmoid_grad, zz_input_nls);
+//    to_mytype(int_sigmoid, sigmoid);
+//    //  1)  sigmoid_grad to myType
+//    to_mytype(int_sigmoid_grad, sigmoid_grad);
 
-    to_mytype(int_sigmoid, sigmoid);
-
-    // 1)  sigmoid_grad to myType
-    to_mytype(int_sigmoid_grad, sigmoid_grad);
+    NegLogSigmoidPosDomain(int_sigmoid, int_sigmoid_grad, input_nls);
 
     // Save To Vec
     sigmoid_grads.push_back(int_sigmoid_grad);
@@ -859,7 +988,11 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>&
     int_sigmoid = int_sigmoid + maxpool;
 
     // [2.31195, 4.31196]
-    PrintFP(int_sigmoid);
+//    if (pid == 2) tcout() << "LSE : " << endl;
+//    PrintFP(int_sigmoid);
+
+//    if (pid == 2) tcout() << "int_sigmoid_grad :: " << endl;
+//    PrintFP(int_sigmoid_grad);
 
     if (int_sigmoid.size() == 1)
       lse = int_sigmoid(0);
@@ -916,7 +1049,7 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>&
 
     prev_lse_g = lse_grad;
 
-    if (pid == 2) tcout() << "lse_g" << endl;
+    if (pid == 2) tcout() << "lse_g :" << endl;
     PrintFP(lse_grad);
   }
 
@@ -2788,7 +2921,6 @@ void MPCEnv::TableLookup(Mat<ZZ_p>& b, Vec<ZZ_p>& a, int table_id) {
 
 void MPCEnv::TableLookup(Mat<ZZ_p>& b, Vec<ZZ>& a, int table_id, int fid) {
   if (debug) tcout() << "TableLookup: " << a.length() << endl;
-
   assert(table_type_ZZ[table_id]);
   assert(table_field_index[table_id] == fid);
 
@@ -2809,8 +2941,37 @@ void MPCEnv::TableLookup(Mat<ZZ_p>& b, Vec<ZZ>& a, int table_id, int fid) {
   EvaluatePoly(b, a_exp, lagrange_cache[table_id]);
 }
 
+void MPCEnv::TableLookup(Mat<ZZ_p> &b, ublas::vector<myType> &a, int table_id = 3, int fid = 0) {
+  if (debug) tcout() << "TableLookup: " << a.size() << endl;
+
+  // check if table_type == mytype
+//  assert(table_type_ZZ[table_id]);
+
+  // check if table_type == ZZ_p
+//  assert(table_type_ZZ[table_id] == 0);
+
+  assert(table_field_index[table_id] == fid);
+
+  int s = table_cache[table_id].NumCols();
+  int n = a.size();
+
+  Vec<ZZ_p> a_exp;
+  a_exp.SetLength(n);
+  if (pid > 0) {
+    to_zz(a_exp, a);
+//    for (int i = 0; i < n; i++) {
+//      a_exp[i] = to_zz(a[i]);
+//    }
+  }
+
+  if (debug) tcout() << "Evaluating polynomial" << endl;
+  if (debug) tcout() << s << ", " << lagrange_cache[table_id].NumCols() << endl;
+
+  EvaluatePoly(b, a_exp, lagrange_cache[table_id]);
+}
+
 // Base field index 1
-void MPCEnv::NormalizerEvenExp(Vec<ZZ_p>& b, Vec<ZZ_p>& b_sqrt, Vec<ZZ_p>& a) {
+void MPCEnv::NormalizerEvenExp(Vec<ZZ_p> &b, Vec<ZZ_p> &b_sqrt, Vec<ZZ_p> &a) {
   if (debug) tcout() << "NormalizerEvenExp: " << a.length() << endl;
 
   int n = a.length();

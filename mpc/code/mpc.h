@@ -218,7 +218,7 @@ public:
   template<class T>
   void EvaluatePoly(Mat<T>& b, Vec<T>& a, Mat<T>& coeff, int fid = 0) {
     if (debug) cout << "EvaluatePoly: " << a.length() << ", deg = " << coeff.NumCols() - 1 << endl;
-    
+
     int n = a.length();
     int npoly = coeff.NumRows();
     int deg = coeff.NumCols() - 1;

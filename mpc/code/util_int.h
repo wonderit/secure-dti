@@ -198,14 +198,20 @@ static inline void Init(Vec<T>& a, int n) {
 }
 
 template<class T>
-static inline void Init(ublas::vector<T>& a, int n) {
+static inline void Init(ublas::vector<T> &a, int n) {
   a.resize(n);
+  a.clear();
+}
+
+template<class T>
+static inline void Init(ublas::matrix<T> &a, int nrow, int ncol) {
+  a.resize(nrow, ncol);
   a.clear();
 }
 
 
 template<class T>
-static inline void Init(Mat<T>& a, int nrow, int ncol) {
+static inline void Init(Mat<T> &a, int nrow, int ncol) {
   a.SetDims(nrow, ncol);
   clear(a);
 }
@@ -597,24 +603,39 @@ static inline void zToString(const ZZ& z, string& s) {
 //  return (string) str;
 //}
 
-static inline void to_zz(Vec<ZZ_p>& c, ublas::vector<myType>& x) {
-  for (int i = 0; i < x.size(); i++) {
-    string str_x;
-    if (INT_TYPE == 64) {
-      str_x = std::to_string((uint64_t)x[i]);
-    } else if (INT_TYPE == 128) {
-      str_x = ((uint128_t)x[i]).str();
-    }
 
-    c[i] = to_ZZ_p(conv<ZZ>(str_x.c_str()));
+// TODO get rid of str()
+static inline void to_zz(Vec<ZZ_p> &c, ublas::vector<myType> &x) {
+  for (int i = 0; i < x.size(); i++) {
+
+    if (INT_TYPE == 64) {
+      c[i] = conv<ZZ_p>(conv<ZZ>((long) x[i])); // TODO: test (both pos and neg)
+    } else if (INT_TYPE == 128) {
+      string str_x;
+      str_x = ((uint128_t) x[i]).str();
+      c[i] = to_ZZ_p(conv<ZZ>(str_x.c_str()));
+    }
   }
 }
+
+//static inline void to_zz(Vec<ZZ_p>& c, ublas::vector<myType>& x) {
+//  for (int i = 0; i < x.size(); i++) {
+//    string str_x;
+//    if (INT_TYPE == 64) {
+//      str_x = std::to_string((uint64_t)x[i]);
+//    } else if (INT_TYPE == 128) {
+//      str_x = ((uint128_t)x[i]).str();
+//    }
+//
+//    c[i] = to_ZZ_p(conv<ZZ>(str_x.c_str()));
+//  }
+//}
 
 static inline void to_zz(Mat<ZZ_p> &c, MatrixXm &x) {
   for (size_t i = 0; i < x.rows(); i++) {
     for (size_t j = 0; j < x.cols(); j++) {
 //      string str_x(std::to_string(x(i, j)));
-      string str_x;
+      string str_x; // TODO: no string for 64
       if (INT_TYPE == 64) {
         str_x = std::to_string((uint64_t) x(i, j));
       } else if (INT_TYPE == 128) {
@@ -626,22 +647,51 @@ static inline void to_zz(Mat<ZZ_p> &c, MatrixXm &x) {
   }
 }
 
-static inline void to_mytype(ublas::vector<myType>& x, Vec<ZZ_p>& c) {
-  string str;
+static inline void to_mytype(ublas::vector<myType> &x, Vec<ZZ_p> &c) {
   for (size_t i = 0; i < x.size(); ++i) {
-    zToString(rep(c[i]), str);
-    x[i] = static_cast<myType>(boost::lexical_cast<myTypeunSigned>(str.c_str()));
+    x[i] = static_cast<myType>(conv<long>(rep(c[i]))); // TODO: test
+  }
+}
+
+static inline void to_mytype(ublas::matrix<myType> &x, Mat<ZZ_p> &c) {
+
+  for (size_t i = 0; i < c.NumRows(); i++) {
+    for (size_t j = 0; j < c.NumCols(); j++) {
+      x(i, j) = static_cast<myType>(conv<long>(rep(c[i][j]))); // TODO: test
+    }
   }
 }
 
 
-static inline void to_mytype(MatrixXm &x, Mat<ZZ_p> &c) {
+//static inline void to_mytype(ublas::vector<myType>& x, Vec<ZZ_p>& c) {
+//  string str;
+//  for (size_t i = 0; i < x.size(); ++i) {
+//    zToString(rep(c[i]), str);
+//    x[i] = static_cast<myType>(boost::lexical_cast<myTypeunSigned>(str.c_str()));
+//  }
+//}
+//
+//static inline void to_mytype(ublas::matrix<myType>& x, Mat<ZZ_p>& c) {
+//  string str;
+//  for (size_t i = 0; i < c.NumRows(); i++) {
+//    for (size_t j = 0; j < c.NumCols(); j++) {
+//      zToString(rep(c[i][j]), str);
+//      x(i, j) = static_cast<myType>(boost::lexical_cast<myTypeunSigned>(str.c_str())); // TODO: test
+//    }
+//  }
+//}
+
+
+static inline void to_mytype(MatrixXm &x, Mat<ZZ_p> &c) { // TODO: same change
   string str;
   for (size_t i = 0; i < x.rows(); i++) {
     for (size_t j = 0; j < x.cols(); j++) {
-      zToString(rep(c[i][j]), str);
-      x(i, j) = static_cast<myType>(boost::lexical_cast<myTypeunSigned>(str.c_str()));
-//      x(i, j) = boost::lexical_cast<myType>(str.c_str());
+      if (INT_TYPE == 64) {
+        x(i, j) = static_cast<myType>(conv<long>(rep(c[i][j])));
+      } else if (INT_TYPE == 128) {
+        zToString(rep(c[i][j]), str);
+        x(i, j) = static_cast<myType>(boost::lexical_cast<myTypeunSigned>(str.c_str()));
+      }
     }
   }
 }

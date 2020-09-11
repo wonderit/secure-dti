@@ -38,8 +38,11 @@ public:
 
   /* Logistic regression */
   void LogisticRegression(ZZ_p& nll, ZZ_p& b0, Vec<ZZ_p>& b, Mat<ZZ_p>& x, Vec<ZZ_p>& y);
-  void NegLogSigmoid(Vec<ZZ_p>& b, Vec<ZZ_p>& b_grad, Vec<ZZ_p>& a);
-  myType LogSumExp(ublas::vector<myType>& b_grad, ublas::vector<myType>& a);
+  void NegLogSigmoid(Vec<ZZ_p> &b, Vec<ZZ_p> &b_grad, Vec<ZZ_p> &a);
+
+    void NegLogSigmoidPosDomain(ublas::vector<myType> &b, ublas::vector<myType> &b_grad, ublas::vector<myType> &a);
+
+    myType LogSumExp(ublas::vector<myType> &b_grad, ublas::vector<myType> &a);
   myType LogSumExpTwoElems(ublas::vector<myType>& a);
 
   /* Linear algebra operations */
@@ -592,36 +595,30 @@ public:
   }
 
     void PrintFP(MatrixXm &a, ostream &os) {
-      tcout() << "PrintFP 001" << endl;
       MatrixXm a_copy = a;
-      tcout() << "PrintFP 002" << endl;
       RevealSym(a_copy);
-      tcout() << "PrintFP 003" << endl;
       MatrixXd ad(a.rows(), a.cols());
-      tcout() << "PrintFP 004" << endl;
       FPToDouble(ad, a_copy);
 
       if (pid == 2) {
-        tcout() << "PrintFP start" << endl;
-        for (int j = 0; j < ad.cols(); j++) {
-          if (j > 4)
+        for (int i = 0; i < ad.rows(); i++) {
+          if (i > 4)
             break;
-          for (int i = 0; i < ad.rows(); i++) {
-            if (i > 4)
+          for (int j = 0; j < ad.cols(); j++) {
+            if (j > 4)
               break;
 
             os << ad(i, j);
-            if (i == ad.rows() - 1) {
+            if (i == ad.cols() - 1) {
               os << endl;
             } else {
               os << '\t';
             }
           }
-        os << endl;
-      }
+          os << endl;
+        }
       os << endl;
     }
-      tcout() << "PrintFP end" << endl;
   }
 
   template<class T>
@@ -701,8 +698,8 @@ public:
             }
           }
         }
+      }
     }
-  }
 
   template<class T>
   void Print(ublas::vector<ublas::vector<T>>& a, ostream& os, int fid = 0) {
@@ -2261,7 +2258,10 @@ public:
 
   // a contains column indices (1-based) into cached tables
   void TableLookup(Mat<ZZ_p>& b, Vec<ZZ_p>& a, int cache_id);
-  void TableLookup(Mat<ZZ_p>& b, Vec<ZZ>& a, int cache_id, int fid);
+
+    void TableLookup(Mat<ZZ_p> &b, Vec<ZZ> &a, int cache_id, int fid);
+
+    void TableLookup(Mat<ZZ_p> &b, ublas::vector<myType> &a, int cache_id, int fid);
 
   myType ModShare(myType a, myType mask, myType L) {
     cout << "MODSHARE T " << a << mask << endl;
@@ -2300,22 +2300,22 @@ public:
 
 
 private:
-  map<int, CSocket> sockets;
-  map<int, RandomStream> prg;
+    map<int, CSocket> sockets;
+    map<int, RandomStream> prg;
 
-  /* Table lookup cache */
-  Vec< Mat<ZZ_p> > table_cache;
-  Vec< bool > table_type_ZZ; // true if indexed by ZZ, false if ZZ_p is used
-  Vec< int > table_field_index;
-  Vec< Mat<ZZ_p> > lagrange_cache;
-  map<int, ZZ_p> invpow_cache;
+    /* Table lookup cache */
+    Vec<Mat<ZZ_p> > table_cache;
+    Vec<int> table_type_ZZ; // 2 if indexed by myType, 1 if indexed by ZZ, 0 if ZZ_p is used
+    Vec<int> table_field_index;
+    Vec<Mat<ZZ_p> > lagrange_cache;
+    map<int, ZZ_p> invpow_cache;
 
-  /* Profiler data */
-  stack<string> pstate;
-  map<string, int> ptable_index;
-  std::vector< pair<string, std::vector<uint64_t> > > ptable;
+    /* Profiler data */
+    stack<string> pstate;
+    map<string, int> ptable_index;
+    std::vector<pair<string, std::vector<uint64_t> > > ptable;
 
-  /* Lagrange coefficient cache for OR functions */
+    /* Lagrange coefficient cache for OR functions */
   map<pair<int, int>, Vec<ZZ> > or_lagrange_cache;
 
   /* Pascal matrix cache for Powers */

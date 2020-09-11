@@ -24,7 +24,8 @@ set(SOURCE_FILES
         AnalyzeFeature.cpp)
 
 # Add executable target with source files listed in SOURCE_FILES variable
-add_executable(ShareData ${SOURCE_FILES})
+add_executable(UnitTestClient ${SOURCE_FILES})
 
 include_directories(/usr/local/include/)
+include_directories(/usr/local/include/eigen3)
 include_directories(include)
