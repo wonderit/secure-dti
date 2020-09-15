@@ -119,8 +119,6 @@ bool Param::ParseFile(const char *param_file) {
       ret = Convert(v, Param::TRAIN_SUFFIXES, k);
     } else if (k == "TEST_SUFFIXES") {
       ret = Convert(v, Param::TEST_SUFFIXES, k);
-    } else if (k == "N_CLASSES") {
-      ret = Convert(v, Param::N_CLASSES, k);
     } else if (k == "N_HIDDEN") {
       ret = Convert(v, Param::N_HIDDEN, k);
     } else if (k == "N_NEURONS") {

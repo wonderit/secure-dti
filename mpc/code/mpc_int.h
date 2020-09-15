@@ -32,27 +32,38 @@ public:
 
   /* Logging */
   void ProfilerResetTimer();
-  void ProfilerPushState(string desc);
-  void ProfilerPopState(bool write);
-  void ProfilerWriteToFile();
 
-  /* Logistic regression */
-  void LogisticRegression(ZZ_p& nll, ZZ_p& b0, Vec<ZZ_p>& b, Mat<ZZ_p>& x, Vec<ZZ_p>& y);
-  void NegLogSigmoid(Vec<ZZ_p> &b, Vec<ZZ_p> &b_grad, Vec<ZZ_p> &a);
+    void ProfilerPushState(string desc);
+
+    void ProfilerPopState(bool write);
+
+    void ProfilerWriteToFile();
+
+    /* Logistic regression */
+    void LogisticRegression(ZZ_p &nll, ZZ_p &b0, Vec<ZZ_p> &b, Mat<ZZ_p> &x, Vec<ZZ_p> &y);
+
+    void NegLogSigmoid(Vec<ZZ_p> &b, Vec<ZZ_p> &b_grad, Vec<ZZ_p> &a);
 
     void NegLogSigmoidPosDomain(ublas::vector<myType> &b, ublas::vector<myType> &b_grad, ublas::vector<myType> &a);
 
     myType LogSumExp(ublas::vector<myType> &b_grad, ublas::vector<myType> &a);
-  myType LogSumExpTwoElems(ublas::vector<myType>& a);
 
-  /* Linear algebra operations */
-  void Householder(Vec<ZZ_p>& v, Vec<ZZ_p>& x);
-  // Optimized for communication rounds (eigendecomp depends on this)
-  void QRFactSquare(Mat<ZZ_p>& Q, Mat<ZZ_p>& R, Mat<ZZ_p>& A);
-  // Optimized for memory (need to call this on a large matrix)
-  void OrthonormalBasis(Mat<ZZ_p>& Q, Mat<ZZ_p>& A);
-  void Tridiag(Mat<ZZ_p>& T, Mat<ZZ_p>& Q, Mat<ZZ_p>& A);
-  void EigenDecomp(Mat<ZZ_p>& V, Vec<ZZ_p>& L, Mat<ZZ_p>& A);
+    void SoftMax(MatrixXm &softmax, MatrixXm &a);
+
+    myType LogSumExpTwoElems(ublas::vector<myType> &a);
+
+    /* Linear algebra operations */
+    void Householder(Vec<ZZ_p> &v, Vec<ZZ_p> &x);
+
+    // Optimized for communication rounds (eigendecomp depends on this)
+    void QRFactSquare(Mat<ZZ_p> &Q, Mat<ZZ_p> &R, Mat<ZZ_p> &A);
+
+    // Optimized for memory (need to call this on a large matrix)
+    void OrthonormalBasis(Mat<ZZ_p> &Q, Mat<ZZ_p> &A);
+
+    void Tridiag(Mat<ZZ_p> &T, Mat<ZZ_p> &Q, Mat<ZZ_p> &A);
+
+    void EigenDecomp(Mat<ZZ_p> &V, Vec<ZZ_p> &L, Mat<ZZ_p> &A);
 
   /* Comparison */
   void LessThanPublic(Vec<ZZ_p>& c, Vec<ZZ_p>& a, ZZ_p bpub);

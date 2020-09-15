@@ -332,13 +332,20 @@ bool unit_test_combined(MPCEnv& mpc, int pid) {
 }
 
 bool lse_test(MPCEnv& mpc, int pid) {
-  size_t size = 8;
+  size_t size = 6;
   ublas::vector<myType> xv(size, 0);
   ublas::vector<myType> lse_xv_grad(size, 0);
 
   if (pid == 2) {
-    for (size_t i = 0; i < size; i++)
-      xv[i] = DoubleToFP(i + 1);
+//    for (size_t i = 0; i < size; i++)
+//      xv[i] = DoubleToFP(i + 1);
+//
+    xv[0] = DoubleToFP(0.1);
+    xv[1] = DoubleToFP(-0.1);
+    xv[2] = DoubleToFP(-0.5);
+    xv[3] = DoubleToFP(0.7);
+    xv[4] = DoubleToFP(0.4);
+    xv[5] = DoubleToFP(0.3);
   }
   tcout() << "print 1 ~ " << size << endl;
   mpc.LogSumExp(lse_xv_grad, xv);

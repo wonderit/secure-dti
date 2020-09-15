@@ -882,41 +882,92 @@ myType MPCEnv::LogSumExpTwoElems(ublas::vector<myType>& input) {
 }
 
 
-myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>& input) {
+void MPCEnv::SoftMax(MatrixXm &softmax, MatrixXm &input) {
+  softmax.setZero(input.rows(), input.cols());
+  ublas::vector<myType> softmax_row, input_row;
+
+  for (size_t r = 0; r < softmax.rows(); r++) {
+    Init(softmax_row, input.cols());
+    Init(input_row, input.cols());
+
+    // copy input to vector
+    for (size_t c1 = 0; c1 < softmax.cols(); c1++) {
+      input_row(c1) = input(r, c1);
+    }
+
+    // calculate softmax
+    LogSumExp(softmax_row, input_row);
+
+    // copy result to matrix
+    for (size_t c2 = 0; c2 < softmax.cols(); c2++) {
+      softmax(r, c2) = softmax_row(c2);
+    }
+  }
+
+}
+
+
+myType MPCEnv::LogSumExp(ublas::vector<myType> &lse_grad, ublas::vector<myType> &input) {
   size_t input_length = input.size();
-  size_t next_length = input.size();
+  size_t next_length = input_length;
   size_t iter = log2(input.size());
+  size_t next_length_tmp = input.size();
   myType lse = 0;
   myType fp_one = DoubleToFP(1.0);
+  bool is_odd = false;
 
-  ublas::vector<myType> input_max_index;
-  ublas::vector<myType> lse_grad_tmp, int_sigmoid_grad_tmp, int_sigmoid_grad_for_input;
+  ublas::vector<myType> input_max_index, input_resized;
+  ublas::vector<myType> lse_grad_tmp, int_sigmoid_grad_tmp, int_sigmoid_grad_for_input, lse_g_resized;
 
   Init(input_max_index, input_length);
   Init(int_sigmoid_grad_tmp, input_length);
   Init(int_sigmoid_grad_for_input, input_length);
 
   std::vector<ublas::vector<myType> > lse_grads, max_indexes, sigmoid_grads;
+  std::vector<bool> is_odds;
+
+  // modify iter
+  if (input_length != pow(2, iter)) {
+    iter++;
+  }
 
   // 2 iters for 4 elems
   for (size_t i = 0; i < iter; i++) {
     // [1,2,3,4]
-    PrintFP(input);
+//    PrintFP(input);
 
-    next_length /= 2;
+    if (next_length % 2 == 1) {
+      is_odd = true;
+      next_length = (next_length + 1) / 2;
+    } else {
+      is_odd = false;
+      next_length /= 2;
+    }
+
+    is_odds.push_back(is_odd);
+
+    Init(input_resized, next_length);
+
 
     Init(lse_grad_tmp, next_length);
 
     ublas::vector<myType> a_left, a_right, max_index, xor_max_index, maxpool, a_add_b, input_nls;
-    Init(a_left, next_length);
-    Init(a_right, next_length);
-    Init(max_index, next_length);
-    Init(xor_max_index, next_length);
-    Init(maxpool, next_length);
-    Init(a_add_b, next_length);
-    Init(input_nls, next_length);
 
-    for (size_t idx = 0; idx < next_length; idx++) {
+    if (is_odd) {
+      next_length_tmp = next_length - 1;
+    } else {
+      next_length_tmp = next_length;
+    }
+
+    Init(a_left, next_length_tmp);
+    Init(a_right, next_length_tmp);
+    Init(max_index, next_length_tmp);
+    Init(xor_max_index, next_length_tmp);
+    Init(maxpool, next_length_tmp);
+    Init(a_add_b, next_length_tmp);
+    Init(input_nls, next_length_tmp);
+
+    for (size_t idx = 0; idx < next_length_tmp; idx++) {
       a_left(idx) = input(2 * idx);
       a_right(idx) = input(2 * idx + 1);
     }
@@ -924,7 +975,7 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>&
     a_right = a_right - a_left;
 
     // a_right = [1, 1]
-    PrintFP(a_right);
+//    PrintFP(a_right);
 
     // max_index = [1, 1]
     IsPositive(max_index, a_right);
@@ -937,10 +988,10 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>&
         xor_max_index(j) = - max_index(j);
     }
 
-    Init(input_max_index, next_length * 2);
+    Init(input_max_index, next_length_tmp * 2);
 
     // Calculate max_grad
-    for (size_t idx = 0; idx < next_length; idx++) {
+    for (size_t idx = 0; idx < next_length_tmp; idx++) {
       input_max_index(2 * idx) = xor_max_index(idx);
       input_max_index(2 * idx + 1) = max_index(idx);
     }
@@ -954,13 +1005,13 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>&
     maxpool = maxpool + a_left;
 
     // maxpool = [2, 4]
-    PrintFP(maxpool);
+//    PrintFP(maxpool);
 
     // a + b : b - a + 2a
     a_add_b = a_right + 2 * a_left;
 
     // a_add_b = [3, 7]
-    PrintFP(a_add_b);
+//    PrintFP(a_add_b);
 
     Vec<ZZ_p> sigmoid, sigmoid_grad, zz_input_nls;
     ublas::vector<myType> int_sigmoid, int_sigmoid_grad;
@@ -990,36 +1041,49 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>&
     // [2.31195, 4.31196]
 //    if (pid == 2) tcout() << "LSE : " << endl;
 //    PrintFP(int_sigmoid);
-
+//
 //    if (pid == 2) tcout() << "int_sigmoid_grad :: " << endl;
 //    PrintFP(int_sigmoid_grad);
 
-    if (int_sigmoid.size() == 1)
+    if (int_sigmoid.size() == 1 && is_odd == false)
       lse = int_sigmoid(0);
-    else
+    else if (is_odd == true) {
+      for (size_t t = 0; t < int_sigmoid.size(); t++)
+        input_resized(t) = int_sigmoid(t);
+      input_resized(int_sigmoid.size()) = input(input.size() - 1);
+      input = input_resized;
+    } else
       input = int_sigmoid;
   }
 
   // back prop start
-  ublas::vector<myType> prev_lse_g, prev_lse_g_resized;
+  ublas::vector<myType> prev_lse_g, prev_lse_g_resized, lse_grad_resized;
+//  bool prev_is_o;
 
-  for (size_t bi = 0; bi < iter; bi ++) {
+  for (size_t bi = 0; bi < iter; bi++) {
 
     ublas::vector<myType> lse_g_tmp, max_i, sigmoid_g, sigmoid_g_resized;
+    bool is_o;
 
     // 1. get last max_index, sigmoid_grad
     max_i = max_indexes.back();
     sigmoid_g = sigmoid_grads.back();
+    is_o = is_odds.back();
 
     max_indexes.pop_back();
     sigmoid_grads.pop_back();
+    is_odds.pop_back();
+
+//    if (pid ==2) tcout() << "max_i.size() : " << max_i.size() << endl;
+//    if (pid ==2) tcout() << "sigmoid_g.size() : " << sigmoid_g.size() << endl;
+//    if (pid ==2) tcout() << "is odds : " << is_o << endl;
+//    if (pid ==2) tcout() << "prev_lse_g.size() " << prev_lse_g.size() << endl;
 
     // Initialize lsg_g
     Init(lse_grad, max_i.size());
     Init(lse_g_tmp, max_i.size());
     Init(sigmoid_g_resized, max_i.size());
 
-    // TODO beaver triple before resizing?
     // 2. Resize sigmoid_grad to match size of max_index
     for (size_t s_g_i = 0; s_g_i < sigmoid_g.size(); s_g_i++) {
       sigmoid_g_resized(2 * s_g_i) = sigmoid_g(s_g_i);
@@ -1036,21 +1100,42 @@ myType MPCEnv::LogSumExp(ublas::vector<myType>& lse_grad, ublas::vector<myType>&
 
     // 4. Resize previous gradient of LSE
     if (prev_lse_g.size() > 0) {
-      Init(prev_lse_g_resized, sigmoid_g_resized.size());
-      for (size_t l_g_i = 0; l_g_i < sigmoid_g.size(); l_g_i++) {
-        prev_lse_g_resized(2 * l_g_i) = prev_lse_g(l_g_i);
-        prev_lse_g_resized(2 * l_g_i + 1) = prev_lse_g(l_g_i);
+      // for odd # of elems
+      if (is_o && sigmoid_g_resized.size() == 2) {
+        Init(prev_lse_g_resized, sigmoid_g_resized.size() + 1);
+        Init(lse_grad_resized, lse_grad.size() + 1);
+        prev_lse_g_resized(0) = prev_lse_g(0);
+        prev_lse_g_resized(1) = prev_lse_g(0);
+        prev_lse_g_resized(2) = prev_lse_g(1);
+        for (size_t l_g_i = 0; l_g_i < lse_grad.size(); l_g_i++)
+          lse_grad_resized(l_g_i) = lse_grad(l_g_i);
+        if (pid == 2) lse_grad_resized(lse_grad.size()) = fp_one;
+
+        // 5. multiply prev_grad to lse_grad
+        MultElem(lse_grad_resized, lse_grad_resized, prev_lse_g_resized);
+        Trunc(lse_grad_resized);
+
+        prev_lse_g = lse_grad_resized;
+
+        // for even # of elems
+      } else {
+
+        Init(prev_lse_g_resized, sigmoid_g_resized.size());
+        for (size_t l_g_i = 0; l_g_i < sigmoid_g.size(); l_g_i++) {
+          prev_lse_g_resized(2 * l_g_i) = prev_lse_g(l_g_i);
+          prev_lse_g_resized(2 * l_g_i + 1) = prev_lse_g(l_g_i);
+        }
+
+        // 5. multiply prev_grad to lse_grad
+        MultElem(lse_grad, lse_grad, prev_lse_g_resized);
+        Trunc(lse_grad);
+
+        prev_lse_g = lse_grad;
       }
+    } else {
 
-      // 5. multiply prev_grad to lse_grad
-      MultElem(lse_grad, lse_grad, prev_lse_g_resized);
-      Trunc(lse_grad);
+      prev_lse_g = lse_grad;
     }
-
-    prev_lse_g = lse_grad;
-
-    if (pid == 2) tcout() << "lse_g :" << endl;
-    PrintFP(lse_grad);
   }
 
   return lse;
@@ -1696,28 +1781,12 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
     SwitchSeed(2);
     RandVecBits_mytype_L_1(x2);
     RestoreSeed();
-// TEST x1, x2
-//    x1[0] = 15906016132161401040;
-//    x1[1] = 5887706027515061822;
-//    x1[2] = 1810938462885886064;
-//
-//
-//    x2[0] = 2732917154255144412;
-//    x2[1] = 1460990085748991318;
-//    x2[2] = 17482953705565970117;
     x = x1 + x2;
 
-    // Log x1 and x2
-    if (Param::DEBUG) {
-      Print(x1);
-      Print(x2);
-      Print(x);
-    }
     for (int i = 0; i < x_bit.size(); i++) {
       int_to_vector(x_bit[i], x[i]);
       x_bit_0[i] = x_bit[i][0]; //x[i] % 2; //x_bit[i][0]
     }
-
 
     SwitchSeed(1);
     beta = RandElemBnd(2);
@@ -1737,24 +1806,6 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
     SendVec(x_bit_0, 2);
     SendElem(u, 2);
 
-//    tcout() << "::: pid = 0 x_bit_share for pid 2 ::: " << endl;
-//    Print(x_bit);
-//
-//    tcout() << "::: pid = 0 x ::: " << endl;
-//    Print(x);
-//
-//    tcout() << "::: pid = 0 x_bit_sh ::: " << endl;
-//    Print(x_bit_sh);
-//
-//    tcout() << "::: pid = 0 x_bit_0 ::: " << endl;
-//    Print(x_bit_0);
-//
-//    tcout() << "::: pid = 0 x_bit_sh_0 ::: " << endl;
-//    Print(x_bit_sh_0);
-//    tcout() << "::: pid = 0 ::: " << endl;
-//
-//    tcout() << "::: pid = " << pid << ", u:" << u << endl;
-
   } else {
     SwitchSeed(0);
     RandVecBits_mytype_L_1(x_sh);
@@ -1770,25 +1821,6 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
       u = RandElem();
       RestoreSeed();
 
-//      cout << "PID = 1 : RAND BETA : " << beta << endl;
-//      cout << "PID = 2 : RAND u : " << u << endl;
-
-// Test x1
-//      x_sh[0] = 15906016132161401040;
-//      x_sh[1] = 5887706027515061822;
-//      x_sh[2] = 1810938462885886064;
-//
-//      a_sh[0] = 3301642439786188061;
-//      a_sh[1] = 17512431917092638234;
-//      a_sh[2] = 4775622574658037613;
-
-//      x_bit_sh_0[0] = 13687049858679895113;
-//      x_bit_sh_0[1] = 3743708110399952701;
-//      x_bit_sh_0[2] = 10015271850254124814;
-//      u_v_sh[0] = 11793800868134066068;
-//      u_v_sh[1] = 11793800868134066068;
-//      u_v_sh[2] = 11793800868134066068;
-
     } else {
 
       ReceiveElem(beta, 0);
@@ -1797,23 +1829,6 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
       }
       ReceiveVec(x_bit_sh_0, 0);
       ReceiveElem(u, 0);
-
-//      cout << "PID = 2 : RAND BETA : " << beta << endl;
-//      cout << "PID = 2 : RAND u : " << u << endl;
-
-//      Test x2
-//      x_sh[0] = 2732917154255144412;
-//      x_sh[1] = 1460990085748991318;
-//      x_sh[2] = 17482953705565970117;
-//      a_sh[0] = 15145101633923363565;
-//      a_sh[1] = 934312156616913381;
-//      a_sh[2] = 13671121499051514000;
-//      x_bit_sh_0[0] = 4759694215029656503;
-//      x_bit_sh_0[1] = 14703035963309598915;
-//      x_bit_sh_0[2] = 8431472223455426803;
-//      u_v_sh[0] = 6652943205575485548;
-//      u_v_sh[1] = 6652943205575485548;
-//      u_v_sh[2] = 6652943205575485548;
     }
 
     // # 2)
@@ -1836,9 +1851,6 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
     beta_prime_v[i] = beta_prime;
   }
 
-//  tcout() << "::: pid = " << pid << ", beta_P:" << beta_prime_v[0] << endl;
-//  tcout() << "::: pid = " << pid << ", beta_P:" << beta_prime_v[1] << endl;
-//  tcout() << "::: pid = " << pid << ", beta_P:" << beta_prime_v[2] << endl;
   ublas::vector<myType> gamma(size,0);
   ublas::vector<myType> delta(size,0);
   ublas::vector<myType> theta(size,0);
@@ -1855,14 +1867,8 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
       SwitchSeed(0);
       RandVec(beta_prime_sh);
       RestoreSeed();
-//      beta_prime_sh[0] = 6566451982797139146;
-//      beta_prime_sh[1] = 5424039985765058565;
-//      beta_prime_sh[2] = 1856519445254747096;
     } else {
       ReceiveVec(beta_prime_sh, 0);
-//      beta_prime_sh[0] = 11880292090912412471;
-//      beta_prime_sh[1] = 13022704087944493051;
-//      beta_prime_sh[2] = 16590224628454804520;
     }
   }
   myType j = 0;
@@ -1880,35 +1886,7 @@ void MPCEnv::ComputeMsb(ublas::vector<myType>& a_sh, ublas::vector<myType>& b) {
 
   MultElem(theta, gamma, delta);
 
-  if (pid == 2 && Param::DEBUG) {
-
-    tcout() << "::: pid = " << pid << ", gamma:" << gamma[0] << endl;
-    tcout() << "::: pid = " << pid << ", gamma:" << gamma[1] << endl;
-    tcout() << "::: pid = " << pid << ", gamma:" << gamma[2] << endl;
-    tcout() << "::: pid = " << pid << ", r_0:" << r_0[0] << endl;
-    tcout() << "::: pid = " << pid << ", r_0:" << r_0[1] << endl;
-    tcout() << "::: pid = " << pid << ", r_0:" << r_0[2] << endl;
-    tcout() << "::: pid = " << pid << ", delta:" << delta[0] << endl;
-    tcout() << "::: pid = " << pid << ", delta:" << delta[1] << endl;
-    tcout() << "::: pid = " << pid << ", delta:" << delta[2] << endl;
-    tcout() << "::: pid = " << pid << ", theta:" << theta[0] << endl;
-    tcout() << "::: pid = " << pid << ", theta:" << theta[1] << endl;
-    tcout() << "::: pid = " << pid << ", theta:" << theta[2] << endl;
-  }
-
-//  if (pid == 1) {
-//    theta[0] = 16144287489555608819;
-//    theta[1] = 17192860135554178861;
-//    theta[2] = 5403310834546839842;
-//  }
-//
-//  if (pid == 2) {
-//
-//    theta[0] = 2302456584153942797;
-//    theta[1] = 1253883938155372755;
-//    theta[2] = 13043433239162711774;
-//  }
-//  b = gamma + delta - (theta * 2) + u_v_sh;
+  //  b = gamma + delta - (theta * 2) + u_v_sh;
   for (size_t i = 0; i < size; ++i)
     b[i] = gamma[i] + delta[i] - (theta[i] * 2) + u;
 
@@ -1923,10 +1901,6 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
   // j = 0 for pid = 1, j = 1 for pid = 2
   myType j = 0;
   if (pid == 2) {
-//    x_bit_sh[0] = 22;
-//    x_bit_sh[1] = 12;
-//    x_bit_sh[2] = 62;
-//    x_bit_sh[3] = 28;
 
     j = 1;
     SwitchSeed(1);
@@ -1936,11 +1910,6 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     RestoreSeed();
 
   } else if (pid == 1) {
-
-//    x_bit_sh[0] = 46;
-//    x_bit_sh[1] = 55;
-//    x_bit_sh[2] = 6;
-//    x_bit_sh[3] = 40;
 
     SwitchSeed(2);
 
@@ -1986,37 +1955,9 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     //  w = x_bit_sh + (j * r_bit) - 2 * (r_bit * x_bit_sh);
     multScalar(jxr_bit, r_bit, j, PRIME_NUMBER);
     multvec(w2, r_bit, x_bit_sh, PRIME_NUMBER);
-//    if (pid == 2 && Param::DEBUG) {
-//      Print(w2);
-//    }
     multScalar(w2, w2, (myType)2, PRIME_NUMBER);
-//    if (pid == 2 && Param::DEBUG) {
-//      Print(jxr_bit);
-//      Print(w2);
-//    }
-//  tcout() << "::: pid = 0or1 w ::: " << endl;
-//  Print(jxr_bit);
-//  Print(w2);
-//  tcout() << "::: pid = 0or1 w ::: " << endl;
-//  w = x_bit_sh + jxr_bit - w2;
     addVec(w, x_bit_sh, jxr_bit, PRIME_NUMBER);
-//    if (pid == 2) {
-//      Print(w);
-//    }
     subtractVec(w, w, w2, PRIME_NUMBER);
-
-//    tcout() << "::: pid = " << pid << " w ::: " << endl;
-//    Print(w);
-
-//    if (pid > 0) {
-//
-//      tcout() << "pid : " << pid <<  " w : ";
-//      Print(w);
-//      cout << endl;
-//      tcout() << " x sh : ";
-//      Print(x_bit_sh);
-//      cout << endl;
-//    }
 
     // 6)
     wc = w;
@@ -2026,21 +1967,10 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     //  wc = w - wc;
     subtractVec(wc, w, wc, PRIME_NUMBER);
 
-//  if (pid == 1) {
-//
-//    tcout() << " wc : ";
-//    Print(wc);
-//    cout << endl;
-//  }
     //  c_beta0 = -x_bit_sh + (jxr_bit + j) + wc;
     subtractVec(c_beta0, jxr_bit, x_bit_sh, PRIME_NUMBER);
     addScalar(c_beta0, c_beta0, j, PRIME_NUMBER);
     addVec(c_beta0, c_beta0, wc, PRIME_NUMBER);
-//    if (pid == 1 && Param::DEBUG) {
-//      tcout() << " cb0 : ";
-//      Print(c_beta0);
-//      cout << endl;
-//    }
 
     //# elif beta == 1 AND r != 2^l- 1
     //# 8)
@@ -2066,11 +1996,6 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     subtractVec(c_beta1, x_bit_sh, jxt_bit, PRIME_NUMBER);
     addScalar(c_beta1, c_beta1, j, PRIME_NUMBER);
     addVec(c_beta1, c_beta1, wc, PRIME_NUMBER);
-//    if (pid == 1 && Param::DEBUG) {
-//      tcout() << " cb1 : ";
-//      Print(c_beta1);
-//      cout << endl;
-//    }
 
     //  # else
     //  # 11)
@@ -2081,14 +2006,6 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     multScalar(tmp2, u, j, PRIME_NUMBER);
     subtractVec(c_igt1, tmp1, tmp2, PRIME_NUMBER);
     multScalar(c_ie1, u, (1-2*j), PRIME_NUMBER);
-//    if (pid == 1 && Param::DEBUG) {
-//      tcout() << " c_igt1 : ";
-//      Print(c_igt1);
-//      cout << endl;
-//      tcout() << " c_ie1 : ";
-//      Print(c_ie1);
-//      cout << endl;
-//    }
 
     l1_mask[0] = 1;
     l1_mask_inv[0] = 0;
@@ -2098,21 +2015,6 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     multvec(c_else, l1_mask, c_ie1, PRIME_NUMBER);
     multvec(tmp1, l1_mask_inv, c_igt1, PRIME_NUMBER);
     addVec(c_else, c_else, tmp1, PRIME_NUMBER);
-
-//    if (pid == 1 && Param::DEBUG) {
-//      tcout() << " l1_mask : ";
-//      Print(l1_mask);
-//      cout << endl;
-//
-//      tcout() << " l1_mask_inv : ";
-//      Print(l1_mask_inv);
-//      cout << endl;
-//
-//      tcout() << " c_else : ";
-//      Print(c_else);
-//      cout << endl;
-//    }
-
 
     //  # Mask for the case r == 2^l −1
     //  r_mask = (r == (L - 1)).long()
@@ -2127,12 +2029,6 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
     multScalar(tmp1, c_else, (beta * r_mask), PRIME_NUMBER);
     addVec(c, c, tmp1, PRIME_NUMBER);
 
-//    if (pid == 1 && Param::DEBUG) {
-//      tcout() << " c : ";
-//      Print(c);
-//      cout << endl;
-//    }
-
     //# 14)
     //# Hide c values
     //  mask = s * c
@@ -2146,18 +2042,6 @@ myType MPCEnv::PrivateCompare(ublas::vector<myType>& x_bit_sh, myType r, myType 
   if (pid == 0) {
     beta_prime = sumifzero(mask);
   }
-
-//  myType b;
-//  if (pid == 0) {
-//    SendElem(beta_prime, 1, 0);
-//    ReceiveElem(b, 1, 0);
-//
-//    SendElem(beta_prime, 2, 0);
-//    ReceiveElem(b, 2, 0);
-//  } else {
-//    ReceiveElem(beta_prime, 0, 0);
-//    SendElem(b, 0, 0);
-//  }
 
   return beta_prime;
 }
@@ -2227,21 +2111,19 @@ void MPCEnv::IsPositive(MatrixXm &b, MatrixXm &a) {
 }
 
 void MPCEnv::IsPositive(ublas::vector<myType>& b, ublas::vector<myType>& a) {
-  if (Param::DEBUG) tcout() << "IsPositive: " << a.size() << endl;
-
+//  if (Param::DEBUG) tcout() << "IsPositive: " << a.size() << endl;
 
   ComputeMsb(a, b);
 
   for (size_t i = 0; i < b.size(); i++) {
     if (pid == 1)
       b[i] = 1 - b[i];
-    else if(pid == 2)
-      b[i] = - b[i];
+    else if (pid == 2)
+      b[i] = -b[i];
   }
 
-
-  if (Param::DEBUG && pid == 1)
-    tcout() << "Done" << endl;
+//  if (Param::DEBUG && pid == 1)
+//    tcout() << "Done" << endl;
 }
 
 //// Failure probability of 1 / BASE_P
