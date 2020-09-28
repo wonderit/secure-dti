@@ -1,1 +1,1 @@
-nohup ./rc_train.sh > rc_train.log &
+nohup ./rc_train.sh >rc_train.log &
