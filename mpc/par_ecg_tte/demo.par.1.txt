@@ -18,15 +18,15 @@ NUM_THREADS 20
 
 # DTI
 CACHE_FILE_PREFIX ../cache/ecg
-FEATURE_RANK 256
-FEATURES_FILE ../../../data/ecg/text_demo_rc/X
-LABELS_FILE ../../../data/ecg/text_demo_rc/y
+FEATURE_RANK 9
+FEATURES_FILE ../../../data/ecg/text_demo_tte/X
+LABELS_FILE ../../../data/ecg/text_demo_tte/y
 TRAIN_SUFFIXES ../../demo_data/text_demo/train_suffixes.txt
 TEST_SUFFIXES ../../demo_data/text_demo/test_suffixes.txt
 PROFILER 1
 
 # ECG
-N_FILE_BATCH 22665
+N_FILE_BATCH 1218
 MAX_EPOCHS 3
 BATCH_SIZE 256
 N_NEURONS 64
