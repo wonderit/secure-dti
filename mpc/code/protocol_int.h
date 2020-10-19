@@ -332,9 +332,12 @@ bool unit_test_combined(MPCEnv& mpc, int pid) {
 }
 
 bool lse_test(MPCEnv& mpc, int pid) {
-  size_t size = 6;
+  size_t size = 16384 * Param::BATCH_SIZE;
   ublas::vector<myType> xv(size, 0);
   ublas::vector<myType> lse_xv_grad(size, 0);
+
+  ublas::vector<myType> nls_grad(size, 0);
+  ublas::vector<myType> nls_out(size, 0);
 
   if (pid == 2) {
 //    for (size_t i = 0; i < size; i++)
@@ -347,8 +350,27 @@ bool lse_test(MPCEnv& mpc, int pid) {
     xv[4] = DoubleToFP(0.4);
     xv[5] = DoubleToFP(0.3);
   }
-  tcout() << "print 1 ~ " << size << endl;
+  tcout() << "LSE : print 1 ~ " << size << endl;
+
+  if (pid == 2) {
+    tic();
+  }
   mpc.LogSumExp(lse_xv_grad, xv);
+
+  if (pid == 2) {
+    toc();
+  }
+
+  tcout() << "NLS : print 1 ~ " << size << endl;
+
+  if (pid == 2) {
+    tic();
+  }
+  mpc.NegLogSigmoidPosDomain(nls_out, nls_grad, xv);
+
+  if (pid == 2) {
+    toc();
+  }
 //  myType lse = mpc.LogSumExpTwoElems( xv);
   return true;
 }
