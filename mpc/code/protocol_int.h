@@ -340,26 +340,26 @@ bool lse_test(MPCEnv& mpc, int pid) {
   ublas::vector<myType> nls_out(size, 0);
 
   if (pid == 2) {
-//    for (size_t i = 0; i < size; i++)
-//      xv[i] = DoubleToFP(i + 1);
+    for (size_t i = 0; i < size; i++)
+      xv[i] = DoubleToFP(i + 1);
 //
-    xv[0] = DoubleToFP(0.1);
-    xv[1] = DoubleToFP(-0.1);
-    xv[2] = DoubleToFP(-0.5);
-    xv[3] = DoubleToFP(0.7);
-    xv[4] = DoubleToFP(0.4);
-    xv[5] = DoubleToFP(0.3);
+//    xv[0] = DoubleToFP(0.1);
+//    xv[1] = DoubleToFP(-0.1);
+//    xv[2] = DoubleToFP(-0.5);
+//    xv[3] = DoubleToFP(0.7);
+//    xv[4] = DoubleToFP(0.4);
+//    xv[5] = DoubleToFP(0.3);
   }
-  tcout() << "LSE : print 1 ~ " << size << endl;
+//  tcout() << "LSE : print 1 ~ " << size << endl;
 
-  if (pid == 2) {
-    tic();
-  }
-  mpc.LogSumExp(lse_xv_grad, xv);
-
-  if (pid == 2) {
-    toc();
-  }
+//  if (pid == 2) {
+//    tic();
+//  }
+//  mpc.LogSumExp(lse_xv_grad, xv);
+//
+//  if (pid == 2) {
+//    toc();
+//  }
 
   tcout() << "NLS : print 1 ~ " << size << endl;
 
