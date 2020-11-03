@@ -366,7 +366,8 @@ bool lse_test(MPCEnv& mpc, int pid) {
   if (pid == 2) {
     tic();
   }
-  mpc.NegLogSigmoidPosDomain(nls_out, nls_grad, xv);
+  mpc.IsPositive(nls_out, xv);
+//  mpc.NegLogSigmoidPosDomain(nls_out, nls_grad, xv);
 
   if (pid == 2) {
     toc();
