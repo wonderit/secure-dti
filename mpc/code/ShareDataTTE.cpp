@@ -47,7 +47,7 @@ bool mask_matrix(string data_dir, MPCEnv &mpc, string name,
       if (ss.peek() == ',')
         ss.ignore();
 
-      if (i % 1000 == 0 && j < Param::N_CLASSES)
+      if (i % 1000 == 0 && j < Param::FEATURE_RANK)
         tcout() << "Read row, value: " << i << ", " << k << endl;
 
       myType val_mytype;

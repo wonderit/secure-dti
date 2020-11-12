@@ -17,7 +17,7 @@ TRAIN_SUFFIXES ../../demo_data/text_demo/train_suffixes.txt
 TEST_SUFFIXES ../../demo_data/text_demo/test_suffixes.txt
 FEATURE_RANK 9
 N_FILE_BATCH 1218
-N_CLASSES 7
+N_CLASSES 11
 
 # FILES
 KEY_PATH ../key/

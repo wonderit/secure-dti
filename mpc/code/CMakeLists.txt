@@ -19,7 +19,7 @@ set(SOURCE_FILES
         TrainSecureMNIST.cpp
         UnitTestClient.cpp
         TrainSecureDTI.cpp
-        TrainSecureECG.cpp
+        TrainSecureTTE.cpp
         GenerateKey.cpp
         AnalyzeFeature.cpp)
 
