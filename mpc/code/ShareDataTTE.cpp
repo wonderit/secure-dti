@@ -111,7 +111,7 @@ bool mask_data(string data_dir, MPCEnv &mpc) {
       return false;
     tcout() << "N_CLASS:" << Param::N_CLASSES - 1 << endl;
     if (!mask_matrix(data_dir, mpc, "y" + suffixes[i],
-                     Param::N_FILE_BATCH, Param::N_CLASSES - 1))
+                     Param::N_FILE_BATCH, (Param::N_CLASSES - 1) * 2))
       return false;
   }
 

@@ -705,6 +705,96 @@ void MPCEnv::NegLogSigmoidPosDomain(ublas::vector<myType> &b, ublas::vector<myTy
   b_grad = c1;
 }
 
+void MPCEnv::Sigmoid(ublas::vector<myType> &b, ublas::vector<myType> &b_grad, ublas::vector<myType> &a) {
+  size_t n = a.size();
+
+  int depth = 6;
+
+  ublas::vector<myType> cur = a; // copy
+
+  ublas::vector<myType> a_ind;
+  Init(a_ind, a.size());
+
+  double step = 4;
+
+  // Center at zero
+  myType step_fp = DoubleToFP(2);
+
+  for (size_t i = 0; i < cur.size(); i++)
+    cur[i] -= step_fp;
+
+  for (int i = 0; i < depth; i++) {
+    ublas::vector<myType> cur_sign;
+    Init(cur_sign, cur.size());
+    IsPositive(cur_sign, cur);
+
+    // to DoubleToFP
+    myType index_step = 1 << (depth - 1 - i);
+
+    for (int j = 0; j < n; j++) {
+      a_ind[j] += cur_sign[j] * index_step;
+    }
+
+    // 2 * cur_sign - 1 (0, 1 -> -1, 1)
+    cur_sign *= 2;
+    if (pid == 1) {
+      for (int j = 0; j < n; j++) {
+        cur_sign[j] -= 1;
+      }
+    }
+
+    myType step_fp_2 = DoubleToFP(step);
+
+    for (int j = 0; j < n; j++) {
+      cur[j] -= step_fp_2 * cur_sign[j];
+    }
+
+    step /= 2;
+  }
+
+  // Make indices 1-based
+  if (pid == 1) {
+    for (int j = 0; j < n; j++) {
+      a_ind[j]++;
+    }
+  }
+
+  // convert to zz_p
+  // myType: s1, s2 (s = s1 + s2 (mod 2^k))
+  //         s = s1 + s2 (case 1) or s1 + s2 - 2^k (case 2)
+  // pretend s1, s2 are ZZ_p
+  // s1 + s2 mod p
+  // case 1: s1 + s2 mod p = s
+  // case 2: s1 + s2 - p = s1 + s2 - 2^k + (2^k - p) = s + (2^k - p)
+  // as long as s + (2^k - p) does not coincide with another s' we're good
+  // TableLookup: s -> T(s) and s + (2^k - p) -> T(s)
+  // p : 2^64-59
+  // This means as long as s (input to TableLookup) [1, 59]
+  // We want number of segments in the approximation of NLS to be <= 59
+  // Fetch piecewise linear approx parameters
+  Mat<ZZ_p> param_ZZp;
+  TableLookup(param_ZZp, a_ind, 3, 0);
+
+  MatrixXm param = MatrixXm::Zero(param_ZZp.NumRows(), param_ZZp.NumCols());
+  to_mytype(param, param_ZZp);
+
+  ublas::vector<myType> c1;
+  Init(c1, param.cols());
+  for (size_t i = 0; i < c1.size(); i++)
+    c1(i) = param(1, i);
+
+  MultElem(b, c1, a);
+  Trunc(b);
+
+  if (pid > 0) {
+    for (int j = 0; j < n; j++) {
+      b[j] += param(0, j);
+    }
+  }
+
+  b_grad = c1;
+}
+
 
 void MPCEnv::NegLogSigmoid(Vec<ZZ_p> &b, Vec<ZZ_p> &b_grad, Vec<ZZ_p> &a) {
   size_t n = a.length();
@@ -879,6 +969,63 @@ myType MPCEnv::LogSumExpTwoElems(ublas::vector<myType>& input) {
   }
 
   return lse;
+}
+
+
+void MPCEnv::Sigmoid(MatrixXm &sigmoid, MatrixXm &input) {
+//  if (pid > 0) {
+//    tcout() << "print input" << endl;
+//    PrintFP(input);
+//  }
+  sigmoid.setZero(input.rows(), input.cols());
+
+  ublas::vector<myType> sigmoid_row, sigmoid_row_grad, input_row;
+//
+  // matrix to vector
+  ublas::vector<myType> sigmoid_vec, input_vec, sigmoid_grad_vec;
+  Init(sigmoid_vec, input.cols() * input.rows());
+  Init(sigmoid_grad_vec, input.cols() * input.rows());
+  Init(input_vec, input.cols() * input.rows());
+  for (size_t r = 0; r < input.rows(); r++) {
+    for (size_t c = 0; c < input.cols(); c++) {
+      input_vec(r * input.cols() + c) = input(r, c);
+    }
+  }
+
+  Sigmoid(sigmoid_vec, sigmoid_grad_vec, input_vec);
+
+  // vector to matrix
+  for (size_t r = 0; r < input.rows(); r++) {
+    for (size_t c = 0; c < input.cols(); c++) {
+      sigmoid(r, c) = sigmoid_vec(r * input.cols() + c);
+    }
+  }
+
+//  for (size_t r = 0; r < sigmoid.rows(); r++) {
+//    Init(sigmoid_row, input.cols());
+//    Init(sigmoid_row_grad, input.cols());
+//    Init(input_row, input.cols());
+//
+//    // copy input to vector
+//    for (size_t c1 = 0; c1 < sigmoid.cols(); c1++) {
+//      input_row(c1) = input(r, c1);
+//    }
+//
+//    // calculate sigmoid
+//    Sigmoid(sigmoid_row, sigmoid_row_grad, input_row);
+//    if (pid > 0) {
+//      tcout() << "print input_row" << endl;
+//      PrintFP(input_row);
+//      tcout() << "print output_row" << endl;
+//      PrintFP(sigmoid_row);
+//    }
+//
+//    // copy result to matrix
+//    for (size_t c2 = 0; c2 < sigmoid.cols(); c2++) {
+//      sigmoid(r, c2) = sigmoid_row(c2);
+//    }
+//  }
+
 }
 
 

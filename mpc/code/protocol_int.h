@@ -353,8 +353,31 @@ bool lse_test(MPCEnv& mpc, int pid) {
   return true;
 }
 
+bool sigmoid_test(MPCEnv &mpc, int pid) {
 
-bool unit_test(MPCEnv& mpc, int pid) {
+  size_t size = 8;
+  ublas::vector<myType> xv(size, 0), yv(size, 0), zv(size, 0);
+  ublas::vector<myType> sig_xv_grad(size, 0);
+  tcout() << "[FP Sigmoid] ";
+//  Init(xv, 3);
+  if (pid == 2) {
+    xv[0] = DoubleToFP(-3);
+    xv[1] = DoubleToFP(-2);
+    xv[2] = DoubleToFP(-1);
+    xv[3] = DoubleToFP(1);
+    xv[4] = DoubleToFP(2);
+    xv[5] = DoubleToFP(3);
+    xv[6] = DoubleToFP(0.0503349);
+    xv[7] = DoubleToFP(0.0503349);
+  }
+  mpc.Sigmoid(yv, zv, xv);
+  mpc.PrintFP(yv);
+  mpc.PrintFP(zv);
+  return true;
+}
+
+
+bool unit_test(MPCEnv &mpc, int pid) {
   myType x;
   size_t size = Param::DIV_MAX_N;
   ublas::vector<myType> xv(size, 0), yv(size, 0);

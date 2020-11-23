@@ -46,6 +46,10 @@ public:
 
     void NegLogSigmoidPosDomain(ublas::vector<myType> &b, ublas::vector<myType> &b_grad, ublas::vector<myType> &a);
 
+    void Sigmoid(MatrixXm &sigmoid, MatrixXm &a);
+
+    void Sigmoid(ublas::vector<myType> &b, ublas::vector<myType> &b_grad, ublas::vector<myType> &a);
+
     myType LogSumExp(ublas::vector<myType> &b_grad, ublas::vector<myType> &a);
 
     void SoftMax(MatrixXm &softmax, MatrixXm &a);

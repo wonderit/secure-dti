@@ -389,7 +389,7 @@ void initialize_model(
 
 }
 
-double gradient_descent(MatrixXm &X, MatrixXm &y,
+double gradient_descent(MatrixXm &X, MatrixXm &y, MatrixXm &y_cumsum,
                         vector<MatrixXm> &W, vector<ublas::vector<myType>> &b,
                         vector<MatrixXm> &dW, vector<ublas::vector<myType>> &db,
                         vector<MatrixXm> &vW, vector<ublas::vector<myType>> &vb,
@@ -402,7 +402,7 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
    ************************/
   for (int l = 0; l < Param::N_HIDDEN; l++) {
 
-    if (pid == 2)
+    if (Param::DEBUG && pid == 2)
       tcout() << "Forward prop, multiplication." << endl;
     /* Multiply weight matrix. */
     MatrixXm activation;
@@ -423,7 +423,7 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
       }
     }
 
-    if (pid == 2)
+    if (Param::DEBUG && pid == 2)
       tcout() << "Forward prop, ReLU." << endl;
     /* Apply ReLU non-linearity. */
     MatrixXm relu;
@@ -500,6 +500,13 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
     mpc.IsPositive(hinge, mod_scores);
     mpc.MultElem(dscores, y, hinge);
     /* Note: No need to call Trunc(). */
+  } else if (Param::LOSS == "logistic_hazard") {
+    MatrixXm sigmoid_score;
+    mpc.Sigmoid(sigmoid_score, scores);
+    dscores = sigmoid_score - y;
+
+    mpc.MultElem(dscores, dscores, y_cumsum);
+    mpc.Trunc(dscores);
   } else {
     /* Compute derivative of the scores using MSE loss. */
     dscores = scores - y;
@@ -517,7 +524,7 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
   MatrixXm dhidden = dscores;
   for (int l = Param::N_HIDDEN; l >= 0; l--) {
 
-    if (pid == 2)
+    if (Param::DEBUG && pid == 2)
       tcout() << "Back prop, multiplication." << endl;
     /* Compute derivative of weights. */
     Init(dW[l], W[l].rows(), W[l].cols());
@@ -558,7 +565,7 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
       mpc.MultMat(dhidden_new, dhidden, W_T);
       mpc.Trunc(dhidden_new);
 
-      if (pid == 2)
+      if (Param::DEBUG && pid == 2)
         tcout() << "Back prop, ReLU." << endl;
       /* Apply derivative of ReLU. */
       Init(dhidden, dhidden_new.rows(), dhidden_new.cols());
@@ -725,7 +732,11 @@ double gradient_descent(MatrixXm &X, MatrixXm &y,
   mpc.RevealSym(mse);
   FPToDouble(mse_double, mse);
   mse_score_double = mse_double.sum();
-  return mse_score_double * Param::BATCH_SIZE;
+  if (Param::LOSS == "logistic_hazard") {
+    return mse_score_double / Param::BATCH_SIZE;
+  } else {
+    return mse_score_double * Param::BATCH_SIZE;
+  }
 }
 
 void load_X_y(string suffix, MatrixXm &X, MatrixXm &y,
@@ -773,7 +784,7 @@ void load_X_y(string suffix, MatrixXm &X, MatrixXm &y,
 //  Check Matrix y
 //  if (pid > 0) {
 //    tcout() << "print FP" << endl;
-//    mpc.PrintFP(X);
+//    mpc.PrintFP(y);
 //    return;
 //  }
 
@@ -798,7 +809,6 @@ void model_update(MatrixXm &X, MatrixXm &y,
   int batches_in_file = X.rows() / Param::BATCH_SIZE;
 
   if (Param::DEBUG) tcout() << "batches_in_file : " << batches_in_file << endl;
-
 
 //  Mat<ZZ_p> X_batch;
 //  Mat<ZZ_p> y_batch;
@@ -843,7 +853,9 @@ void model_update(MatrixXm &X, MatrixXm &y,
 //    Init(y_batch, Param::BATCH_SIZE, y.NumCols());
 
     MatrixXm X_batch(Param::BATCH_SIZE, X.cols());
-    MatrixXm y_batch(Param::BATCH_SIZE, y.cols());
+    // split y, y_cumsum
+    MatrixXm y_batch(Param::BATCH_SIZE, y.cols() / 2);
+    MatrixXm y_cumsum_batch(Param::BATCH_SIZE, y.cols() / 2);
 
 
     for (size_t j = base_j; j < base_j + Param::BATCH_SIZE && j < X.rows(); j++) {
@@ -851,14 +863,19 @@ void model_update(MatrixXm &X, MatrixXm &y,
         X_batch(j - base_j, k) = X(j, k);
       }
       for (size_t k = 0; k < y.cols(); k++) {
-        y_batch(j - base_j, k) = y(j, k);
+        // split y, y_cumsum
+        // y (0~9) or y_cumsum (10 ~ 19):
+        if (k < 10)
+          y_batch(j - base_j, k) = y(j, k);
+        else
+          y_cumsum_batch(j - base_j, k - 10) = y(j, k);
       }
     }
 
     /* Do one round of mini-batch gradient descent. */
-    double mse_score = gradient_descent(X_batch, y_batch,
+    double mse_score = gradient_descent(X_batch, y_batch, y_cumsum_batch,
                                         W, b, dW, db, vW, vb, mW, mb, act, relus,
-                     epoch, epoch * batches_in_file + i + 1 , pid, mpc);
+                                        epoch, epoch * batches_in_file + i + 1, pid, mpc);
 
 
 
@@ -898,8 +915,10 @@ void model_update(MatrixXm &X, MatrixXm &y,
       exit(0);
     }
 
-    /* Save state every LOG_INTERVAL batches. */
-    if (i % Param::LOG_INTERVAL == 0 && i > 0) {
+    /* Save state every LOG_INTERVAL batches.
+     * or log interval > batches : log every epochs */
+    if ((i % Param::LOG_INTERVAL == 0 && i > 0) ||
+        (Param::LOG_INTERVAL > batches_in_file && (i + 1) == batches_in_file)) {
       if (pid == 2) {
         tcout() << "save parameters of W, b into .bin files." << endl;
       }
@@ -941,7 +960,8 @@ bool dti_protocol(MPCEnv& mpc, int pid) {
 
   /* Initialize data matries. */
   MatrixXm X(Param::N_FILE_BATCH, Param::FEATURE_RANK);
-  MatrixXm y(Param::N_FILE_BATCH, Param::N_CLASSES - 1);
+  // y index + y_cumsum index
+  MatrixXm y(Param::N_FILE_BATCH, (Param::N_CLASSES - 1) * 2);
 
   string suffix = suffixes[rand() % suffixes.size()];
   load_X_y(suffix, X, y, pid, mpc);
