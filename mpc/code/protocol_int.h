@@ -358,7 +358,7 @@ bool sigmoid_test(MPCEnv &mpc, int pid) {
   size_t size = 8;
   ublas::vector<myType> xv(size, 0), yv(size, 0), zv(size, 0);
   ublas::vector<myType> sig_xv_grad(size, 0);
-  tcout() << "[FP Sigmoid] ";
+  tcout() << "[FP Sigmoid] " << endl;
 //  Init(xv, 3);
   if (pid == 2) {
     xv[0] = DoubleToFP(-3);
@@ -370,6 +370,31 @@ bool sigmoid_test(MPCEnv &mpc, int pid) {
     xv[6] = DoubleToFP(0.0503349);
     xv[7] = DoubleToFP(0.0503349);
   }
+
+  tcout() << "[FP NEGLOGSIG] using zzp";
+  Vec<ZZ_p> p;
+  Init(p, xv.size());
+  to_zz(p, xv);
+
+  if (pid > 0) tcout() << "start Test neglogsig" << endl;
+  Vec<ZZ_p> nls_p, nls_grad_p;
+  ublas::vector<myType> vp;
+  Init(vp, p.length());
+  mpc.NegLogSigmoid(nls_p, nls_grad_p, p);
+  if (pid > 0) {
+
+    printf("----------print nls -----");
+    mpc.PrintFP(nls_p);
+    printf("----------print nls grad -----");
+    mpc.PrintFP(nls_grad_p);
+  }
+  to_mytype(vp, nls_p);
+  if (pid > 0) {
+
+    printf("----------print int -----");
+    mpc.PrintFP(vp);
+  }
+
   mpc.Sigmoid(yv, zv, xv);
   mpc.PrintFP(yv);
   mpc.PrintFP(zv);
@@ -379,7 +404,8 @@ bool sigmoid_test(MPCEnv &mpc, int pid) {
 
 bool unit_test(MPCEnv &mpc, int pid) {
   myType x;
-  size_t size = Param::DIV_MAX_N;
+//  size_t size = Param::DIV_MAX_N;
+  size_t size = 3;
   ublas::vector<myType> xv(size, 0), yv(size, 0);
   ublas::vector<myType> xv1(size, 0), yv1(size, 0), zv(size, 0), wv, pc(size, 0);
   ublas::vector<double> xdv(size, 0), ydv, zdv(size, 0), wdv;
@@ -619,7 +645,7 @@ bool unit_test(MPCEnv &mpc, int pid) {
   if (pid == 2) {
     toc();
   }
-  return true;
+//  return true;
 
   if (pid > 0) {
     mpc.Print(relu_deriv);

@@ -82,16 +82,17 @@ bool text_to_matrix(MatrixXm &matrix, ifstream &ifs, string fname, size_t n_rows
     tcout() << "Could not open : " << fname << endl;
     return false;
   }
+  if (Param::DEBUG) printf("reading matrix from file : %s", fname.c_str());
   std::string line;
   double x;
   for (int i = 0; std::getline(ifs, line); i++) {
     std::istringstream stream(line);
     for (int j = 0; stream >> x; j++) {
-      if (Param::DEBUG) printf("%f", x);
+      if (Param::DEBUG) printf("%f ", x);
       matrix(i,j) = DoubleToFP(x);
-      if (Param::DEBUG) cout << matrix(i, j);
+//      if (Param::DEBUG) cout << matrix(i, j);
     }
-    if (Param::DEBUG) printf("-- \n");
+    if (Param::DEBUG) printf("\n");
   }
   ifs.close();
   return true;
@@ -103,17 +104,17 @@ bool text_to_vector(ublas::vector<myType>& vec, ifstream& ifs, string fname) {
     tcout() << "Could not open : " << fname << endl;
     return false;
   }
-  if (Param::DEBUG) printf("reading vector");
+  if (Param::DEBUG) printf("reading vector from file : %s", fname.c_str());
   std::string line;
   double x;
   for(int i = 0; std::getline(ifs, line); i ++) {
     std::istringstream stream(line);
     for(int j = 0; stream >> x; j ++) {
-      if (Param::DEBUG) printf(" : %f", x);
+      if (Param::DEBUG) printf("txt : %f, double :", x);
       vec[j] = DoubleToFP(x);
       if (Param::DEBUG) cout << vec[j];
     }
-    if (Param::DEBUG) printf("-- \n");
+    if (Param::DEBUG) printf("\n");
   }
   ifs.close();
   return true;
@@ -467,6 +468,13 @@ double gradient_descent(MatrixXm &X, MatrixXm &y, MatrixXm &y_cumsum,
       scores(i, j) += b.back()[j];
     }
   }
+
+
+//  Check Matrix y
+  if (pid > 0) {
+    mpc.PrintRange(scores, cout);
+  }
+
 
 //  Mat<ZZ_p> dscores;
   MatrixXm dscores;

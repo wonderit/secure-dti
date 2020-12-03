@@ -136,9 +136,9 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
   table.SetDims(2, 64);
   if (pid > 0) {
     ifstream ifs;
-    ifs.open("sigmoid_approx.txt");
+    ifs.open("sigmoid_approx_64_linear.txt");
     if (!ifs.is_open()) {
-      cout << "Error opening sigmoid_approx.txt" << endl;
+      cout << "Error opening sigmoid_approx_64_linear.txt" << endl;
       clear(table);
     }
     for (int i = 0; i < table.NumCols(); i++) {
@@ -160,12 +160,12 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
 
   // Table 3: parameters (intercept, slope) for piecewise-linear approximation of
   //          negative log-sigmoid function (myType version)
-  table.SetDims(2, 32);
+  table.SetDims(2, 64);
   if (pid > 0) {
     ifstream ifs;
-    ifs.open("sigmoid_approx_32_linear.txt");
+    ifs.open("sigmoid_approx_64_linear.txt");
     if (!ifs.is_open()) {
-      cout << "Error opening sigmoid_approx_32_linear.txt" << endl;
+      cout << "Error opening sigmoid_approx_64_linear.txt" << endl;
       clear(table);
     }
     for (int i = 0; i < table.NumCols(); i++) {
@@ -191,18 +191,17 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
     long nrow = table_cache[cid].NumRows();
     long ncol = table_cache[cid].NumCols();
     int table_type = table_type_ZZ[cid];
-    if (table_type > 0) {
+    if (table_type % 2 > 0) {
       lagrange_cache[cid].SetDims(nrow, 2 * ncol);
     } else {
       lagrange_cache[cid].SetDims(nrow, ncol);
     }
 
     if (pid > 0) {
-      tcout() << "Lagrange interpolation for Table " << cid << " ... ";
       for (int i = 0; i < nrow; i++) {
         Vec<long> x;
         Vec<ZZ_p> y;
-        if (table_type > 0) {
+        if (table_type % 2 > 0) {
           x.SetLength(2 * ncol);
           y.SetLength(2 * ncol);
         } else {
@@ -219,8 +218,10 @@ bool MPCEnv::Initialize(int pid, std::vector< pair<int, int> > &pairs) {
             } else {
               shift = conv<long>((ZZ(1) << INT_TYPE) - primes[table_field_index[cid]]);
             }
-            x[j + ncol] = x[j] + shift;
-            y[j + ncol] = table_cache[cid][i][j];
+            if (table_type % 2 > 0) {
+              x[j + ncol] = x[j] + shift;
+              y[j + ncol] = table_cache[cid][i][j];
+            }
           }
         }
 
@@ -706,19 +707,34 @@ void MPCEnv::NegLogSigmoidPosDomain(ublas::vector<myType> &b, ublas::vector<myTy
 }
 
 void MPCEnv::Sigmoid(ublas::vector<myType> &b, ublas::vector<myType> &b_grad, ublas::vector<myType> &a) {
+  Vec<ZZ_p> p;
+  Init(p, a.size());
+  to_zz(p, a);
+
+#if INT_TYPE == 128
+  Vec<ZZ_p> nls_p, nls_grad_p;
+  NegLogSigmoid(nls_p, nls_grad_p, p);
+
+  to_mytype(b, nls_p);
+  to_mytype(b_grad, nls_grad_p);
+  p.kill();
+  nls_p.kill();
+  nls_grad_p.kill();
+#else
+
   size_t n = a.size();
 
-  int depth = 6;
+  int depth = 7;
 
   ublas::vector<myType> cur = a; // copy
 
   ublas::vector<myType> a_ind;
   Init(a_ind, a.size());
 
-  double step = 4;
+  double step = 8;
 
   // Center at zero
-  myType step_fp = DoubleToFP(2);
+  myType step_fp = DoubleToFP(4);
 
   for (size_t i = 0; i < cur.size(); i++)
     cur[i] -= step_fp;
@@ -793,6 +809,8 @@ void MPCEnv::Sigmoid(ublas::vector<myType> &b, ublas::vector<myType> &b_grad, ub
   }
 
   b_grad = c1;
+#endif
+
 }
 
 
