@@ -525,7 +525,6 @@ double gradient_descent(MatrixXm &X, MatrixXm &y, MatrixXm &y_cumsum,
   dscores *= norm_examples;
   mpc.Trunc(dscores);
 
-
   /*********************
    * Back propagation. *
    *********************/
