@@ -361,39 +361,39 @@ bool sigmoid_test(MPCEnv &mpc, int pid) {
   tcout() << "[FP Sigmoid] " << endl;
 //  Init(xv, 3);
   if (pid == 2) {
-    xv[0] = DoubleToFP(-3);
-    xv[1] = DoubleToFP(-2);
-    xv[2] = DoubleToFP(-1);
-    xv[3] = DoubleToFP(1);
-    xv[4] = DoubleToFP(2);
-    xv[5] = DoubleToFP(3);
+    xv[0] = DoubleToFP(-33);
+    xv[1] = DoubleToFP(-22);
+    xv[2] = DoubleToFP(-11);
+    xv[3] = DoubleToFP(11);
+    xv[4] = DoubleToFP(22);
+    xv[5] = DoubleToFP(33);
     xv[6] = DoubleToFP(0.0503349);
     xv[7] = DoubleToFP(0.0503349);
   }
 
-  tcout() << "[FP NEGLOGSIG] using zzp";
-  Vec<ZZ_p> p;
-  Init(p, xv.size());
-  to_zz(p, xv);
-
-  if (pid > 0) tcout() << "start Test neglogsig" << endl;
-  Vec<ZZ_p> nls_p, nls_grad_p;
-  ublas::vector<myType> vp;
-  Init(vp, p.length());
-  mpc.NegLogSigmoid(nls_p, nls_grad_p, p);
-  if (pid > 0) {
-
-    printf("----------print nls -----");
-    mpc.PrintFP(nls_p);
-    printf("----------print nls grad -----");
-    mpc.PrintFP(nls_grad_p);
-  }
-  to_mytype(vp, nls_p);
-  if (pid > 0) {
-
-    printf("----------print int -----");
-    mpc.PrintFP(vp);
-  }
+//  tcout() << "[FP NEGLOGSIG] using zzp";
+//  Vec<ZZ_p> p;
+//  Init(p, xv.size());
+//  to_zz(p, xv);
+//
+//  if (pid > 0) tcout() << "start Test neglogsig" << endl;
+//  Vec<ZZ_p> nls_p, nls_grad_p;
+//  ublas::vector<myType> vp;
+//  Init(vp, p.length());
+//  mpc.NegLogSigmoid(nls_p, nls_grad_p, p);
+//  if (pid > 0) {
+//
+//    printf("----------print nls -----");
+//    mpc.PrintFP(nls_p);
+//    printf("----------print nls grad -----");
+//    mpc.PrintFP(nls_grad_p);
+//  }
+//  to_mytype(vp, nls_p);
+//  if (pid > 0) {
+//
+//    printf("----------print int -----");
+//    mpc.PrintFP(vp);
+//  }
 
   mpc.Sigmoid(yv, zv, xv);
   mpc.PrintFP(yv);

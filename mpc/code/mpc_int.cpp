@@ -731,10 +731,10 @@ void MPCEnv::Sigmoid(ublas::vector<myType> &b, ublas::vector<myType> &b_grad, ub
   ublas::vector<myType> a_ind;
   Init(a_ind, a.size());
 
-  double step = 8;
+  double step = 16;
 
   // Center at zero
-  myType step_fp = DoubleToFP(4);
+  myType step_fp = DoubleToFP(8);
 
   for (size_t i = 0; i < cur.size(); i++)
     cur[i] -= step_fp;
