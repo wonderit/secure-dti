@@ -819,6 +819,7 @@ void MPCEnv::NegLogSigmoid(Vec<ZZ_p> &b, Vec<ZZ_p> &b_grad, Vec<ZZ_p> &a) {
 
   // number of comparison hyperparameter
   int depth = 6;
+//  int depth = 7;
 
   Vec<ZZ_p> cur = a; // copy
 
@@ -828,6 +829,15 @@ void MPCEnv::NegLogSigmoid(Vec<ZZ_p> &b, Vec<ZZ_p> &b_grad, Vec<ZZ_p> &a) {
 
   // size of segment
   double step = 4;
+//  double step = 16;
+//
+//  // Center at zero
+//
+//  ZZ_p step_fp;
+//  DoubleToFP(step_fp, 8, Param::NBIT_K, Param::NBIT_F);
+//
+//  for (size_t i = 0; i < cur.length(); i++)
+//    cur[i] -= step_fp;
 
   for (int i = 0; i < depth; i++) {
     Vec<ZZ_p> cur_sign;

@@ -124,5 +124,7 @@ for ep in range(101):
               .format(ep, c_index, ibs, inbll, val_loss))
     elif args.type == 'cindex':
         print('{:.3f}'.format(c_index))
+    elif args.type == 'val_loss':
+        print('{:.3f}'.format(val_loss))
     else:
         print('Need appropriate type (current type : {})'.format(args.type))

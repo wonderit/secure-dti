@@ -361,12 +361,20 @@ bool sigmoid_test(MPCEnv &mpc, int pid) {
   tcout() << "[FP Sigmoid] " << endl;
 //  Init(xv, 3);
   if (pid == 2) {
-    xv[0] = DoubleToFP(-3);
-    xv[1] = DoubleToFP(-2);
-    xv[2] = DoubleToFP(-1);
-    xv[3] = DoubleToFP(1);
-    xv[4] = DoubleToFP(2);
-    xv[5] = DoubleToFP(3);
+//    xv[0] = DoubleToFP(-3);
+//    xv[1] = DoubleToFP(-2);
+//    xv[2] = DoubleToFP(-1);
+//    xv[3] = DoubleToFP(1);
+//    xv[4] = DoubleToFP(2);
+//    xv[5] = DoubleToFP(3);
+//    xv[6] = DoubleToFP(0.0503349);
+//    xv[7] = DoubleToFP(0.0503349);
+    xv[0] = DoubleToFP(-33);
+    xv[1] = DoubleToFP(-22);
+    xv[2] = DoubleToFP(-11);
+    xv[3] = DoubleToFP(11);
+    xv[4] = DoubleToFP(22);
+    xv[5] = DoubleToFP(33);
     xv[6] = DoubleToFP(0.0503349);
     xv[7] = DoubleToFP(0.0503349);
   }
