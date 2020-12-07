@@ -9,7 +9,7 @@ using namespace boost::multiprecision;
 using namespace std;
 using namespace Eigen;
 
-#define INT_TYPE 64
+#define INT_TYPE 128
 
 #if INT_TYPE == 128
   typedef uint128_t myType;

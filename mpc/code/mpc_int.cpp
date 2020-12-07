@@ -707,20 +707,6 @@ void MPCEnv::NegLogSigmoidPosDomain(ublas::vector<myType> &b, ublas::vector<myTy
 }
 
 void MPCEnv::Sigmoid(ublas::vector<myType> &b, ublas::vector<myType> &b_grad, ublas::vector<myType> &a) {
-  Vec<ZZ_p> p;
-  Init(p, a.size());
-  to_zz(p, a);
-
-#if INT_TYPE == 128
-  Vec<ZZ_p> nls_p, nls_grad_p;
-  NegLogSigmoid(nls_p, nls_grad_p, p);
-
-  to_mytype(b, nls_p);
-  to_mytype(b_grad, nls_grad_p);
-  p.kill();
-  nls_p.kill();
-  nls_grad_p.kill();
-#else
 
   size_t n = a.size();
 
@@ -738,8 +724,6 @@ void MPCEnv::Sigmoid(ublas::vector<myType> &b, ublas::vector<myType> &b_grad, ub
         b[i] = 0;
     }
   }
-
-#endif
 
 }
 
