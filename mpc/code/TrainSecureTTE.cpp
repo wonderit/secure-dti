@@ -261,12 +261,12 @@ void initialize_parameters(MatrixXm &W_layer, ublas::vector<myType> &b_layer) {
   b_bound = 1.0 / std::sqrt(fan_in);
 
   // Xavier weight
-  double gain = std::sqrt(2.0);
-  w_bound = std::sqrt(3.0) * gain * std::sqrt(2.0 / (fan_in + fan_out));
+//  double gain = std::sqrt(2.0);
+//  w_bound = std::sqrt(3.0) * gain * std::sqrt(2.0 / (fan_in + fan_out));
 
   // Kaiming He. weight
-//  double gain = std::sqrt(2.0 / (1 + pow(std::sqrt(5), 2)));
-//  w_bound = std::sqrt(3.0) * (gain / std::sqrt(fan_in));
+  double gain = std::sqrt(2.0 / (1 + pow(std::sqrt(5), 2)));
+  w_bound = std::sqrt(3.0) * (gain / std::sqrt(fan_in));
   std::uniform_real_distribution<double> b_dist(-b_bound, b_bound);
   std::uniform_real_distribution<double> w_dist(-w_bound, w_bound);
 
