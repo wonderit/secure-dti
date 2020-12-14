@@ -251,17 +251,25 @@ void initialize_parameters(MatrixXm &W_layer, ublas::vector<myType> &b_layer) {
   Init(b_layer, b_layer.size());
   std::default_random_engine random_generator(0);
   int fan_in = W_layer.rows();
+  int fan_out = W_layer.cols();
 
   // Initialize
-  double gain = std::sqrt(2.0 / (1 + pow(std::sqrt(5), 2)));
+
   double b_bound = 0.0;
   double w_bound = 0.0;
 
   b_bound = 1.0 / std::sqrt(fan_in);
-  w_bound = std::sqrt(3.0) * (gain / std::sqrt(fan_in));
+
+  // Xavier weight
+  double gain = std::sqrt(2.0);
+  w_bound = std::sqrt(3.0) * gain * std::sqrt(2.0 / (fan_in + fan_out));
+
+  // Kaiming He. weight
+//  double gain = std::sqrt(2.0 / (1 + pow(std::sqrt(5), 2)));
+//  w_bound = std::sqrt(3.0) * (gain / std::sqrt(fan_in));
   std::uniform_real_distribution<double> b_dist(-b_bound, b_bound);
-  std::normal_distribution<double> distribution(0.0, 0.01);
   std::uniform_real_distribution<double> w_dist(-w_bound, w_bound);
+
   for (int i = 0; i < W_layer.rows(); i++) {
     for (int j = 0; j < W_layer.cols(); j++) {
       double weight = w_dist(random_generator);
