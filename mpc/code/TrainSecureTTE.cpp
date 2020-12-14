@@ -599,7 +599,7 @@ double gradient_descent(MatrixXm &X, MatrixXm &y, MatrixXm &y_cumsum,
     /* Compute constants that update various parameters. */
     double beta_1 = 0.9;
     double beta_2 = 0.999;
-    double eps = 1e-7;
+    double eps = 1e-8;
 
     myType fp_b1 = DoubleToFP(beta_1);
     myType fp_b2 = DoubleToFP(beta_2);
