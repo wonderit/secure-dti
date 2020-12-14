@@ -4,6 +4,7 @@ mpc/code/build/*
 mpc/cache*/
 mpc/key/*
 mpc/par_ecg/*
+mpc/par_ecg_tte_128/*
 *.pyc
 *~
 *#
